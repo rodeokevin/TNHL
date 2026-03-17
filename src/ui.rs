@@ -8,7 +8,7 @@ use ratatui::{
 
 use serde::Deserialize;
 
-use crate::app::{App, ConferenceType, PaneFocus, StandingsFocus};
+use crate::app::{App, ConferenceType, DivisionType, PaneFocus, StandingsFocus};
 
 #[derive(Debug, Deserialize)]
 struct StandingsResponse {
@@ -23,6 +23,8 @@ pub struct TeamRecord {
     pub team_abbrev: TeamAbbrev,
     #[serde(rename = "conferenceAbbrev")]
     pub conference_abbrev: String,
+    #[serde(rename = "divisionAbbrev")]
+    pub division_abbrev: String,
     #[serde(rename = "conferenceSequence")]
     pub conference_sequence: u32,
     #[serde(rename = "wildcardSequence")]
@@ -104,7 +106,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         ])
         .split(chunks[0]);
     render_menu(frame, app, content_menu_chunks[0]);
-    
+
     // Split content chunk into tab + content
     let tab_content_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -138,14 +140,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     frame.render_widget(tabs, tab_content_chunks[0]);
 
     if app.menu_index == 0 {
-        match app.standings_type {
-            StandingsFocus::WildCard => render_wildcard_standings(frame, app, tab_content_chunks[1]),
-            StandingsFocus::Division => render_division_standings(frame, app, tab_content_chunks[1]),
-            StandingsFocus::Conference => render_conference_standings(frame, app, tab_content_chunks[1]),
-            StandingsFocus::League => render_league_standings(frame, app, tab_content_chunks[1]),
-        };
+        render_standings(frame, app, tab_content_chunks[1]);
     }
-    
 
     // Render footer
     let footer_block = Block::bordered();
@@ -187,32 +183,6 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
-    if let Some(_json) = &app.league_standings {
-        match app.standings_type {
-            StandingsFocus::WildCard => {
-                render_wildcard_standings(frame, app, area);
-            }
-            StandingsFocus::Division => {
-                render_division_standings(frame, app, area);
-            }
-            StandingsFocus::Conference => {
-                render_conference_standings(frame, app, area);
-            }
-            StandingsFocus::League => {
-                render_league_standings(frame, app, area);
-            }
-        };
-    } else {
-        // Todo: no data
-    }
-}
-
-
-
-fn render_league_standings(frame: &mut Frame, app: &mut App, area: Rect) {
-    // If we are in this function we know that there is data
-    let rows = map_league_rows(&app.league_standings.as_ref().unwrap());
-
     let focused = app.focus == PaneFocus::Content;
     let border_style = if focused {
         Style::default()
@@ -223,35 +193,63 @@ fn render_league_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     };
 
     let header = Row::new([
-            "#", "Team", "GP", "W", "L", "OT", "PTS", "P%", "RW", "ROW", "GF", "GA", "DIFF",
-            "HOME", "AWAY", "S/O", "L10", "STRK",
-        ])
-        .style(Style::new().bold())
-        .bottom_margin(1);
+        "#", "Team", "GP", "W", "L", "OT", "PTS", "P%", "RW", "ROW", "GF", "GA", "DIFF", "HOME",
+        "AWAY", "S/O", "L10", "STRK",
+    ])
+    .style(Style::new().bold())
+    .bottom_margin(1);
 
-    let widths = [
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(6),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(5),
-            Constraint::Length(5),
-            Constraint::Length(10),
-            Constraint::Length(10),
-            Constraint::Length(5),
-            Constraint::Length(8),
-            Constraint::Length(5),
-        ];
+    let widths = vec![
+        Constraint::Length(4),
+        Constraint::Length(5),
+        Constraint::Length(4),
+        Constraint::Length(4),
+        Constraint::Length(4),
+        Constraint::Length(4),
+        Constraint::Length(5),
+        Constraint::Length(6),
+        Constraint::Length(4),
+        Constraint::Length(4),
+        Constraint::Length(5),
+        Constraint::Length(5),
+        Constraint::Length(5),
+        Constraint::Length(10),
+        Constraint::Length(10),
+        Constraint::Length(5),
+        Constraint::Length(8),
+        Constraint::Length(5),
+    ];
+
+    if let Some(_json) = &app.league_standings {
+        match app.standings_type {
+            StandingsFocus::WildCard => {
+                render_wildcard_standings(frame, app, area, border_style, widths, header);
+            }
+            StandingsFocus::Division => {
+                render_division_standings(frame, app, area, border_style, widths, header);
+            }
+            StandingsFocus::Conference => {
+                render_conference_standings(frame, app, area, border_style, widths, header);
+            }
+            StandingsFocus::League => {
+                render_league_standings(frame, app, area, border_style, widths, header);
+            }
+        };
+    } else {
+        // Todo: no data
+    }
+}
+
+fn render_league_standings(frame: &mut Frame, app: &mut App, area: Rect, border_style: Style, widths: Vec<Constraint>, header: Row<'_>) {
+    // If we are in this function we know that there is data
+    let rows = map_rows(&app.league_standings.as_deref().unwrap(), |_| true, |team| team.league_sequence);
 
     let table = Table::new(rows, widths)
-        .block(Block::bordered().title(" League Standings ").border_style(border_style))
+        .block(
+            Block::bordered()
+                .title(" League Standings ")
+                .border_style(border_style),
+        )
         .header(header)
         .column_spacing(1)
         .row_highlight_style(
@@ -264,50 +262,17 @@ fn render_league_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_stateful_widget(table, area, &mut app.league_table_state);
 }
 
-fn render_conference_standings(frame: &mut Frame, app: &mut App, area: Rect) {
-    let focused = app.focus == PaneFocus::Content;
-    let border_style = if focused {
-        Style::default()
-            .fg(Color::Yellow)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::DarkGray)
-    };
-
-    let header = Row::new([
-            "#", "Team", "GP", "W", "L", "OT", "PTS", "P%", "RW", "ROW", "GF", "GA", "DIFF",
-            "HOME", "AWAY", "S/O", "L10", "STRK",
-        ])
-        .style(Style::new().bold())
-        .bottom_margin(1);
-
-    let widths = [
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(6),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(5),
-            Constraint::Length(5),
-            Constraint::Length(10),
-            Constraint::Length(10),
-            Constraint::Length(5),
-            Constraint::Length(8),
-            Constraint::Length(5),
-        ];
-
+fn render_conference_standings(frame: &mut Frame, app: &mut App, area: Rect, border_style: Style, widths: Vec<Constraint>, header: Row<'_>) {
     // If we are in this function we know that there is data
-    let eastern_rows = map_eastern_rows(&app.league_standings.as_ref().unwrap());
-    let western_rows = map_western_rows(&app.league_standings.as_ref().unwrap());
+    let eastern_rows = map_rows(&app.league_standings.as_deref().unwrap(), |team| team.conference_abbrev == "E", |team| team.conference_sequence);
+    let western_rows = map_rows(&app.league_standings.as_deref().unwrap(), |team| team.conference_abbrev == "W", |team| team.conference_sequence);
 
-    let eastern_table = Table::new(eastern_rows, widths)
-        .block(Block::bordered().title(" Eastern Conference Standings ").border_style(border_style))
+    let eastern_table = Table::new(eastern_rows, widths.clone())
+        .block(
+            Block::bordered()
+                .title(" Eastern Conference Standings ")
+                .border_style(border_style),
+        )
         .header(header.clone())
         .column_spacing(1)
         .row_highlight_style(
@@ -317,7 +282,11 @@ fn render_conference_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         )
         .highlight_symbol(">> ");
     let western_table = Table::new(western_rows, widths)
-        .block(Block::bordered().title(" Western Conference Standings ").border_style(border_style))
+        .block(
+            Block::bordered()
+                .title(" Western Conference Standings ")
+                .border_style(border_style),
+        )
         .header(header)
         .column_spacing(1)
         .row_highlight_style(
@@ -326,131 +295,116 @@ fn render_conference_standings(frame: &mut Frame, app: &mut App, area: Rect) {
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol(">> ");
-    // Render table based on which one is selected
-    if app.selected_conference == ConferenceType::Eastern {
-        frame.render_stateful_widget(eastern_table, area, &mut app.eastern_table_state);
-    }
-    else {
-        frame.render_stateful_widget(western_table, area, &mut app.western_table_state);
-    }   
-}
-
-fn render_division_standings(frame: &mut Frame, app: &mut App, area: Rect) {
-    let focused = app.focus == PaneFocus::Content;
-    let border_style = if focused {
-        Style::default()
-            .fg(Color::Yellow)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::DarkGray)
-    };
-
-    if let Some(json) = &app.league_standings {
-        let header = Row::new([
-            "#", "Team", "GP", "W", "L", "OT", "PTS", "P%", "RW", "ROW", "GF", "GA", "DIFF",
-            "HOME", "AWAY", "S/O", "L10", "STRK",
-        ])
-        .style(Style::new().bold())
-        .bottom_margin(1);
-
-        let rows = map_division_rows(json);
-        let widths = [
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(6),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(5),
-            Constraint::Length(5),
-            Constraint::Length(10),
-            Constraint::Length(10),
-            Constraint::Length(5),
-            Constraint::Length(8),
-            Constraint::Length(5),
-        ];
-
-        let table = Table::new(rows, widths)
-            .block(Block::bordered().title(" Division Standings ").border_style(border_style))
-            .header(header)
-            .column_spacing(1)
-            .row_highlight_style(
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .add_modifier(Modifier::BOLD),
-            )
-            .highlight_symbol(">> ");
-
-        frame.render_stateful_widget(table, area, &mut app.division_table_state);
-    } else {
-        // Todo: no data
+    // Render based on which conference is selected
+    match app.selected_conference {
+        ConferenceType::Eastern => frame.render_stateful_widget(eastern_table, area, &mut app.eastern_table_state),
+        ConferenceType::Western => frame.render_stateful_widget(western_table, area, &mut app.western_table_state),
     }
 }
 
-fn render_wildcard_standings(frame: &mut Frame, app: &mut App, area: Rect) {
-    let focused = app.focus == PaneFocus::Content;
-    let border_style = if focused {
-        Style::default()
-            .fg(Color::Yellow)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::DarkGray)
-    };
+fn render_division_standings(frame: &mut Frame, app: &mut App, area: Rect, border_style: Style, widths: Vec<Constraint>, header: Row<'_>) {
+    let atlantic_rows = map_rows(&app.league_standings.as_deref().unwrap(), |team| team.division_abbrev == "A", |team| team.division_sequence);
+    let metropolitan_rows = map_rows(&app.league_standings.as_deref().unwrap(), |team| team.division_abbrev == "M", |team| team.division_sequence);
+    let central_rows = map_rows(&app.league_standings.as_deref().unwrap(), |team| team.division_abbrev == "C", |team| team.division_sequence);
+    let pacific_rows = map_rows(&app.league_standings.as_deref().unwrap(), |team| team.division_abbrev == "P", |team| team.division_sequence);
 
-    if let Some(json) = &app.league_standings {
-        let header = Row::new([
-            "#", "Team", "GP", "W", "L", "OT", "PTS", "P%", "RW", "ROW", "GF", "GA", "DIFF",
-            "HOME", "AWAY", "S/O", "L10", "STRK",
-        ])
-        .style(Style::new().bold())
-        .bottom_margin(1);
+    let atlantic_table = Table::new(atlantic_rows, widths.clone())
+        .block(
+            Block::bordered()
+                .title(" Atlantic Division Standings ")
+                .border_style(border_style),
+        )
+        .header(header.clone())
+        .column_spacing(1)
+        .row_highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol(">> ");
 
-        let rows = map_wildcard_rows(json);
-        let widths = [
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(6),
-            Constraint::Length(4),
-            Constraint::Length(4),
-            Constraint::Length(5),
-            Constraint::Length(5),
-            Constraint::Length(5),
-            Constraint::Length(10),
-            Constraint::Length(10),
-            Constraint::Length(5),
-            Constraint::Length(8),
-            Constraint::Length(5),
-        ];
+    let metropolitan_table = Table::new(metropolitan_rows, widths.clone())
+        .block(
+            Block::bordered()
+                .title(" Metropolitan Division Standings ")
+                .border_style(border_style),
+        )
+        .header(header.clone())
+        .column_spacing(1)
+        .row_highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol(">> ");
 
-        let table = Table::new(rows, widths)
-            .block(Block::bordered().title(" Wildcard Standings ").border_style(border_style))
-            .header(header)
-            .column_spacing(1)
-            .row_highlight_style(
-                Style::default()
-                    .bg(Color::DarkGray)
-                    .add_modifier(Modifier::BOLD),
-            )
-            .highlight_symbol(">> ");
+    let central_table = Table::new(central_rows, widths.clone())
+        .block(
+            Block::bordered()
+                .title(" Central Division Standings ")
+                .border_style(border_style),
+        )
+        .header(header.clone())
+        .column_spacing(1)
+        .row_highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol(">> ");
 
-        frame.render_stateful_widget(table, area, &mut app.wildcard_table_state);
-    } else {
-        // Todo: no data
+    let pacific_table = Table::new(pacific_rows, widths)
+        .block(
+            Block::bordered()
+                .title(" Pacific Division Standings ")
+                .border_style(border_style),
+        )
+        .header(header)
+        .column_spacing(1)
+        .row_highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol(">> ");
+
+    // Render based on which division is selected
+    match app.selected_division {
+        DivisionType::Atlantic => frame.render_stateful_widget(atlantic_table, area, &mut app.atlantic_table_state),
+        DivisionType::Metropolitan => frame.render_stateful_widget(metropolitan_table, area, &mut app.metropolitan_table_state),
+        DivisionType::Central => frame.render_stateful_widget(central_table, area, &mut app.central_table_state),
+        DivisionType::Pacific => frame.render_stateful_widget(pacific_table, area, &mut app.pacific_table_state),
     }
 }
 
-// Helper functions to map the standings JSON into table rows depending on the standings type
-pub fn map_league_rows(json: &str) -> Vec<Row<'static>> {
+fn render_wildcard_standings(frame: &mut Frame, app: &mut App, area: Rect, border_style: Style, widths: Vec<Constraint>, header: Row<'_>) {
+    // If we are in this function we know that there is data
+    let rows = map_rows(&app.league_standings.as_deref().unwrap(), |_| true, |team| team.league_sequence);
+
+    let table = Table::new(rows, widths)
+        .block(
+            Block::bordered()
+                .title(" League Standings ")
+                .border_style(border_style),
+        )
+        .header(header)
+        .column_spacing(1)
+        .row_highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        )
+        .highlight_symbol(">> ");
+
+    frame.render_stateful_widget(table, area, &mut app.league_table_state);
+}
+
+// Helper functions to map the standings JSON into table rows given a filter for which teams and how to sort them
+pub fn map_rows<F, S>(json: &str, filter: F, sort_key: S) -> Vec<Row<'static>> 
+where 
+    F: Fn(&TeamRecord) -> bool, 
+    S: Fn(&TeamRecord) -> u32,
+{
     let response: StandingsResponse = match serde_json::from_str(json) {
         Ok(res) => res,
         Err(e) => {
@@ -459,214 +413,18 @@ pub fn map_league_rows(json: &str) -> Vec<Row<'static>> {
         }
     };
 
-    let mut standings = response.standings;
-    standings.sort_by_key(|team| team.league_sequence);
-
-    standings
+    let mut standings: Vec<_> = response
+        .standings
         .iter()
-        .map(|team| {
-            Row::new(vec![
-                team.league_sequence.to_string(),
-                team.team_abbrev.default.clone(),
-                team.games_played.to_string(),
-                team.wins.to_string(),
-                team.losses.to_string(),
-                team.ot_losses.to_string(),
-                team.points.to_string(),
-                format!("{:.3}", team.point_pctg),
-                team.regulation_wins.to_string(),
-                team.regulation_plus_ot_wins.to_string(),
-                team.goal_for.to_string(),
-                team.goal_against.to_string(),
-                ((team.goal_for as i32) - (team.goal_against as i32)).to_string(),
-                format!(
-                    "{}-{}-{}",
-                    team.home_wins, team.home_losses, team.home_ot_losses
-                ),
-                format!(
-                    "{}-{}-{}",
-                    team.road_wins, team.road_losses, team.road_ot_losses
-                ),
-                format!("{}-{}", team.shootout_wins, team.shootout_losses),
-                format!(
-                    "{}-{}-{}",
-                    team.l10_wins, team.l10_losses, team.l10_ot_losses
-                ),
-                format!("{}{}", team.streak_code, team.streak_count),
-            ])
-        })
-        .collect()
-}
-
-pub fn map_eastern_rows(json: &str) -> Vec<Row<'static>> {
-    let response: StandingsResponse = match serde_json::from_str(json) {
-        Ok(res) => res,
-        Err(e) => {
-            eprintln!("Failed to parse standings JSON: {}", e);
-            return Vec::new();
-        }
-    };
-
-    let mut east_standings: Vec<_> = response.standings
-        .iter()
-        .filter(|team| team.conference_abbrev == "E")
+        .filter(|team| filter(team))
         .collect();
-
-    east_standings.sort_by_key(|team| team.conference_sequence);
-
-    east_standings
-        .iter()
-        .map(|team| {
-            Row::new(vec![
-                team.conference_sequence.to_string(),
-                team.team_abbrev.default.clone(),
-                team.games_played.to_string(),
-                team.wins.to_string(),
-                team.losses.to_string(),
-                team.ot_losses.to_string(),
-                team.points.to_string(),
-                format!("{:.3}", team.point_pctg),
-                team.regulation_wins.to_string(),
-                team.regulation_plus_ot_wins.to_string(),
-                team.goal_for.to_string(),
-                team.goal_against.to_string(),
-                ((team.goal_for as i32) - (team.goal_against as i32)).to_string(),
-                format!(
-                    "{}-{}-{}",
-                    team.home_wins, team.home_losses, team.home_ot_losses
-                ),
-                format!(
-                    "{}-{}-{}",
-                    team.road_wins, team.road_losses, team.road_ot_losses
-                ),
-                format!("{}-{}", team.shootout_wins, team.shootout_losses),
-                format!(
-                    "{}-{}-{}",
-                    team.l10_wins, team.l10_losses, team.l10_ot_losses
-                ),
-                format!("{}{}", team.streak_code, team.streak_count),
-            ])
-        })
-        .collect()
-}
-
-pub fn map_western_rows(json: &str) -> Vec<Row<'static>> {
-    let response: StandingsResponse = match serde_json::from_str(json) {
-        Ok(res) => res,
-        Err(e) => {
-            eprintln!("Failed to parse standings JSON: {}", e);
-            return Vec::new();
-        }
-    };
-
-    let mut east_standings: Vec<_> = response.standings
-        .iter()
-        .filter(|team| team.conference_abbrev == "W")
-        .collect();
-
-    east_standings.sort_by_key(|team| team.conference_sequence);
-
-    east_standings
-        .iter()
-        .map(|team| {
-            Row::new(vec![
-                team.conference_sequence.to_string(),
-                team.team_abbrev.default.clone(),
-                team.games_played.to_string(),
-                team.wins.to_string(),
-                team.losses.to_string(),
-                team.ot_losses.to_string(),
-                team.points.to_string(),
-                format!("{:.3}", team.point_pctg),
-                team.regulation_wins.to_string(),
-                team.regulation_plus_ot_wins.to_string(),
-                team.goal_for.to_string(),
-                team.goal_against.to_string(),
-                ((team.goal_for as i32) - (team.goal_against as i32)).to_string(),
-                format!(
-                    "{}-{}-{}",
-                    team.home_wins, team.home_losses, team.home_ot_losses
-                ),
-                format!(
-                    "{}-{}-{}",
-                    team.road_wins, team.road_losses, team.road_ot_losses
-                ),
-                format!("{}-{}", team.shootout_wins, team.shootout_losses),
-                format!(
-                    "{}-{}-{}",
-                    team.l10_wins, team.l10_losses, team.l10_ot_losses
-                ),
-                format!("{}{}", team.streak_code, team.streak_count),
-            ])
-        })
-        .collect()
-}
-
-pub fn map_wildcard_rows(json: &str) -> Vec<Row<'static>> {
-    let response: StandingsResponse = match serde_json::from_str(json) {
-        Ok(res) => res,
-        Err(e) => {
-            eprintln!("Failed to parse standings JSON: {}", e);
-            return Vec::new();
-        }
-    };
-
-    let mut standings = response.standings;
-    standings.sort_by_key(|team| team.wildcard_sequence);
+    standings.sort_by_key(|team| sort_key(team));
 
     standings
         .iter()
         .map(|team| {
             Row::new(vec![
-                team.wildcard_sequence.to_string(),
-                team.team_abbrev.default.clone(),
-                team.games_played.to_string(),
-                team.wins.to_string(),
-                team.losses.to_string(),
-                team.ot_losses.to_string(),
-                team.points.to_string(),
-                format!("{:.3}", team.point_pctg),
-                team.regulation_wins.to_string(),
-                team.regulation_plus_ot_wins.to_string(),
-                team.goal_for.to_string(),
-                team.goal_against.to_string(),
-                ((team.goal_for as i32) - (team.goal_against as i32)).to_string(),
-                format!(
-                    "{}-{}-{}",
-                    team.home_wins, team.home_losses, team.home_ot_losses
-                ),
-                format!(
-                    "{}-{}-{}",
-                    team.road_wins, team.road_losses, team.road_ot_losses
-                ),
-                format!("{}-{}", team.shootout_wins, team.shootout_losses),
-                format!(
-                    "{}-{}-{}",
-                    team.l10_wins, team.l10_losses, team.l10_ot_losses
-                ),
-                format!("{}{}", team.streak_code, team.streak_count),
-            ])
-        })
-        .collect()
-}
-
-pub fn map_division_rows(json: &str) -> Vec<Row<'static>> {
-    let response: StandingsResponse = match serde_json::from_str(json) {
-        Ok(res) => res,
-        Err(e) => {
-            eprintln!("Failed to parse standings JSON: {}", e);
-            return Vec::new();
-        }
-    };
-
-    let mut standings = response.standings;
-    standings.sort_by_key(|team| team.conference_sequence);
-
-    standings
-        .iter()
-        .map(|team| {
-            Row::new(vec![
-                team.division_sequence.to_string(),
+                sort_key(team).to_string(),
                 team.team_abbrev.default.clone(),
                 team.games_played.to_string(),
                 team.wins.to_string(),
