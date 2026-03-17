@@ -14,6 +14,10 @@ pub enum Action {
     FocusRight,
     /// Cycle focus to the next pane.
     CycleFocus,
+    /// Next standings (e.g. Eastern to Western Conference)
+    NextStandings,
+    /// Previous standings (e.g. Western to Eastern Conference)
+    PrevStandings,
     /// Force refresh all data sources.
     Refresh,
     /// Quit the application.
@@ -41,6 +45,8 @@ pub fn map_key(event: KeyEvent) -> Option<Action> {
         KeyCode::Down | KeyCode::Char('j') => Some(Action::MoveDown),
         KeyCode::Left | KeyCode::Char('h') => Some(Action::FocusLeft),
         KeyCode::Right | KeyCode::Char('l') => Some(Action::FocusRight),
+        KeyCode::Char('.') => Some(Action::NextStandings),
+        KeyCode::Char(',') => Some(Action::PrevStandings),
         KeyCode::Tab => Some(Action::CycleFocus),
 
         // Actions
