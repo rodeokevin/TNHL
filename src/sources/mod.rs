@@ -1,13 +1,14 @@
 use tokio::sync::mpsc::Sender;
 
+pub mod games;
 pub mod standings;
 
 /// Events sent to the main application loop.
 #[derive(Debug)]
 pub enum AppEvent {
     StandingsUpdate(String),
+    GamesUpdate(String),
     Input(crossterm::event::KeyEvent),
-
     /// Periodic tick to refresh UI
     Tick,
 }

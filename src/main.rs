@@ -5,7 +5,7 @@ mod ui;
 
 use crate::{
     app::App,
-    sources::{AppEvent, Source, standings::StandingsSource},
+    sources::{AppEvent, Source, games::GamesSource, standings::StandingsSource},
 };
 
 use simplelog::*;
@@ -71,6 +71,14 @@ where
     let standings_cancel = cancel.clone();
     tokio::spawn(async move {
         standings_source.run(standings_tx, standings_cancel).await;
+    });
+
+    // Spawn games source
+    let games_source = Box::new(GamesSource::new());
+    let games_tx = tx.clone();
+    let games_cancel = cancel.clone();
+    tokio::spawn(async move {
+        games_source.run(games_tx, games_cancel).await;
     });
 
     // Spawn terminal event reader

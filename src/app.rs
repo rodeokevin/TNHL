@@ -2,11 +2,12 @@ use crate::input::{Action, map_key};
 use crate::sources::AppEvent;
 use ratatui::widgets::TableState;
 
-const MENU_LEN: usize = 3;
+use serde::Deserialize;
+
 const LEAGUE_NUM_TEAMS: usize = 32;
 const CONFERENCE_NUM_TEAMS: usize = 16;
 const DIVISION_NUM_TEAMS: usize = 8;
-const WILDCARD_NUM_TEAMS: usize = 32;
+const WILDCARD_NUM_TEAMS: usize = 16;
 
 /// Which pane currently has keyboard focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,6 +21,38 @@ impl PaneFocus {
         match self {
             PaneFocus::Menu => PaneFocus::Content,
             PaneFocus::Content => PaneFocus::Menu,
+        }
+    }
+}
+
+/// Which menu item is currently selected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MenuFocus {
+    Games,
+    Standings,
+    Teams,
+}
+
+impl MenuFocus {
+    pub fn next(self) -> Self {
+        match self {
+            MenuFocus::Games => MenuFocus::Standings,
+            MenuFocus::Standings => MenuFocus::Teams,
+            MenuFocus::Teams => MenuFocus::Teams,
+        }
+    }
+    pub fn prev(self) -> Self {
+        match self {
+            MenuFocus::Standings => MenuFocus::Games,
+            MenuFocus::Teams => MenuFocus::Standings,
+            MenuFocus::Games => MenuFocus::Games,
+        }
+    }
+    pub fn index(&self) -> usize {
+        match self {
+            MenuFocus::Games => 0,
+            MenuFocus::Standings => 1,
+            MenuFocus::Teams => 2,
         }
     }
 }
@@ -105,9 +138,19 @@ impl DivisionType {
     }
 }
 
+#[derive(Debug, Deserialize)]
+pub struct GamesResponse {
+    pub games: Vec<GameData>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GameData {
+    pub id: u32,
+}
+
 pub struct App {
-    /// Selected index in the menu
-    pub menu_index: usize,
+    /// Selected menu item
+    pub selected_menu: MenuFocus,
     /// Selected standings
     pub standings_type: StandingsFocus,
 
@@ -131,6 +174,10 @@ pub struct App {
     /// League table
     pub league_table_state: TableState,
 
+    /// Current data for games
+    pub games_data: Option<GamesResponse>,
+    pub selected_game_index: usize,
+
     /// Currently focused pane.
     pub focus: PaneFocus,
 
@@ -144,7 +191,7 @@ impl App {
         table_state.select(Some(0));
         // Default app states
         App {
-            menu_index: 0,
+            selected_menu: MenuFocus::Games,
             standings_type: StandingsFocus::WildCard,
             league_standings: None,
             eastern_table_state: table_state.clone(),
@@ -159,6 +206,10 @@ impl App {
             eastern_wildcard_table_state: table_state.clone(),
             western_wildcard_table_state: table_state.clone(),
             selected_wildcard: ConferenceType::Eastern,
+
+            games_data: None,
+            selected_game_index: 0,
+
             should_quit: false,
             focus: PaneFocus::Menu,
         }
@@ -170,6 +221,12 @@ impl App {
             AppEvent::StandingsUpdate(standings) => {
                 log::info!("Updating standings data");
                 self.league_standings = Some(standings);
+            }
+            AppEvent::GamesUpdate(games) => {
+                log::info!("Updating games data");
+                if let Err(e) = self.update_games_data(&games) {
+                    log::error!("Failed to parse games data: {}", e);
+                }
             }
             AppEvent::Input(key_event) => {
                 log::info!("Key event detected: {:?}", key_event);
@@ -189,12 +246,16 @@ impl App {
             Action::MoveUp => self.move_selection(-1),
             Action::MoveDown => self.move_selection(1),
             // Left right for content pane only
-            Action::FocusLeft if self.focus == PaneFocus::Content => {
-                self.standings_type = self.standings_type.prev()
-            }
-            Action::FocusRight if self.focus == PaneFocus::Content => {
-                self.standings_type = self.standings_type.next()
-            }
+            Action::FocusLeft if self.focus == PaneFocus::Content => match self.selected_menu {
+                MenuFocus::Games => self.move_selection(-1),
+                MenuFocus::Standings => self.standings_type = self.standings_type.prev(),
+                MenuFocus::Teams => {}
+            },
+            Action::FocusRight if self.focus == PaneFocus::Content => match self.selected_menu {
+                MenuFocus::Games => self.move_selection(1),
+                MenuFocus::Standings => self.standings_type = self.standings_type.next(),
+                MenuFocus::Teams => {}
+            },
             // Use tab to switch between menu and content
             Action::CycleFocus => self.focus = self.focus.switch(),
             // Next standings
@@ -241,62 +302,79 @@ impl App {
     fn move_selection(&mut self, delta: i32) {
         match self.focus {
             PaneFocus::Menu => {
-                self.menu_index = change_index(self.menu_index, delta, MENU_LEN);
+                self.selected_menu = if delta == 1 {
+                    self.selected_menu.next()
+                } else {
+                    self.selected_menu.prev()
+                };
             }
-            PaneFocus::Content => match self.standings_type {
-                StandingsFocus::League => {
-                    let current = self.league_table_state.selected().unwrap_or(0);
+            PaneFocus::Content => match self.selected_menu {
+                MenuFocus::Games => {
+                    let current = self.selected_game_index;
                     let new_index = change_index(current, delta, LEAGUE_NUM_TEAMS);
-                    self.league_table_state.select(Some(new_index));
+                    self.selected_game_index = new_index;
                 }
-                StandingsFocus::Conference => match self.selected_conference {
-                    ConferenceType::Eastern => {
-                        let current = self.eastern_table_state.selected().unwrap_or(0);
-                        let new_index = change_index(current, delta, CONFERENCE_NUM_TEAMS);
-                        self.eastern_table_state.select(Some(new_index));
+                MenuFocus::Standings => match self.standings_type {
+                    StandingsFocus::League => {
+                        let current = self.league_table_state.selected().unwrap_or(0);
+                        let new_index = change_index(current, delta, LEAGUE_NUM_TEAMS);
+                        self.league_table_state.select(Some(new_index));
                     }
-                    ConferenceType::Western => {
-                        let current = self.western_table_state.selected().unwrap_or(0);
-                        let new_index = change_index(current, delta, CONFERENCE_NUM_TEAMS);
-                        self.western_table_state.select(Some(new_index));
-                    }
+                    StandingsFocus::Conference => match self.selected_conference {
+                        ConferenceType::Eastern => {
+                            let current = self.eastern_table_state.selected().unwrap_or(0);
+                            let new_index = change_index(current, delta, CONFERENCE_NUM_TEAMS);
+                            self.eastern_table_state.select(Some(new_index));
+                        }
+                        ConferenceType::Western => {
+                            let current = self.western_table_state.selected().unwrap_or(0);
+                            let new_index = change_index(current, delta, CONFERENCE_NUM_TEAMS);
+                            self.western_table_state.select(Some(new_index));
+                        }
+                    },
+                    StandingsFocus::Division => match self.selected_division {
+                        DivisionType::Atlantic => {
+                            let current = self.atlantic_table_state.selected().unwrap_or(0);
+                            let new_index = change_index(current, delta, DIVISION_NUM_TEAMS);
+                            self.atlantic_table_state.select(Some(new_index));
+                        }
+                        DivisionType::Metropolitan => {
+                            let current = self.metropolitan_table_state.selected().unwrap_or(0);
+                            let new_index = change_index(current, delta, DIVISION_NUM_TEAMS);
+                            self.metropolitan_table_state.select(Some(new_index));
+                        }
+                        DivisionType::Central => {
+                            let current = self.central_table_state.selected().unwrap_or(0);
+                            let new_index = change_index(current, delta, DIVISION_NUM_TEAMS);
+                            self.central_table_state.select(Some(new_index));
+                        }
+                        DivisionType::Pacific => {
+                            let current = self.pacific_table_state.selected().unwrap_or(0);
+                            let new_index = change_index(current, delta, DIVISION_NUM_TEAMS);
+                            self.pacific_table_state.select(Some(new_index));
+                        }
+                    },
+                    StandingsFocus::WildCard => match self.selected_wildcard {
+                        ConferenceType::Eastern => {
+                            let current = self.eastern_wildcard_table_state.selected().unwrap_or(0);
+                            let new_index = change_index(current, delta, WILDCARD_NUM_TEAMS);
+                            self.eastern_wildcard_table_state.select(Some(new_index));
+                        }
+                        ConferenceType::Western => {
+                            let current = self.western_wildcard_table_state.selected().unwrap_or(0);
+                            let new_index = change_index(current, delta, WILDCARD_NUM_TEAMS);
+                            self.western_wildcard_table_state.select(Some(new_index));
+                        }
+                    },
                 },
-                StandingsFocus::Division => match self.selected_division {
-                    DivisionType::Atlantic => {
-                        let current = self.atlantic_table_state.selected().unwrap_or(0);
-                        let new_index = change_index(current, delta, DIVISION_NUM_TEAMS);
-                        self.atlantic_table_state.select(Some(new_index));
-                    }
-                    DivisionType::Metropolitan => {
-                        let current = self.metropolitan_table_state.selected().unwrap_or(0);
-                        let new_index = change_index(current, delta, DIVISION_NUM_TEAMS);
-                        self.metropolitan_table_state.select(Some(new_index));
-                    }
-                    DivisionType::Central => {
-                        let current = self.central_table_state.selected().unwrap_or(0);
-                        let new_index = change_index(current, delta, DIVISION_NUM_TEAMS);
-                        self.central_table_state.select(Some(new_index));
-                    }
-                    DivisionType::Pacific => {
-                        let current = self.pacific_table_state.selected().unwrap_or(0);
-                        let new_index = change_index(current, delta, DIVISION_NUM_TEAMS);
-                        self.pacific_table_state.select(Some(new_index));
-                    }
-                },
-                StandingsFocus::WildCard => match self.selected_wildcard {
-                    ConferenceType::Eastern => {
-                        let current = self.eastern_wildcard_table_state.selected().unwrap_or(0);
-                        let new_index = change_index(current, delta, CONFERENCE_NUM_TEAMS);
-                        self.eastern_wildcard_table_state.select(Some(new_index));
-                    }
-                    ConferenceType::Western => {
-                        let current = self.western_wildcard_table_state.selected().unwrap_or(0);
-                        let new_index = change_index(current, delta, CONFERENCE_NUM_TEAMS);
-                        self.western_wildcard_table_state.select(Some(new_index));
-                    }
-                },
+                _ => {},
             },
         }
+    }
+
+    fn update_games_data(&mut self, data: &str) -> Result<(), serde_json::Error> {
+        self.games_data = Some(serde_json::from_str(data)?);
+        Ok(())
     }
 }
 

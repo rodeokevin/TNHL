@@ -8,15 +8,17 @@ use ratatui::{
 
 use serde::Deserialize;
 
-use crate::app::{App, ConferenceType, DivisionType, PaneFocus, StandingsFocus};
+use crate::app::{
+    App, ConferenceType, DivisionType, GamesResponse, MenuFocus, PaneFocus, StandingsFocus,
+};
 
 #[derive(Debug, Deserialize)]
 struct StandingsResponse {
-    standings: Vec<TeamRecord>,
+    standings: Vec<TeamData>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct TeamRecord {
+pub struct TeamData {
     #[serde(rename = "teamName")]
     pub team_name: TeamName,
     #[serde(rename = "teamAbbrev")]
@@ -107,8 +109,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .split(chunks[0]);
     render_menu(frame, app, content_menu_chunks[0]);
 
-    if app.menu_index == 0 {
-        render_standings(frame, app, content_menu_chunks[1]);
+    match app.selected_menu {
+        MenuFocus::Games => render_games(frame, app, content_menu_chunks[1]),
+        MenuFocus::Standings => render_standings(frame, app, content_menu_chunks[1]),
+        MenuFocus::Teams => {}
     }
 
     // Render footer
@@ -130,9 +134,9 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
     };
 
     let menu_items = vec![
+        ListItem::new("Games"),
         ListItem::new("Standings"),
         ListItem::new("Teams"),
-        ListItem::new("Games"),
     ];
 
     let list = List::new(menu_items)
@@ -145,7 +149,7 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
         .highlight_symbol(">> ");
 
     let mut state = ListState::default();
-    state.select(Some(app.menu_index));
+    state.select(Some(app.selected_menu.index()));
 
     frame.render_stateful_widget(list, area, &mut state);
 }
@@ -223,16 +227,44 @@ fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     if let Some(_json) = &app.league_standings {
         match app.standings_type {
             StandingsFocus::WildCard => {
-                render_wildcard_standings(frame, app, tab_content_chunks[1], border_style, widths, header);
+                render_wildcard_standings(
+                    frame,
+                    app,
+                    tab_content_chunks[1],
+                    border_style,
+                    widths,
+                    header,
+                );
             }
             StandingsFocus::Division => {
-                render_division_standings(frame, app, tab_content_chunks[1], border_style, widths, header);
+                render_division_standings(
+                    frame,
+                    app,
+                    tab_content_chunks[1],
+                    border_style,
+                    widths,
+                    header,
+                );
             }
             StandingsFocus::Conference => {
-                render_conference_standings(frame, app, tab_content_chunks[1], border_style, widths, header);
+                render_conference_standings(
+                    frame,
+                    app,
+                    tab_content_chunks[1],
+                    border_style,
+                    widths,
+                    header,
+                );
             }
             StandingsFocus::League => {
-                render_league_standings(frame, app, tab_content_chunks[1], border_style, widths, header);
+                render_league_standings(
+                    frame,
+                    app,
+                    tab_content_chunks[1],
+                    border_style,
+                    widths,
+                    header,
+                );
             }
         };
     } else {
@@ -550,8 +582,8 @@ fn render_wildcard_standings(
 // Helper functions to map the standings JSON into table rows given a filter for which teams and how to sort them
 pub fn map_rows<F, S>(json: &str, filter: F, sort_key: S) -> Vec<Row<'static>>
 where
-    F: Fn(&TeamRecord) -> bool,
-    S: Fn(&TeamRecord) -> u32,
+    F: Fn(&TeamData) -> bool,
+    S: Fn(&TeamData) -> u32,
 {
     let response: StandingsResponse = match serde_json::from_str(json) {
         Ok(res) => res,
@@ -602,4 +634,37 @@ where
             ])
         })
         .collect()
+}
+
+pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
+    // Split content chunk into tab + content
+    let tab_content_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // tabs
+            Constraint::Min(1),    // table
+        ])
+        .split(area);
+
+    let titles: Vec<Line> = app
+        .games_data
+        .as_ref()
+        .map(|data| {
+            data.games
+                .iter()
+                .map(|game| Line::from(format!("{}", game.id,)))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let tabs = Tabs::new(titles)
+        .select(app.selected_game_index)
+        .block(Block::bordered())
+        .highlight_style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        );
+
+    frame.render_widget(tabs, tab_content_chunks[0]);
 }
