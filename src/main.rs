@@ -1,5 +1,6 @@
 mod app;
 mod input;
+mod models;
 mod sources;
 mod ui;
 
