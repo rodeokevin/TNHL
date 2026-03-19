@@ -14,7 +14,7 @@ impl GamesSource {
 #[async_trait::async_trait]
 impl Source for GamesSource {
     async fn run(self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
-        let mut interval = tokio::time::interval(Duration::from_secs(30));
+        let mut interval = tokio::time::interval(Duration::from_secs(10));
         loop {
             tokio::select! {
                 _ = cancel.cancelled() => break,

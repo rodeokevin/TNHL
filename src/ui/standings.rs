@@ -135,6 +135,8 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
                 );
             }
         };
+    } else {
+        // Todo: no data
     }
 }
 

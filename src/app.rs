@@ -144,7 +144,6 @@ pub struct App {
     pub selected_menu: MenuFocus,
     /// Selected standings
     pub standings_type: StandingsFocus,
-
     /// Current data for league standings
     pub league_data: Option<StandingsResponse>,
     /// States for standings tables
