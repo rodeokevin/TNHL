@@ -367,11 +367,6 @@ impl App {
             },
         }
     }
-
-    fn update_games_data(&mut self, data: &str) -> Result<(), serde_json::Error> {
-        self.games_data = Some(serde_json::from_str(data)?);
-        Ok(())
-    }
 }
 
 /// Change an index by delta within [0, len), capping at boundaries.
