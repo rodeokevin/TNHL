@@ -167,6 +167,7 @@ pub struct App {
     /// Current data for games
     pub games_data: Option<GamesResponse>,
     pub selected_game_index: usize,
+    pub sweeping_status_offet: usize, // for the --- under the time remaining in UI
 
     /// Currently focused pane.
     pub focus: PaneFocus,
@@ -199,6 +200,7 @@ impl App {
 
             games_data: None,
             selected_game_index: 0,
+            sweeping_status_offet: 0,
 
             should_quit: false,
             focus: PaneFocus::Menu,
@@ -229,7 +231,7 @@ impl App {
                 }
             }
             AppEvent::Tick => {
-                // No-op for now; UI refresh is driven by render calls
+                self.sweeping_status_offet = self.sweeping_status_offet.wrapping_add(1);
             }
         }
     }
@@ -241,12 +243,18 @@ impl App {
             Action::MoveDown => self.move_selection(1),
             // Left right for content pane only
             Action::FocusLeft if self.focus == PaneFocus::Content => match self.selected_menu {
-                MenuFocus::Games => self.move_selection(-1),
+                MenuFocus::Games => {
+                    let len = self.games_data.as_ref().map_or(0, |d| d.games.len());
+                    self.selected_game_index = change_index(self.selected_game_index, -1, len);
+                }
                 MenuFocus::Standings => self.standings_type = self.standings_type.prev(),
                 MenuFocus::Teams => {}
             },
             Action::FocusRight if self.focus == PaneFocus::Content => match self.selected_menu {
-                MenuFocus::Games => self.move_selection(1),
+                MenuFocus::Games => {
+                    let len = self.games_data.as_ref().map_or(0, |d| d.games.len());
+                    self.selected_game_index = change_index(self.selected_game_index, 1, len);
+                }
                 MenuFocus::Standings => self.standings_type = self.standings_type.next(),
                 MenuFocus::Teams => {}
             },
@@ -303,12 +311,7 @@ impl App {
                 };
             }
             PaneFocus::Content => match self.selected_menu {
-                MenuFocus::Games => {
-                    let current = self.selected_game_index;
-                    let len = self.games_data.as_ref().map_or(0, |data| data.games.len());
-                    let new_index = change_index(current, delta, len);
-                    self.selected_game_index = new_index;
-                }
+                MenuFocus::Games => {}
                 MenuFocus::Standings => match self.standings_type {
                     StandingsFocus::League => {
                         let current = self.league_table_state.selected().unwrap_or(0);

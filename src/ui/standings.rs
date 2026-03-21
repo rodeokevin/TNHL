@@ -32,25 +32,31 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         StandingsFocus::League => 3,
     };
 
-    let tabs = Tabs::new(titles)
-        .select(selected_standings)
-        .block(Block::bordered())
-        .highlight_style(
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        );
-
-    frame.render_widget(tabs, tab_content_chunks[0]);
-
     let focused = app.focus == PaneFocus::Content;
     let border_style = if focused {
         Style::default()
-            .fg(Color::Yellow)
+            .fg(Color::LightYellow)
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::DarkGray)
     };
+    let highlight_style = if focused {
+        Style::default()
+            .fg(Color::LightYellow)
+            .add_modifier(Modifier::BOLD)
+            .add_modifier(Modifier::UNDERLINED)
+    } else {
+        Style::default()
+            .add_modifier(Modifier::BOLD)
+            .add_modifier(Modifier::UNDERLINED)
+    };
+
+    let tabs = Tabs::new(titles)
+        .select(selected_standings)
+        .block(Block::bordered().border_style(border_style))
+        .highlight_style(highlight_style);
+
+    frame.render_widget(tabs, tab_content_chunks[0]);
 
     let header = Row::new([
         "#", "Team", "GP", "W", "L", "OT", "PTS", "P%", "RW", "ROW", "GF", "GA", "DIFF", "HOME",

@@ -64,7 +64,7 @@ async fn run_app<B: Backend>(
 where
     io::Error: From<B::Error>,
 {
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<AppEvent>(256);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<AppEvent>(32);
 
     // Spawn standings source
     let standings_source = Box::new(StandingsSource::new());
@@ -111,7 +111,7 @@ where
     let tick_tx = tx;
     let tick_cancel = cancel.clone();
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(250));
+        let mut interval = tokio::time::interval(Duration::from_millis(200));
         loop {
             tokio::select! {
                 _ = tick_cancel.cancelled() => break,
