@@ -1,15 +1,9 @@
 use crate::input::{Action, map_key};
 use crate::sources::AppEvent;
-use crate::state::standings_state::{StandingsState, StandingsFocus, ConferenceFocus, DivisionFocus};
-use ratatui::widgets::{TableState};
+use crate::state::standings_state::{StandingsState};
 // use crate::state::date_input::DateInput;
 use crate::models::games::GamesResponse;
 use crate::models::standings::StandingsResponse;
-
-const LEAGUE_NUM_TEAMS: usize = 32;
-const CONFERENCE_NUM_TEAMS: usize = 16;
-const DIVISION_NUM_TEAMS: usize = 8;
-const WILDCARD_NUM_TEAMS: usize = 16;
 
 /// Which pane currently has keyboard focus.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -26,11 +20,6 @@ impl PaneFocus {
             PaneFocus::Content => PaneFocus::Menu,
         }
     }
-}
-
-pub trait Cycle {
-    fn next(self) -> Self;
-    fn prev(self) -> Self;
 }
 
 /// Which menu item is currently selected.
@@ -81,12 +70,6 @@ pub struct AppState {
 
 impl Default for AppState {
     fn default() -> Self {
-        fn table() -> TableState {
-            let mut t = TableState::default();
-            t.select(Some(0));
-            t
-        }
-
         Self {
             selected_menu: MenuFocus::default(),
             standings: StandingsState::default(),
@@ -151,35 +134,13 @@ impl AppState {
                         self.selected_game_index =
                             change_index(self.selected_game_index, delta, len);
                     }
-                    MenuFocus::Standings => {
-                        self.standings.focus = if delta == 1 {
-                            self.standings.focus.next()
-                        } else {
-                            self.standings.focus.prev()
-                        };
-                    }
+                    MenuFocus::Standings => self.standings.shift_standings_type(delta == 1),
                     MenuFocus::Teams => {}
                 }
             }
             Action::CycleFocus => self.focus = self.focus.switch(),
             Action::NextStandings | Action::PrevStandings if self.focus == PaneFocus::Content => {
-                let next = matches!(action, Action::NextStandings);
-                match self.standings.focus {
-                    StandingsFocus::Conference => {
-                        self.standings.selected_conference = self.standings.selected_conference.toggle();
-                    }
-                    StandingsFocus::Division => {
-                        self.standings.selected_division = if next {
-                            self.standings.selected_division.next()
-                        } else {
-                            self.standings.selected_division.prev()
-                        };
-                    }
-                    StandingsFocus::WildCard => {
-                        self.standings.selected_wildcard = self.standings.selected_wildcard.toggle();
-                    }
-                    StandingsFocus::League => {}
-                }
+                self.standings.cycle_focus(matches!(action, Action::NextStandings));
             }
             Action::Quit => self.should_quit = true,
             Action::Refresh | _ => {}
@@ -197,53 +158,11 @@ impl AppState {
                 };
             }
             PaneFocus::Content => match self.selected_menu {
-                MenuFocus::Standings => {
-                    if let Some((table, len)) = self.current_table_state_mut() {
-                        move_standings_selection(table, delta, len);
-                    }
-                }
+                MenuFocus::Standings => self.standings.move_selection(delta),
                 _ => {}
             },
         }
     }
-
-    fn current_table_state_mut(&mut self) -> Option<(&mut TableState, usize)> {
-        match self.standings.focus {
-            StandingsFocus::League => Some((&mut self.standings.league_table_state, LEAGUE_NUM_TEAMS)),
-            StandingsFocus::Conference => match self.standings.selected_conference {
-                ConferenceFocus::Eastern => {
-                    Some((&mut self.standings.eastern_table_state, CONFERENCE_NUM_TEAMS))
-                }
-                ConferenceFocus::Western => {
-                    Some((&mut self.standings.western_table_state, CONFERENCE_NUM_TEAMS))
-                }
-            },
-            StandingsFocus::Division => match self.standings.selected_division {
-                DivisionFocus::Atlantic => {
-                    Some((&mut self.standings.atlantic_table_state, DIVISION_NUM_TEAMS))
-                }
-                DivisionFocus::Metropolitan => {
-                    Some((&mut self.standings.metropolitan_table_state, DIVISION_NUM_TEAMS))
-                }
-                DivisionFocus::Central => Some((&mut self.standings.central_table_state, DIVISION_NUM_TEAMS)),
-                DivisionFocus::Pacific => Some((&mut self.standings.pacific_table_state, DIVISION_NUM_TEAMS)),
-            },
-            StandingsFocus::WildCard => match self.standings.selected_wildcard {
-                ConferenceFocus::Eastern => {
-                    Some((&mut self.standings.eastern_wildcard_table_state, WILDCARD_NUM_TEAMS))
-                }
-                ConferenceFocus::Western => {
-                    Some((&mut self.standings.western_wildcard_table_state, WILDCARD_NUM_TEAMS))
-                }
-            },
-        }
-    }
-}
-
-fn move_standings_selection(table_state: &mut TableState, delta: i32, num_teams: usize) {
-    let current = table_state.selected().unwrap_or(0);
-    let new_index = change_index(current, delta, num_teams);
-    table_state.select(Some(new_index));
 }
 
 /// Change an index by delta within [0, len), capping at boundaries.

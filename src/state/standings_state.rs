@@ -158,11 +158,17 @@ impl StandingsState {
         table.select(Some(next));
     }
 
-    pub fn cycle_focus(&mut self, forward: bool) {
+    // Next/PrevStandings
+    pub fn shift_standings_type(&mut self, next: bool) {
+        self.focus = if next { self.focus.next() } else { self.focus.prev() };
+    }
+
+    // Cycle between a standings type
+    pub fn cycle_focus(&mut self, next: bool) {
         match self.focus {
             StandingsFocus::Conference => self.selected_conference = self.selected_conference.toggle(),
             StandingsFocus::Division => {
-                self.selected_division = if forward {
+                self.selected_division = if next {
                     self.selected_division.next()
                 } else {
                     self.selected_division.prev()
