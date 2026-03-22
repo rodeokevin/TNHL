@@ -220,7 +220,9 @@ impl App {
             AppEvent::GamesUpdate(data) => {
                 log::info!("Updating games data");
                 match GamesResponse::from_json(&data) {
-                    Ok(parsed_games) => self.games_data = Some(parsed_games),
+                    Ok(parsed_games) => {
+                        self.games_data = Some(parsed_games);
+                    }
                     Err(e) => log::error!("Failed to parse games: {}", e),
                 }
             }

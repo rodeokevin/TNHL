@@ -35,14 +35,14 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     let focused = app.focus == PaneFocus::Content;
     let border_style = if focused {
         Style::default()
-            .fg(Color::LightYellow)
+            .fg(Color::Rgb(247, 194, 0))
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::DarkGray)
     };
     let highlight_style = if focused {
         Style::default()
-            .fg(Color::LightYellow)
+            .fg(Color::Rgb(247, 194, 0))
             .add_modifier(Modifier::BOLD)
             .add_modifier(Modifier::UNDERLINED)
     } else {

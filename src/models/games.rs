@@ -1,10 +1,15 @@
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use std::fmt;
 
 #[derive(Debug, Deserialize)]
 pub struct GamesResponse {
     pub games: Vec<GameData>,
+}
+
+impl GamesResponse {
+    pub fn from_json(data: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(data)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -20,6 +25,8 @@ pub struct GameData {
     pub period: Option<u32>,
     pub clock: Option<Clock>,
     pub period_descriptor: Option<PeriodDescriptor>,
+    pub situation: Option<GameSituation>,
+    pub goals: Option<Vec<GoalData>>,
     pub game_outcome: Option<GameOutcome>,
 }
 
@@ -39,21 +46,6 @@ pub enum GameState {
     OFF,
     #[serde(other)]
     Unknown,
-}
-
-impl fmt::Display for GameState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GameState::FUT => write!(f, "Future"),
-            GameState::PRE => write!(f, "Pregame"),
-            GameState::LIVE => write!(f, "Live"),
-            GameState::FINAL => write!(f, "Final"),
-            GameState::OFF => write!(f, "Off"),
-            GameState::CRIT => write!(f, "Critical"),
-            GameState::OVER => write!(f, "Over"),
-            GameState::Unknown => write!(f, "Unknown"),
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -99,13 +91,79 @@ pub struct PeriodDescriptor {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct GameSituation {
+    pub home_team: TeamSituation,
+    pub away_team: TeamSituation,
+    pub time_remaining: String,
+    pub situation_code: String,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamSituation {
+    pub abbrev: String, // Team name abbrev
+    pub strength: u8,
+    pub situation_descriptions: Option<Vec<SituationDesc>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub enum SituationDesc {
+    PP,
+    EN,
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GoalData {
+    pub period_descriptor: PeriodDescriptor,
+    pub time_in_period: String,
+    pub player_id: u32,
+    pub name: PlayerName,
+    pub goal_modifier: GoalModifier,
+    pub assists: Vec<AssistInfo>,
+    pub team_abbrev: String,
+    pub goals_to_date: Option<u32>,
+    pub strength: GoalStrength,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct PlayerName {
+    pub default: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GoalModifier {
+    None,
+    PenaltyShot,
+    EmptyNet,
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AssistInfo {
+    pub player_id: u32,
+    pub name: PlayerName,
+    pub assists_to_date: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum GoalStrength {
+    Ev,
+    Sh,
+    EmptyNet,
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct GameOutcome {
     pub last_period_type: PeriodType,
     pub ot_periods: Option<u32>,
-}
-
-impl GamesResponse {
-    pub fn from_json(data: &str) -> Result<Self, serde_json::Error> {
-        serde_json::from_str(data)
-    }
 }
