@@ -9,7 +9,8 @@ use ratatui::{
     widgets::{Block, List, ListItem, ListState, Paragraph},
 };
 
-use crate::app::{App, MenuFocus, PaneFocus};
+use crate::app::App;
+use crate::state::app_state::{MenuFocus, PaneFocus};
 
 pub fn render(frame: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
@@ -30,7 +31,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .split(chunks[0]);
     render_menu(frame, app, content_menu_chunks[0]);
 
-    match app.selected_menu {
+    match app.state.selected_menu {
         MenuFocus::Games => games::render_games(frame, app, content_menu_chunks[1]),
         MenuFocus::Standings => standings::render_standings(frame, app, content_menu_chunks[1]),
         MenuFocus::Teams => {}
@@ -45,7 +46,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 }
 
 fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
-    let focused = app.focus == PaneFocus::Menu;
+    let focused = app.state.focus == PaneFocus::Menu;
     let border_style = if focused {
         Style::default()
             .fg(Color::Rgb(247, 194, 0))
@@ -70,7 +71,7 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
         .highlight_symbol(">> ");
 
     let mut state = ListState::default();
-    state.select(Some(app.selected_menu.index()));
+    state.select(Some(app.state.selected_menu.index()));
 
     frame.render_stateful_widget(list, area, &mut state);
 }

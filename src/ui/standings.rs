@@ -1,4 +1,6 @@
-use crate::app::{App, ConferenceFocus, DivisionFocus, PaneFocus, StandingsFocus};
+use crate::app::App;
+use crate::state::app_state::{PaneFocus};
+use crate::state::standings_state::{ConferenceFocus, DivisionFocus, StandingsFocus};
 
 use ratatui::{
     Frame,
@@ -25,14 +27,14 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         .map(|t| Line::from(*t))
         .collect::<Vec<_>>();
 
-    let selected_standings = match app.standings_type {
+    let selected_standings = match app.state.standings.focus {
         StandingsFocus::WildCard => 0,
         StandingsFocus::Division => 1,
         StandingsFocus::Conference => 2,
         StandingsFocus::League => 3,
     };
 
-    let focused = app.focus == PaneFocus::Content;
+    let focused = app.state.focus == PaneFocus::Content;
     let border_style = if focused {
         Style::default()
             .fg(Color::Rgb(247, 194, 0))
@@ -86,14 +88,14 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         Constraint::Length(5),
     ];
 
-    if let Some(data) = &app.league_data {
-        match app.standings_type {
+    if let Some(data) = &app.state.league_data {
+        match app.state.standings.focus {
             StandingsFocus::WildCard => {
                 render_wildcard_standings(
                     frame,
-                    &mut app.eastern_wildcard_table_state,
-                    &mut app.western_wildcard_table_state,
-                    &app.selected_wildcard,
+                    &mut app.state.standings.eastern_wildcard_table_state,
+                    &mut app.state.standings.western_wildcard_table_state,
+                    &app.state.standings.selected_wildcard,
                     tab_content_chunks[1],
                     data,
                     border_style,
@@ -104,11 +106,11 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
             StandingsFocus::Division => {
                 render_division_standings(
                     frame,
-                    &mut app.atlantic_table_state,
-                    &mut app.metropolitan_table_state,
-                    &mut app.central_table_state,
-                    &mut app.pacific_table_state,
-                    &app.selected_division,
+                    &mut app.state.standings.atlantic_table_state,
+                    &mut app.state.standings.metropolitan_table_state,
+                    &mut app.state.standings.central_table_state,
+                    &mut app.state.standings.pacific_table_state,
+                    &app.state.standings.selected_division,
                     tab_content_chunks[1],
                     data,
                     border_style,
@@ -119,9 +121,9 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
             StandingsFocus::Conference => {
                 render_conference_standings(
                     frame,
-                    &mut app.eastern_table_state,
-                    &mut app.western_table_state,
-                    &app.selected_conference,
+                    &mut app.state.standings.eastern_table_state,
+                    &mut app.state.standings.western_table_state,
+                    &app.state.standings.selected_conference,
                     tab_content_chunks[1],
                     data,
                     border_style,
@@ -132,7 +134,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
             StandingsFocus::League => {
                 render_league_data(
                     frame,
-                    &mut app.league_table_state,
+                    &mut app.state.standings.league_table_state,
                     tab_content_chunks[1],
                     data,
                     border_style,

@@ -1,4 +1,3 @@
-use std::thread::current;
 use std::vec;
 
 use crate::app::App;
@@ -7,7 +6,6 @@ use crate::models::games::{
 };
 use crate::ui::PaneFocus;
 
-use ratatui::style::Styled;
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -29,6 +27,7 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
         .split(area);
 
     let titles: Vec<Line> = app
+        .state
         .games_data
         .as_ref()
         .map(|data| {
@@ -46,7 +45,7 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
         })
         .unwrap_or_default();
 
-    let focused = app.focus == PaneFocus::Content;
+    let focused = app.state.focus == PaneFocus::Content;
     let border_style = if focused {
         Style::default()
             .fg(Color::Rgb(247, 194, 0))
@@ -66,7 +65,7 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
     };
 
     let tabs = Tabs::new(titles)
-        .select(app.selected_game_index)
+        .select(app.state.selected_game_index)
         .block(Block::bordered().border_style(border_style))
         .highlight_style(selected_color);
 
@@ -89,8 +88,8 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
         .split(inner);
 
     // Render game information
-    if let Some(games_data) = &app.games_data {
-        if let Some(game) = games_data.games.get(app.selected_game_index) {
+    if let Some(games_data) = &app.state.games_data {
+        if let Some(game) = games_data.games.get(app.state.selected_game_index) {
             // Upper info
             let upper_info_chunks = Layout::default()
                 .direction(Direction::Vertical)
@@ -105,7 +104,7 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
             render_sweeping_status(
                 game,
                 10,
-                app.sweeping_status_offet,
+                app.state.sweeping_status_offset,
                 frame,
                 upper_info_chunks[1],
             );
@@ -120,7 +119,6 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Min(0), // Scoring
-                                        // Constraint::Min(0), // Other stats
                 ])
                 .split(upper_score_lower[2]);
             render_scoring(game, frame, lower_info_chunks[0]);
@@ -461,7 +459,8 @@ pub fn render_scoring(game: &GameData, frame: &mut Frame, area: Rect) {
                 current_period = goal.period_descriptor.number;
                 period_lines.push(
                     Line::from(get_period_title(&goal.period_descriptor))
-                        .alignment(Alignment::Center).style(Style::default().fg(Color::Blue)),
+                        .alignment(Alignment::Center)
+                        .style(Style::default().fg(Color::Blue)),
                 );
             }
             let goals_to_date = goal

@@ -2,6 +2,7 @@ mod app;
 mod input;
 mod models;
 mod sources;
+mod state;
 mod ui;
 
 use crate::{
@@ -127,8 +128,8 @@ where
         terminal.draw(|f| ui::render(f, app))?;
 
         if let Some(event) = rx.recv().await {
-            app.handle_event(event);
-            if app.should_quit {
+            app.state.handle_event(event);
+            if app.state.should_quit {
                 break;
             }
         } else {
