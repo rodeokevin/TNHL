@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
+use std::fmt;
 
 #[derive(Debug, Deserialize)]
 pub struct GamesResponse {
@@ -24,7 +25,7 @@ pub struct GameData {
     pub home_team: Team,
     pub period: Option<u32>,
     pub clock: Option<Clock>,
-    pub period_descriptor: Option<PeriodDescriptor>,
+    pub period_descriptor: Option<PeriodDescriptor>, // If the game is not live, there is no PeriodDescriptor
     pub situation: Option<GameSituation>,
     pub goals: Option<Vec<GoalData>>,
     pub game_outcome: Option<GameOutcome>,
@@ -48,7 +49,7 @@ pub enum GameState {
     Unknown,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 pub enum PeriodType {
     REG,
     OT,
@@ -120,7 +121,8 @@ pub struct GoalData {
     pub period_descriptor: PeriodDescriptor,
     pub time_in_period: String,
     pub player_id: u32,
-    pub name: PlayerName,
+    pub first_name: PlayerName,
+    pub last_name: PlayerName,
     pub goal_modifier: GoalModifier,
     pub assists: Vec<AssistInfo>,
     pub team_abbrev: String,
@@ -131,6 +133,11 @@ pub struct GoalData {
 #[derive(Deserialize, Debug)]
 pub struct PlayerName {
     pub default: String,
+}
+impl fmt::Display for PlayerName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.default)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -152,10 +159,11 @@ pub struct AssistInfo {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "lowercase")]
 pub enum GoalStrength {
-    Ev,
-    Sh,
+    EV,
+    SH,
+    PP,
     EmptyNet,
     #[serde(other)]
     Unknown,

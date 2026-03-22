@@ -1,7 +1,13 @@
+use std::thread::current;
+use std::vec;
+
 use crate::app::App;
-use crate::models::games::{GameData, GameState, PeriodType, SituationDesc};
+use crate::models::games::{
+    GameData, GameState, GoalStrength, PeriodDescriptor, PeriodType, SituationDesc,
+};
 use crate::ui::PaneFocus;
 
+use ratatui::style::Styled;
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -76,18 +82,15 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
     let upper_score_lower = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(4),       // upper info
-            Constraint::Length(4),       // score (bigger)
-            Constraint::Percentage(100), // lower info
+            Constraint::Length(5), // upper info
+            Constraint::Length(4), // score (big text)
+            Constraint::Fill(1),   // lower info
         ])
         .split(inner);
 
     // Render game information
     if let Some(games_data) = &app.games_data {
         if let Some(game) = games_data.games.get(app.selected_game_index) {
-            let home = &game.home_team;
-            let away = &game.away_team;
-
             // Upper info
             let upper_info_chunks = Layout::default()
                 .direction(Direction::Vertical)
@@ -95,35 +98,32 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
                     Constraint::Length(1), // Time remaining
                     Constraint::Length(1), // Status bar
                     Constraint::Length(1), // Teams and strength status
-                    Constraint::Min(0),
+                    Constraint::Length(1), // Shots on goal
                 ])
                 .split(upper_score_lower[0]);
-            render_time_remaining(game, frame, upper_info_chunks[0]); // Time remaining
-            render_sweeping_status(game, 10, app.sweeping_status_offet, frame, upper_info_chunks[1]); // Status bar
-            render_team_status(game, frame, upper_info_chunks[2]); // Teams and strength status
+            render_time_remaining(game, frame, upper_info_chunks[0]);
+            render_sweeping_status(
+                game,
+                10,
+                app.sweeping_status_offet,
+                frame,
+                upper_info_chunks[1],
+            );
+            render_team_status(game, frame, upper_info_chunks[2]);
+            render_shots_on_goal(game, frame, upper_info_chunks[3]);
 
-            // Score
-            let score = BigText::builder()
-                .pixel_size(PixelSize::Sextant)
-                .style(Style::default().fg(Color::Green))
-                .lines(vec![
-                    format!("{} - {}", away.score.unwrap_or(0), home.score.unwrap_or(0)).into(),
-                ])
-                .centered()
-                .build();
-            frame.render_widget(score, upper_score_lower[1]);
+            // Score in big text
+            render_big_score(game, frame, upper_score_lower[1]);
+
             // Lower info
-            let mut lower_info_lines = vec![
-                Line::from("Scoring").style(
-                    Style::default()
-                        .fg(Color::Blue)
-                        .add_modifier(Modifier::BOLD),
-                ),
-            ];
-            let lower_info_paragraph =
-                Paragraph::new(lower_info_lines).style(Style::default().fg(Color::White));
-
-            frame.render_widget(lower_info_paragraph, upper_score_lower[2]);
+            let lower_info_chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Min(0), // Scoring
+                                        // Constraint::Min(0), // Other stats
+                ])
+                .split(upper_score_lower[2]);
+            render_scoring(game, frame, lower_info_chunks[0]);
         }
     } else {
         // Todo: no data
@@ -155,23 +155,11 @@ pub fn render_time_remaining(game: &GameData, frame: &mut Frame, area: Rect) {
             if let Some(clock) = &game.clock {
                 if clock.in_intermission {
                     match game.period_descriptor.as_ref().unwrap().period_type {
-                        PeriodType::REG => frame.render_widget(
+                        PeriodType::REG | PeriodType::OT => frame.render_widget(
                             Line::from(format!(
-                                "End of Period {} ({})",
-                                game.period.unwrap_or(0),
+                                "End of {} ({})",
+                                get_period_title(game.period_descriptor.as_ref().unwrap()),
                                 game.clock.as_ref().unwrap().time_remaining
-                            ))
-                            .alignment(Alignment::Center),
-                            area,
-                        ),
-                        PeriodType::OT => frame.render_widget(
-                            Line::from(format!(
-                                "End of OT{}",
-                                game.period_descriptor
-                                    .as_ref()
-                                    .unwrap()
-                                    .ot_periods
-                                    .unwrap_or(0)
                             ))
                             .alignment(Alignment::Center),
                             area,
@@ -190,15 +178,16 @@ pub fn render_time_remaining(game: &GameData, frame: &mut Frame, area: Rect) {
                         .direction(Direction::Horizontal)
                         .constraints([
                             Constraint::Fill(1),
-                            Constraint::Length(10), // middle part
+                            Constraint::Length(22), // middle part
                             Constraint::Fill(1),
                         ])
                         .split(area);
                     let time = Line::from(format!(
-                        "P{} - {}",
-                        game.period.unwrap_or(0),
+                        "{} - {}",
+                        get_period_title(game.period_descriptor.as_ref().unwrap()),
                         clock.time_remaining,
-                    )).alignment(Alignment::Right);
+                    ))
+                    .alignment(Alignment::Center);
                     frame.render_widget(time, chunks[1]);
 
                     let mut spans = vec![];
@@ -312,9 +301,9 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Fill(1),
-            Constraint::Length(6), // middle
-            Constraint::Fill(1),
+            Constraint::Fill(1),    // Strength status if necessary
+            Constraint::Length(10), // middle
+            Constraint::Fill(1),    // Strength status if necessary
         ])
         .split(area);
 
@@ -341,8 +330,14 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
         }
     }
     left_spans.push(Span::raw(&game.away_team.name.default));
-    frame.render_widget(Line::from(left_spans).alignment(Alignment::Right), chunks[0]);
-    frame.render_widget(Line::from("  vs  ").alignment(Alignment::Center), chunks[1]);
+    frame.render_widget(
+        Line::from(left_spans).alignment(Alignment::Right),
+        chunks[0],
+    );
+    frame.render_widget(
+        Line::from("    vs    ").alignment(Alignment::Center),
+        chunks[1],
+    );
 
     let mut right_spans = vec![];
     right_spans.push(Span::raw(&game.home_team.name.default));
@@ -364,5 +359,178 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
             }
         }
     }
-    frame.render_widget(Line::from(right_spans).alignment(Alignment::Left), chunks[2]);
+    frame.render_widget(
+        Line::from(right_spans).alignment(Alignment::Left),
+        chunks[2],
+    );
+}
+
+pub fn render_big_score(game: &GameData, frame: &mut Frame, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(10), // space for the "-"
+            Constraint::Fill(1),
+        ])
+        .split(area);
+
+    let away_score = BigText::builder()
+        .pixel_size(PixelSize::Sextant)
+        .style(Style::default().fg(Color::Green))
+        .lines(vec![
+            format!("{}", game.away_team.score.unwrap_or(0)).into(),
+        ])
+        .right_aligned()
+        .build();
+    frame.render_widget(away_score, chunks[0]);
+
+    let dash = BigText::builder()
+        .pixel_size(PixelSize::Sextant)
+        .style(Style::default().fg(Color::Green))
+        .lines(vec!["-".into()])
+        .centered()
+        .build();
+    frame.render_widget(dash, chunks[1]);
+
+    let home_score = BigText::builder()
+        .pixel_size(PixelSize::Sextant)
+        .style(Style::default().fg(Color::Green))
+        .lines(vec![
+            format!("{}", game.home_team.score.unwrap_or(0)).into(),
+        ])
+        .left_aligned()
+        .build();
+    frame.render_widget(home_score, chunks[2]);
+}
+
+pub fn render_shots_on_goal(game: &GameData, frame: &mut Frame, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(10),
+            Constraint::Fill(1),
+        ])
+        .split(area);
+    frame.render_widget(
+        Line::from(format!("SOG: {}", game.away_team.sog.unwrap_or(0)))
+            .style(Style::default().fg(Color::DarkGray))
+            .alignment(Alignment::Right),
+        chunks[0],
+    );
+    frame.render_widget(
+        Line::from(format!("SOG: {}", game.home_team.sog.unwrap_or(0)))
+            .style(Style::default().fg(Color::DarkGray))
+            .alignment(Alignment::Left),
+        chunks[2],
+    );
+}
+
+pub fn render_scoring(game: &GameData, frame: &mut Frame, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Fill(1),    // Away scoring
+            Constraint::Length(14), // Middle
+            Constraint::Fill(1),    // Home scoring
+        ])
+        .split(area);
+    let away_team_abbrev = &game.away_team.abbrev;
+    let home_team_abbrev = &game.home_team.abbrev;
+
+    let mut away_lines = vec![
+        Line::from("Scoring").style(
+            Style::default()
+                .fg(Color::Blue)
+                .add_modifier(Modifier::BOLD),
+        ),
+    ];
+    let mut home_lines = vec![Line::from("")];
+    let mut period_lines = vec![]; // Period
+    let mut current_period = 0;
+
+    if let Some(goals) = &game.goals {
+        for goal in goals {
+            // Period
+            if goal.period_descriptor.number > current_period {
+                if current_period != 0 {
+                    away_lines.push(Line::from("")); // keep rows synced
+                    home_lines.push(Line::from("")); // keep rows synced
+                }
+                current_period = goal.period_descriptor.number;
+                period_lines.push(
+                    Line::from(get_period_title(&goal.period_descriptor))
+                        .alignment(Alignment::Center).style(Style::default().fg(Color::Blue)),
+                );
+            }
+            let goals_to_date = goal
+                .goals_to_date
+                .map(|n| format!(" ({})", n))
+                .unwrap_or_default();
+            let strength = match goal.strength {
+                GoalStrength::PP => Some("PPG"),
+                GoalStrength::EmptyNet => Some("ENG"),
+                GoalStrength::SH => Some("SHG"),
+                _ => None,
+            };
+
+            if goal.team_abbrev == *away_team_abbrev {
+                let mut away_spans = vec![];
+                if let Some(s) = strength {
+                    away_spans.push(Span::styled(
+                        format!("[{}] ", s),
+                        Style::default().fg(Color::Red),
+                    ));
+                }
+                away_spans.push(Span::raw(format!(
+                    "{} {}{}",
+                    goal.first_name, goal.last_name, goals_to_date
+                )));
+
+                away_lines.push(Line::from(away_spans).alignment(Alignment::Right));
+                home_lines.push(Line::from("")); // keep rows synced
+                period_lines.push(Line::from(""));
+            } else if goal.team_abbrev == *home_team_abbrev {
+                let mut home_spans = vec![Span::raw(format!(
+                    "{} {}{}",
+                    goal.first_name, goal.last_name, goals_to_date
+                ))];
+                if let Some(s) = strength {
+                    home_spans.push(Span::styled(
+                        format!(" [{}]", s),
+                        Style::default().fg(Color::Red),
+                    ));
+                }
+                away_lines.push(Line::from(""));
+                home_lines.push(Line::from(home_spans).alignment(Alignment::Left));
+                period_lines.push(Line::from(""));
+            }
+        }
+    }
+    frame.render_widget(Paragraph::new(away_lines), chunks[0]);
+    frame.render_widget(Paragraph::new(period_lines), chunks[1]);
+    frame.render_widget(Paragraph::new(home_lines), chunks[2]);
+}
+
+pub fn get_period_title(period: &PeriodDescriptor) -> String {
+    match period.period_type {
+        PeriodType::REG => match period.number {
+            1 => "1st Period".to_string(),
+            2 => "2nd Period".to_string(),
+            3 => "3rd Period".to_string(),
+            _ => format!("{}th Period", period.number).to_string(),
+        },
+        PeriodType::OT => match period.ot_periods.unwrap_or(0) {
+            1 => "Overtime".to_string(),
+            2 => "2nd Overtime".to_string(),
+            3 => "3rd Overtime".to_string(),
+            _ => match period.ot_periods.unwrap_or(0) {
+                0 => format!("Overtime").to_string(),
+                _ => format!("{}th Overtime", period.ot_periods.unwrap()).to_string(),
+            },
+        },
+        PeriodType::SO => "Shootout".to_string(),
+        _ => "Unknown Period".to_string(),
+    }
 }
