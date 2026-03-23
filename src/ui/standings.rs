@@ -48,7 +48,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         ])
         .split(area);
 
-    let titles = [" Wild Card ", " Division ", " Conference ", " League "]
+    let titles = ["Wild Card", "Division", "Conference", "League"]
         .iter()
         .map(|t| Line::from(*t))
         .collect::<Vec<_>>();

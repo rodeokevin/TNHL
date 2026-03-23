@@ -63,6 +63,8 @@ pub struct AppState {
     pub games_data: Option<GamesResponse>,
     pub selected_game_index: usize,
     pub sweeping_status_offset: usize, // For the --- under the time remaining
+    pub scoring_scroll_offset: usize,
+    pub max_scoring_scroll: usize,
 
     pub focus: PaneFocus,
     pub should_quit: bool,
@@ -78,6 +80,8 @@ impl Default for AppState {
             games_data: None,
             selected_game_index: 0,
             sweeping_status_offset: 0,
+            scoring_scroll_offset: 0,
+            max_scoring_scroll: 0,
 
             focus: PaneFocus::default(),
             should_quit: false,
@@ -131,8 +135,13 @@ impl AppState {
                 match self.selected_menu {
                     MenuFocus::Games => {
                         let len = self.games_data.as_ref().map_or(0, |d| d.games.len());
+                        let prev = self.selected_game_index;
                         self.selected_game_index =
                             change_index(self.selected_game_index, delta, len);
+                        if self.selected_game_index != prev {
+                            self.scoring_scroll_offset = 0;
+                            self.max_scoring_scroll = 0;
+                        }
                     }
                     MenuFocus::Standings => self.standings.shift_standings_type(delta == 1),
                     MenuFocus::Teams => {}
@@ -160,6 +169,15 @@ impl AppState {
             }
             PaneFocus::Content => match self.selected_menu {
                 MenuFocus::Standings => self.standings.move_selection(delta),
+                MenuFocus::Games => {
+                    self.scoring_scroll_offset = if delta == 1 {
+                        self.scoring_scroll_offset
+                            .saturating_add(1)
+                            .min(self.max_scoring_scroll)
+                    } else {
+                        self.scoring_scroll_offset.saturating_sub(1)
+                    };
+                }
                 _ => {}
             },
         }

@@ -10,13 +10,14 @@ use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
+    symbols::scrollbar::Set,
     text::{Line, Span},
-    widgets::{Block, Paragraph, Tabs},
+    widgets::{Block, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Tabs},
 };
 
 use tui_big_text::{BigText, PixelSize};
 
-pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
+pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
     let tab_content_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -54,15 +55,9 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
         Style::default().fg(Color::DarkGray)
     };
 
-    let selected_color = if focused {
-        Style::default()
-            .add_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::UNDERLINED)
-    } else {
-        Style::default()
-            .add_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::UNDERLINED)
-    };
+    let selected_color = Style::default()
+        .add_modifier(Modifier::BOLD)
+        .add_modifier(Modifier::UNDERLINED);
 
     let tabs = Tabs::new(titles)
         .select(app.state.selected_game_index)
@@ -88,7 +83,7 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
         .split(inner);
 
     // Render game information
-    if let Some(games_data) = &app.state.games_data {
+    if let Some(games_data) = &mut app.state.games_data {
         if let Some(game) = games_data.games.get(app.state.selected_game_index) {
             // Upper info
             let upper_info_chunks = Layout::default()
@@ -121,7 +116,13 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
                     Constraint::Min(0), // Scoring
                 ])
                 .split(upper_score_lower[2]);
-            render_scoring(game, frame, lower_info_chunks[0]);
+            render_scoring(
+                game,
+                frame,
+                lower_info_chunks[0],
+                app.state.scoring_scroll_offset,
+                &mut app.state.max_scoring_scroll,
+            );
         }
     } else {
         // Todo: no data
@@ -130,118 +131,85 @@ pub fn render_games(frame: &mut Frame, app: &App, area: Rect) {
 
 pub fn get_color_from_game_state(state: &GameState) -> Style {
     match state {
-        GameState::FUT => Style::default().fg(Color::White),
-        GameState::PRE => Style::default().fg(Color::White),
-        GameState::LIVE => Style::default().fg(Color::Green),
-        GameState::CRIT => Style::default().fg(Color::Green),
-        GameState::OVER => Style::default().fg(Color::Green),
-        GameState::FINAL => Style::default().fg(Color::DarkGray),
-        GameState::OFF => Style::default().fg(Color::DarkGray),
-        GameState::Unknown => Style::default().fg(Color::White),
+        GameState::LIVE | GameState::CRIT | GameState::OVER => Style::default().fg(Color::Green),
+        GameState::FINAL | GameState::OFF => Style::default().fg(Color::DarkGray),
+        _ => Style::default().fg(Color::White), // FUT, PRE, Unknown
     }
 }
 
 pub fn render_time_remaining(game: &GameData, frame: &mut Frame, area: Rect) {
-    match game.game_state {
-        GameState::FUT | GameState::PRE => {
-            frame.render_widget(
-                Line::from(format!("{}", game.start_time_utc)).alignment(Alignment::Center),
-                area,
-            );
-        }
-        GameState::LIVE | GameState::CRIT => {
-            if let Some(clock) = &game.clock {
-                if clock.in_intermission {
-                    match game.period_descriptor.as_ref().unwrap().period_type {
-                        PeriodType::REG | PeriodType::OT => frame.render_widget(
-                            Line::from(format!(
-                                "End of {} ({})",
-                                get_period_title(game.period_descriptor.as_ref().unwrap()),
-                                game.clock.as_ref().unwrap().time_remaining
-                            ))
-                            .alignment(Alignment::Center),
-                            area,
-                        ),
-                        PeriodType::SO => frame.render_widget(
-                            Line::from("End of Shootout").alignment(Alignment::Center),
-                            area,
-                        ),
-                        _ => frame.render_widget(
-                            Line::from("Intermission").alignment(Alignment::Center),
-                            area,
-                        ),
-                    }
-                } else {
-                    let chunks = Layout::default()
-                        .direction(Direction::Horizontal)
-                        .constraints([
-                            Constraint::Fill(1),
-                            Constraint::Length(22), // middle part
-                            Constraint::Fill(1),
-                        ])
-                        .split(area);
-                    let time = Line::from(format!(
-                        "{} - {}",
-                        get_period_title(game.period_descriptor.as_ref().unwrap()),
-                        clock.time_remaining,
-                    ))
-                    .alignment(Alignment::Center);
-                    frame.render_widget(time, chunks[1]);
+    // Not in intermission
+    if matches!(game.game_state, GameState::LIVE | GameState::CRIT) {
+        if let Some(clock) = &game.clock {
+            if !clock.in_intermission {
+                let chunks = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([
+                        Constraint::Fill(1),
+                        Constraint::Length(22),
+                        Constraint::Fill(1),
+                    ])
+                    .split(area);
 
-                    let mut spans = vec![];
-                    if let Some(s) = &game.situation {
-                        if s.away_team.strength > s.home_team.strength {
-                            spans.push(Span::styled(
-                                format!(" {}-on-{}", s.away_team.strength, s.home_team.strength),
-                                Style::default().fg(Color::Red),
-                            ));
-                        } else {
-                            spans.push(Span::styled(
-                                format!(" {}-on-{}", s.home_team.strength, s.away_team.strength),
-                                Style::default().fg(Color::Red),
-                            ))
-                        }
-                    }
-                    frame.render_widget(Line::from(spans).alignment(Alignment::Left), chunks[2]);
-                }
-            } else {
-                frame.render_widget(Line::from("Live").alignment(Alignment::Center), area);
+                let time = Line::from(format!(
+                    "{} - {}",
+                    get_period_title(game.period_descriptor.as_ref().unwrap()),
+                    clock.time_remaining,
+                ))
+                .alignment(Alignment::Center);
+                frame.render_widget(time, chunks[1]);
+
+                let spans: Vec<Span> = game
+                    .situation
+                    .as_ref()
+                    .map(|s| {
+                        vec![Span::styled(
+                            format!(
+                                " {}-on-{}",
+                                s.away_team.strength.max(s.home_team.strength),
+                                s.away_team.strength.min(s.home_team.strength)
+                            ),
+                            Style::default().fg(Color::Red),
+                        )]
+                    })
+                    .unwrap_or_default();
+                frame.render_widget(Line::from(spans).alignment(Alignment::Left), chunks[2]);
+                return;
+            }
+        }
+    }
+    let line = match game.game_state {
+        GameState::FUT | GameState::PRE => Line::from(format!("{}", game.start_time_utc)),
+        GameState::LIVE | GameState::CRIT => {
+            // in intermission or clock is None
+            match game.clock.as_ref() {
+                None => Line::from("Live"),
+                Some(_) => match game.period_descriptor.as_ref().unwrap().period_type {
+                    PeriodType::REG | PeriodType::OT => Line::from(format!(
+                        "End of {} ({})",
+                        get_period_title(game.period_descriptor.as_ref().unwrap()),
+                        game.clock.as_ref().unwrap().time_remaining
+                    )),
+                    PeriodType::SO => Line::from("End of Shootout"),
+                    _ => Line::from("Intermission"),
+                },
             }
         }
         GameState::OVER | GameState::FINAL | GameState::OFF => {
-            match game.game_outcome.as_ref().unwrap().last_period_type {
-                PeriodType::REG | PeriodType::Unknown => frame.render_widget(
-                    Line::from(format!("Final")).alignment(Alignment::Center),
-                    area,
-                ),
-                PeriodType::OT => {
-                    if game.game_outcome.as_ref().unwrap().ot_periods.unwrap_or(0) > 1 {
-                        frame.render_widget(
-                            Line::from(format!(
-                                "Final/{}OT",
-                                game.game_outcome.as_ref().unwrap().ot_periods.unwrap()
-                            ))
-                            .alignment(Alignment::Center),
-                            area,
-                        );
-                    } else {
-                        frame.render_widget(
-                            Line::from(format!("Final/OT")).alignment(Alignment::Center),
-                            area,
-                        );
-                    }
-                }
-                PeriodType::SO => frame.render_widget(
-                    Line::from(format!("Final/SO")).alignment(Alignment::Center),
-                    area,
-                ),
+            let outcome = game.game_outcome.as_ref().unwrap();
+            match outcome.last_period_type {
+                PeriodType::REG | PeriodType::Unknown => Line::from("Final"),
+                PeriodType::OT => match outcome.ot_periods.unwrap_or(0) {
+                    n if n > 1 => Line::from(format!("Final/{}OT", n)),
+                    _ => Line::from("Final/OT"),
+                },
+                PeriodType::SO => Line::from("Final/SO"),
             }
         }
-        GameState::Unknown => frame.render_widget(
-            Line::from("Unknown game state").alignment(Alignment::Center),
-            area,
-        ),
-    }
+        GameState::Unknown => Line::from("Unknown game state"),
+    };
+
+    frame.render_widget(line.alignment(Alignment::Center), area);
 }
 
 pub fn render_sweeping_status(
@@ -252,12 +220,6 @@ pub fn render_sweeping_status(
     area: Rect,
 ) {
     match game.game_state {
-        GameState::FUT
-        | GameState::PRE
-        | GameState::OVER
-        | GameState::FINAL
-        | GameState::OFF
-        | GameState::Unknown => frame.render_widget(Line::from(""), area),
         GameState::LIVE | GameState::CRIT => {
             let chunks = Layout::default()
                 .direction(Direction::Horizontal)
@@ -282,9 +244,10 @@ pub fn render_sweeping_status(
                         .collect();
                     frame.render_widget(Line::from(spans).alignment(Alignment::Center), chunks[1]);
                 } else {
-                    let spans: Vec<_> = (0..width)
-                        .map(|_i| Span::styled("─", Style::default().fg(Color::Red)))
-                        .collect();
+                    let spans: Vec<_> =
+                        std::iter::repeat(Span::styled("─", Style::default().fg(Color::Red)))
+                            .take(width)
+                            .collect();
 
                     frame.render_widget(Line::from(spans).alignment(Alignment::Center), chunks[1]);
                 }
@@ -292,6 +255,7 @@ pub fn render_sweeping_status(
                 frame.render_widget(Line::from(""), area);
             }
         }
+        _ => frame.render_widget(Line::from(""), area),
     }
 }
 
@@ -425,7 +389,13 @@ pub fn render_shots_on_goal(game: &GameData, frame: &mut Frame, area: Rect) {
     );
 }
 
-pub fn render_scoring(game: &GameData, frame: &mut Frame, area: Rect) {
+pub fn render_scoring(
+    game: &GameData,
+    frame: &mut Frame,
+    area: Rect,
+    scroll_offset: usize,
+    max_scoring_scroll: &mut usize,
+) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
@@ -437,13 +407,7 @@ pub fn render_scoring(game: &GameData, frame: &mut Frame, area: Rect) {
     let away_team_abbrev = &game.away_team.abbrev;
     let home_team_abbrev = &game.home_team.abbrev;
 
-    let mut away_lines = vec![
-        Line::from("Scoring").style(
-            Style::default()
-                .fg(Color::Blue)
-                .add_modifier(Modifier::BOLD),
-        ),
-    ];
+    let mut away_lines = vec![Line::from(" Scoring").style(Style::default().fg(Color::Blue))];
     let mut home_lines = vec![Line::from("")];
     let mut period_lines = vec![]; // Period
     let mut current_period = 0;
@@ -507,9 +471,52 @@ pub fn render_scoring(game: &GameData, frame: &mut Frame, area: Rect) {
             }
         }
     }
-    frame.render_widget(Paragraph::new(away_lines), chunks[0]);
-    frame.render_widget(Paragraph::new(period_lines), chunks[1]);
-    frame.render_widget(Paragraph::new(home_lines), chunks[2]);
+    // Split area into top indicator, content, bottom indicator
+    let vert_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Min(0),
+            Constraint::Length(1),
+        ])
+        .split(area);
+
+    let content_height = vert_chunks[1].height as usize;
+    let max_scroll = away_lines.len().saturating_sub(content_height);
+    *max_scoring_scroll = max_scroll;
+    let offset = scroll_offset.min(max_scroll);
+    let can_scroll_up = offset > 0;
+    let can_scroll_down = offset < max_scroll;
+
+    // Slice to visible window
+    let end = (offset + content_height).min(away_lines.len());
+
+    let visible_away: Vec<Line> = away_lines[offset..end].iter().cloned().collect();
+    let visible_home: Vec<Line> = home_lines[offset..end].iter().cloned().collect();
+    let visible_period: Vec<Line> = period_lines[offset..end].iter().cloned().collect();
+
+    frame.render_widget(
+        Line::from(if can_scroll_up { "▲" } else { "" }).alignment(Alignment::Center),
+        vert_chunks[0],
+    );
+    frame.render_widget(
+        Line::from(if can_scroll_down { "▼" } else { "" }).alignment(Alignment::Center),
+        vert_chunks[2],
+    );
+
+    // Re-split the content area horizontally
+    let content_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(14),
+            Constraint::Fill(1),
+        ])
+        .split(vert_chunks[1]);
+
+    frame.render_widget(Paragraph::new(visible_away), content_chunks[0]);
+    frame.render_widget(Paragraph::new(visible_period), content_chunks[1]);
+    frame.render_widget(Paragraph::new(visible_home), content_chunks[2]);
 }
 
 pub fn get_period_title(period: &PeriodDescriptor) -> String {
@@ -521,13 +528,10 @@ pub fn get_period_title(period: &PeriodDescriptor) -> String {
             _ => format!("{}th Period", period.number).to_string(),
         },
         PeriodType::OT => match period.ot_periods.unwrap_or(0) {
-            1 => "Overtime".to_string(),
+            0 | 1 => "Overtime".to_string(),
             2 => "2nd Overtime".to_string(),
             3 => "3rd Overtime".to_string(),
-            _ => match period.ot_periods.unwrap_or(0) {
-                0 => format!("Overtime").to_string(),
-                _ => format!("{}th Overtime", period.ot_periods.unwrap()).to_string(),
-            },
+            _ => format!("{}th Overtime", period.ot_periods.unwrap_or(0)),
         },
         PeriodType::SO => "Shootout".to_string(),
         _ => "Unknown Period".to_string(),
