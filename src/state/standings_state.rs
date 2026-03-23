@@ -17,19 +17,19 @@ pub enum StandingsFocus {
 impl StandingsFocus {
     pub fn next(self) -> Self {
         match self {
-            StandingsFocus::WildCard    => StandingsFocus::Division,
-            StandingsFocus::Division    => StandingsFocus::Conference,
-            StandingsFocus::Conference  => StandingsFocus::League,
-            StandingsFocus::League      => StandingsFocus::League,
+            StandingsFocus::WildCard => StandingsFocus::Division,
+            StandingsFocus::Division => StandingsFocus::Conference,
+            StandingsFocus::Conference => StandingsFocus::League,
+            StandingsFocus::League => StandingsFocus::League,
         }
     }
 
     pub fn prev(self) -> Self {
         match self {
-            StandingsFocus::WildCard    => StandingsFocus::WildCard,
-            StandingsFocus::Division    => StandingsFocus::WildCard,
-            StandingsFocus::Conference  => StandingsFocus::Division,
-            StandingsFocus::League      => StandingsFocus::Conference,
+            StandingsFocus::WildCard => StandingsFocus::WildCard,
+            StandingsFocus::Division => StandingsFocus::WildCard,
+            StandingsFocus::Conference => StandingsFocus::Division,
+            StandingsFocus::League => StandingsFocus::Conference,
         }
     }
 }
@@ -62,19 +62,19 @@ pub enum DivisionFocus {
 impl DivisionFocus {
     pub fn next(self) -> Self {
         match self {
-            DivisionFocus::Atlantic     => DivisionFocus::Metropolitan,
+            DivisionFocus::Atlantic => DivisionFocus::Metropolitan,
             DivisionFocus::Metropolitan => DivisionFocus::Central,
-            DivisionFocus::Central      => DivisionFocus::Pacific,
-            DivisionFocus::Pacific      => DivisionFocus::Atlantic,
+            DivisionFocus::Central => DivisionFocus::Pacific,
+            DivisionFocus::Pacific => DivisionFocus::Atlantic,
         }
     }
 
     pub fn prev(self) -> Self {
         match self {
-            DivisionFocus::Atlantic     => DivisionFocus::Pacific,
+            DivisionFocus::Atlantic => DivisionFocus::Pacific,
             DivisionFocus::Metropolitan => DivisionFocus::Atlantic,
-            DivisionFocus::Central      => DivisionFocus::Metropolitan,
-            DivisionFocus::Pacific      => DivisionFocus::Central,
+            DivisionFocus::Central => DivisionFocus::Metropolitan,
+            DivisionFocus::Pacific => DivisionFocus::Central,
         }
     }
 }
@@ -138,14 +138,20 @@ impl StandingsState {
                 ConferenceFocus::Western => (&mut self.western_table_state, CONFERENCE_NUM_TEAMS),
             },
             StandingsFocus::Division => match self.selected_division {
-                DivisionFocus::Atlantic     => (&mut self.atlantic_table_state, DIVISION_NUM_TEAMS),
-                DivisionFocus::Metropolitan => (&mut self.metropolitan_table_state, DIVISION_NUM_TEAMS),
-                DivisionFocus::Central      => (&mut self.central_table_state, DIVISION_NUM_TEAMS),
-                DivisionFocus::Pacific      => (&mut self.pacific_table_state, DIVISION_NUM_TEAMS),
+                DivisionFocus::Atlantic => (&mut self.atlantic_table_state, DIVISION_NUM_TEAMS),
+                DivisionFocus::Metropolitan => {
+                    (&mut self.metropolitan_table_state, DIVISION_NUM_TEAMS)
+                }
+                DivisionFocus::Central => (&mut self.central_table_state, DIVISION_NUM_TEAMS),
+                DivisionFocus::Pacific => (&mut self.pacific_table_state, DIVISION_NUM_TEAMS),
             },
             StandingsFocus::WildCard => match self.selected_wildcard {
-                ConferenceFocus::Eastern => (&mut self.eastern_wildcard_table_state, WILDCARD_NUM_TEAMS),
-                ConferenceFocus::Western => (&mut self.western_wildcard_table_state, WILDCARD_NUM_TEAMS),
+                ConferenceFocus::Eastern => {
+                    (&mut self.eastern_wildcard_table_state, WILDCARD_NUM_TEAMS)
+                }
+                ConferenceFocus::Western => {
+                    (&mut self.western_wildcard_table_state, WILDCARD_NUM_TEAMS)
+                }
             },
         }
     }
@@ -154,19 +160,29 @@ impl StandingsState {
         let (table, len) = self.current_table_state_mut();
         let current = table.selected().unwrap_or(0);
         let new = current as i32 + delta;
-        let next = if new < 0 || new >= len as i32 { current } else { new as usize };
+        let next = if new < 0 || new >= len as i32 {
+            current
+        } else {
+            new as usize
+        };
         table.select(Some(next));
     }
 
     // Next/PrevStandings
     pub fn shift_standings_type(&mut self, next: bool) {
-        self.focus = if next { self.focus.next() } else { self.focus.prev() };
+        self.focus = if next {
+            self.focus.next()
+        } else {
+            self.focus.prev()
+        };
     }
 
     // Cycle between a standings type
     pub fn cycle_focus(&mut self, next: bool) {
         match self.focus {
-            StandingsFocus::Conference => self.selected_conference = self.selected_conference.toggle(),
+            StandingsFocus::Conference => {
+                self.selected_conference = self.selected_conference.toggle()
+            }
             StandingsFocus::Division => {
                 self.selected_division = if next {
                     self.selected_division.next()

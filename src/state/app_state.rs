@@ -1,6 +1,6 @@
 use crate::input::{Action, map_key};
 use crate::sources::AppEvent;
-use crate::state::standings_state::{StandingsState};
+use crate::state::standings_state::StandingsState;
 // use crate::state::date_input::DateInput;
 use crate::models::games::GamesResponse;
 use crate::models::standings::StandingsResponse;
@@ -140,7 +140,8 @@ impl AppState {
             }
             Action::CycleFocus => self.focus = self.focus.switch(),
             Action::NextStandings | Action::PrevStandings if self.focus == PaneFocus::Content => {
-                self.standings.cycle_focus(matches!(action, Action::NextStandings));
+                self.standings
+                    .cycle_focus(matches!(action, Action::NextStandings));
             }
             Action::Quit => self.should_quit = true,
             Action::Refresh | _ => {}
