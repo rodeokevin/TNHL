@@ -10,9 +10,8 @@ use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    symbols::scrollbar::Set,
     text::{Line, Span},
-    widgets::{Block, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Tabs},
+    widgets::{Block, Paragraph, Tabs},
 };
 
 use tui_big_text::{BigText, PixelSize};
@@ -396,29 +395,21 @@ pub fn render_scoring(
     scroll_offset: usize,
     max_scoring_scroll: &mut usize,
 ) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(1),    // Away scoring
-            Constraint::Length(14), // Middle
-            Constraint::Fill(1),    // Home scoring
-        ])
-        .split(area);
     let away_team_abbrev = &game.away_team.abbrev;
     let home_team_abbrev = &game.home_team.abbrev;
 
-    let mut away_lines = vec![Line::from(" Scoring").style(Style::default().fg(Color::Blue))];
-    let mut home_lines = vec![Line::from("")];
-    let mut period_lines = vec![]; // Period
-    let mut current_period = 0;
-
     if let Some(goals) = &game.goals {
+        let mut away_lines = vec![Line::from("Scoring").style(Style::default().fg(Color::Blue))];
+        let mut home_lines = vec![Line::from("")];
+        let mut period_lines = vec![];
+        let mut current_period = 0;
         for goal in goals {
             // Period
             if goal.period_descriptor.number > current_period {
                 if current_period != 0 {
                     away_lines.push(Line::from("")); // keep rows synced
                     home_lines.push(Line::from("")); // keep rows synced
+                    period_lines.pop(); // Remove no goals message
                 }
                 current_period = goal.period_descriptor.number;
                 period_lines.push(
@@ -470,53 +461,68 @@ pub fn render_scoring(
                 period_lines.push(Line::from(""));
             }
         }
+
+        // Split area into top indicator, content, bottom indicator
+        let vert_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Min(0),
+                Constraint::Length(1),
+            ])
+            .split(area);
+
+        let content_height = vert_chunks[1].height as usize;
+        let max_scroll = away_lines.len().saturating_sub(content_height);
+        *max_scoring_scroll = max_scroll;
+        let offset = scroll_offset.min(max_scroll);
+        let can_scroll_up = offset > 0;
+        let can_scroll_down = offset < max_scroll;
+
+        // Slice to visible window
+        let end = (offset + content_height).min(away_lines.len());
+
+        let visible_away: Vec<Line> = away_lines[offset..end].iter().cloned().collect();
+        let visible_home: Vec<Line> = home_lines[offset..end].iter().cloned().collect();
+        let visible_period: Vec<Line> = period_lines[offset..end].iter().cloned().collect();
+
+        frame.render_widget(
+            Line::from(if can_scroll_up { "▲" } else { "" }).alignment(Alignment::Center),
+            vert_chunks[0],
+        );
+        frame.render_widget(
+            Line::from(if can_scroll_down { "▼" } else { "" }).alignment(Alignment::Center),
+            vert_chunks[2],
+        );
+
+        // Re-split the content area horizontally
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Fill(1),
+                Constraint::Length(14),
+                Constraint::Fill(1),
+            ])
+            .split(vert_chunks[1]);
+
+        frame.render_widget(Paragraph::new(visible_away), chunks[0]);
+        frame.render_widget(Paragraph::new(visible_period), chunks[1]);
+        frame.render_widget(Paragraph::new(visible_home), chunks[2]);
+    } else if matches!(game.game_state, GameState::LIVE | GameState::CRIT) {
+        // No goals yet but game is live
+        frame.render_widget(
+            Paragraph::new("Scoring")
+                .alignment(Alignment::Left)
+                .style(Style::default().fg(Color::Blue)),
+            area,
+        );
+        frame.render_widget(
+            Paragraph::new("\"No goals.\" - Juuse Saros")
+                .alignment(Alignment::Left)
+                .style(Style::default().fg(Color::DarkGray)),
+            area,
+        );
     }
-    // Split area into top indicator, content, bottom indicator
-    let vert_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(1),
-            Constraint::Min(0),
-            Constraint::Length(1),
-        ])
-        .split(area);
-
-    let content_height = vert_chunks[1].height as usize;
-    let max_scroll = away_lines.len().saturating_sub(content_height);
-    *max_scoring_scroll = max_scroll;
-    let offset = scroll_offset.min(max_scroll);
-    let can_scroll_up = offset > 0;
-    let can_scroll_down = offset < max_scroll;
-
-    // Slice to visible window
-    let end = (offset + content_height).min(away_lines.len());
-
-    let visible_away: Vec<Line> = away_lines[offset..end].iter().cloned().collect();
-    let visible_home: Vec<Line> = home_lines[offset..end].iter().cloned().collect();
-    let visible_period: Vec<Line> = period_lines[offset..end].iter().cloned().collect();
-
-    frame.render_widget(
-        Line::from(if can_scroll_up { "▲" } else { "" }).alignment(Alignment::Center),
-        vert_chunks[0],
-    );
-    frame.render_widget(
-        Line::from(if can_scroll_down { "▼" } else { "" }).alignment(Alignment::Center),
-        vert_chunks[2],
-    );
-
-    // Re-split the content area horizontally
-    let content_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(1),
-            Constraint::Length(14),
-            Constraint::Fill(1),
-        ])
-        .split(vert_chunks[1]);
-
-    frame.render_widget(Paragraph::new(visible_away), content_chunks[0]);
-    frame.render_widget(Paragraph::new(visible_period), content_chunks[1]);
-    frame.render_widget(Paragraph::new(visible_home), content_chunks[2]);
 }
 
 pub fn get_period_title(period: &PeriodDescriptor) -> String {

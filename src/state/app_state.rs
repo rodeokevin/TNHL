@@ -1,7 +1,7 @@
 use crate::input::{Action, map_key};
 use crate::sources::AppEvent;
 use crate::state::standings_state::StandingsState;
-// use crate::state::date_input::DateInput;
+use crate::state::date_input::DateInput;
 use crate::models::games::GamesResponse;
 use crate::models::standings::StandingsResponse;
 
@@ -56,6 +56,8 @@ impl MenuFocus {
 }
 
 pub struct AppState {
+    pub date_input: DateInput,
+
     pub selected_menu: MenuFocus,
     pub standings: StandingsState,
     pub league_data: Option<StandingsResponse>,
@@ -73,6 +75,8 @@ pub struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            date_input: DateInput::default(),
+
             selected_menu: MenuFocus::default(),
             standings: StandingsState::default(),
             league_data: None,
