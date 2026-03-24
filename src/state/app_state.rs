@@ -1,16 +1,20 @@
+use std::fmt::Debug;
+
 use crate::input::{Action, map_key};
-use crate::sources::AppEvent;
-use crate::state::standings_state::StandingsState;
-// use crate::state::date_input::DateInput;
 use crate::models::games::GamesResponse;
 use crate::models::standings::StandingsResponse;
+use crate::sources::AppEvent;
+use crate::state::date_input::DateInput;
+use crate::state::date_selector::DateSelector;
+use crate::state::standings_state::StandingsState;
 
 /// Which pane currently has keyboard focus.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum PaneFocus {
     #[default]
     Menu,
     Content,
+    DatePicker,
 }
 
 impl PaneFocus {
@@ -18,6 +22,7 @@ impl PaneFocus {
         match self {
             PaneFocus::Menu => PaneFocus::Content,
             PaneFocus::Content => PaneFocus::Menu,
+            PaneFocus::DatePicker => PaneFocus::DatePicker,
         }
     }
 }
@@ -56,6 +61,9 @@ impl MenuFocus {
 }
 
 pub struct AppState {
+    pub date_input: DateInput,
+    pub date_selector: DateSelector,
+
     pub selected_menu: MenuFocus,
     pub standings: StandingsState,
     pub league_data: Option<StandingsResponse>,
@@ -67,12 +75,16 @@ pub struct AppState {
     pub max_scoring_scroll: usize,
 
     pub focus: PaneFocus,
+    pub previous_focus: PaneFocus,
     pub should_quit: bool,
 }
 
 impl Default for AppState {
     fn default() -> Self {
         Self {
+            date_input: DateInput::default(),
+            date_selector: DateSelector::default(),
+
             selected_menu: MenuFocus::default(),
             standings: StandingsState::default(),
             league_data: None,
@@ -84,6 +96,7 @@ impl Default for AppState {
             max_scoring_scroll: 0,
 
             focus: PaneFocus::default(),
+            previous_focus: PaneFocus::default(),
             should_quit: false,
         }
     }
@@ -111,9 +124,8 @@ impl AppState {
             }
             AppEvent::Input(key_event) => {
                 log::info!("Key event detected: {:?}", key_event);
-                if let Some(action) = map_key(key_event) {
-                    self.handle_action(action);
-                }
+                let action = map_key(key_event, self.focus, self.selected_menu);
+                self.handle_action(action);
             }
             AppEvent::Tick => {
                 self.sweeping_status_offset = self.sweeping_status_offset.wrapping_add(1);
@@ -121,80 +133,90 @@ impl AppState {
         }
     }
 
-    /// Handle a mapped action.
+    /// Handle actions mapped from key events
     pub fn handle_action(&mut self, action: Action) {
         match action {
-            Action::MoveUp => self.move_selection(-1),
-            Action::MoveDown => self.move_selection(1),
-            Action::FocusLeft | Action::FocusRight if self.focus == PaneFocus::Content => {
-                let delta = if matches!(action, Action::FocusRight) {
-                    1
-                } else {
-                    -1
-                };
-                match self.selected_menu {
-                    MenuFocus::Games => {
-                        let len = self.games_data.as_ref().map_or(0, |d| d.games.len());
-                        let prev = self.selected_game_index;
-                        self.selected_game_index =
-                            change_index(self.selected_game_index, delta, len);
-                        if self.selected_game_index != prev {
-                            self.scoring_scroll_offset = 0;
-                            self.max_scoring_scroll = 0;
-                        }
-                    }
-                    MenuFocus::Standings => self.standings.shift_standings_type(delta == 1),
-                    MenuFocus::Teams => {}
-                }
-            }
-            Action::CycleFocus => self.focus = self.focus.switch(),
-            Action::NextStandings | Action::PrevStandings if self.focus == PaneFocus::Content => {
-                self.standings
-                    .cycle_focus(matches!(action, Action::NextStandings));
-            }
             Action::Quit => self.should_quit = true,
-            Action::Refresh | _ => {}
-        }
-    }
 
-    /// Move the selection in the focused pane by `delta` (+1 = down, -1 = up).
-    fn move_selection(&mut self, delta: i32) {
-        match self.focus {
-            PaneFocus::Menu => {
-                self.selected_menu = if delta == 1 {
-                    self.selected_menu.next()
-                } else {
-                    self.selected_menu.prev()
-                };
+            Action::SwitchPaneFocus => {
+                self.previous_focus = self.focus;
+                self.focus = self.focus.switch();
             }
-            PaneFocus::Content => match self.selected_menu {
-                MenuFocus::Standings => self.standings.move_selection(delta),
-                MenuFocus::Games => {
-                    self.scoring_scroll_offset = if delta == 1 {
-                        self.scoring_scroll_offset
-                            .saturating_add(1)
-                            .min(self.max_scoring_scroll)
-                    } else {
-                        self.scoring_scroll_offset.saturating_sub(1)
-                    };
-                }
-                _ => {}
-            },
+            Action::EnterDatePicker => {
+                self.focus = PaneFocus::DatePicker;
+                self.previous_focus = self.focus;
+                self.date_input.text.clear();
+            }
+            Action::InputChar(c) => {
+                self.date_input.is_valid = true; // reset status
+                self.date_input.text.push(c);
+            }
+            Action::MenuUp => {
+                self.selected_menu = self.selected_menu.prev();
+            }
+            Action::MenuDown => {
+                self.selected_menu = self.selected_menu.next();
+            }
+            Action::GamesScrollUp => {
+                self.scoring_scroll_offset = self.scoring_scroll_offset.saturating_sub(1);
+            }
+            Action::GamesScrollDown => {
+                self.scoring_scroll_offset = self
+                    .scoring_scroll_offset
+                    .saturating_add(1)
+                    .min(self.max_scoring_scroll);
+            }
+            Action::PrevGame => self.shift_game_index(false),
+            Action::NextGame => self.shift_game_index(true),
+
+            Action::StandingsUp => self.standings.move_selection(-1),
+            Action::StandingsDown => self.standings.move_selection(1),
+            Action::StandingsLeft => self.standings.shift_standings_type(false),
+            Action::StandingsRight => self.standings.shift_standings_type(true),
+            Action::PrevStandingsType => self.standings.cycle_focus(false),
+            Action::NextStandingsType => self.standings.cycle_focus(true),
+
+            Action::DateLeft => self.move_date_selector_by_arrow(false),
+            Action::DateRight => self.move_date_selector_by_arrow(true),
+            Action::DateBackspace => {
+                self.date_input.text.pop();
+            }
+            Action::ExitDatePicker => {
+                self.date_input.text.clear();
+                self.focus = self.previous_focus;
+            }
+
+            Action::None => {}
         }
     }
-}
 
-/// Change an index by delta within [0, len), capping at boundaries.
-fn change_index(current: usize, delta: i32, len: usize) -> usize {
-    if len == 0 {
-        return 0;
+    // Helpers functions for handlind actions
+    fn move_date_selector_by_arrow(&mut self, right_arrow: bool) {
+        let date = self.date_selector.set_date_with_arrows(right_arrow);
+        self.date_input.text.clear();
+        self.date_input.text.push_str(&date.to_string());
     }
-    let new = current as i32 + delta;
-    if new < 0 {
-        current
-    } else if new >= len as i32 {
-        current
-    } else {
-        new as usize
+    fn shift_game_index(&mut self, forward: bool) {
+        let prev = self.selected_game_index;
+        if forward {
+            let max_index = self.games_data.as_ref().map_or(0, |d| d.games.len());
+            self.selected_game_index = self.next_index(self.selected_game_index, max_index);
+        }
+        else {
+            self.selected_game_index = self.prev_index(self.selected_game_index);
+        }
+        if self.selected_game_index != prev {
+            self.reset_scoring_scroll();
+        }
+    }
+    fn prev_index(&self, index: usize) -> usize {
+        index.saturating_sub(1)
+    }
+    fn next_index(&self, index: usize, max_index: usize) -> usize {
+        (index + 1).min(max_index.saturating_sub(1))
+    }
+    fn reset_scoring_scroll(&mut self) {
+        self.scoring_scroll_offset = 0;
+        self.max_scoring_scroll = 0;
     }
 }

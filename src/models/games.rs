@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use serde::Deserialize;
 use std::fmt;
 
@@ -29,6 +30,12 @@ pub struct GameData {
     pub situation: Option<GameSituation>,
     pub goals: Option<Vec<GoalData>>,
     pub game_outcome: Option<GameOutcome>,
+}
+
+impl GameData {
+    pub fn compute_local_time(&self, tz: Tz) -> DateTime<Tz> {
+        self.start_time_utc.with_timezone(&tz)
+    }
 }
 
 #[derive(Debug, Deserialize)]
