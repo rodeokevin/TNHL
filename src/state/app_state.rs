@@ -1,16 +1,23 @@
+use std::fmt::Debug;
+use std::thread::current;
+
+use crossterm::event::{KeyCode, KeyCode::Char, KeyEvent, KeyModifiers};
+
 use crate::input::{Action, map_key};
-use crate::sources::AppEvent;
-use crate::state::standings_state::StandingsState;
-use crate::state::date_input::DateInput;
 use crate::models::games::GamesResponse;
 use crate::models::standings::StandingsResponse;
+use crate::sources::AppEvent;
+use crate::state::date_input::DateInput;
+use crate::state::date_selector::DateSelector;
+use crate::state::standings_state::StandingsState;
 
 /// Which pane currently has keyboard focus.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum PaneFocus {
     #[default]
     Menu,
     Content,
+    DatePicker,
 }
 
 impl PaneFocus {
@@ -18,6 +25,7 @@ impl PaneFocus {
         match self {
             PaneFocus::Menu => PaneFocus::Content,
             PaneFocus::Content => PaneFocus::Menu,
+            PaneFocus::DatePicker => PaneFocus::DatePicker,
         }
     }
 }
@@ -55,8 +63,16 @@ impl MenuFocus {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum InputMode {
+    #[default]
+    Normal,
+    EditingDate,
+}
+
 pub struct AppState {
     pub date_input: DateInput,
+    pub date_selector: DateSelector,
 
     pub selected_menu: MenuFocus,
     pub standings: StandingsState,
@@ -69,6 +85,7 @@ pub struct AppState {
     pub max_scoring_scroll: usize,
 
     pub focus: PaneFocus,
+    pub previous_focus: PaneFocus,
     pub should_quit: bool,
 }
 
@@ -76,6 +93,7 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             date_input: DateInput::default(),
+            date_selector: DateSelector::default(),
 
             selected_menu: MenuFocus::default(),
             standings: StandingsState::default(),
@@ -88,6 +106,7 @@ impl Default for AppState {
             max_scoring_scroll: 0,
 
             focus: PaneFocus::default(),
+            previous_focus: PaneFocus::default(),
             should_quit: false,
         }
     }
@@ -115,9 +134,7 @@ impl AppState {
             }
             AppEvent::Input(key_event) => {
                 log::info!("Key event detected: {:?}", key_event);
-                if let Some(action) = map_key(key_event) {
-                    self.handle_action(action);
-                }
+                self.handle_key_event(key_event);
             }
             AppEvent::Tick => {
                 self.sweeping_status_offset = self.sweeping_status_offset.wrapping_add(1);
@@ -125,41 +142,256 @@ impl AppState {
         }
     }
 
-    /// Handle a mapped action.
-    pub fn handle_action(&mut self, action: Action) {
-        match action {
-            Action::MoveUp => self.move_selection(-1),
-            Action::MoveDown => self.move_selection(1),
-            Action::FocusLeft | Action::FocusRight if self.focus == PaneFocus::Content => {
-                let delta = if matches!(action, Action::FocusRight) {
-                    1
-                } else {
-                    -1
-                };
-                match self.selected_menu {
-                    MenuFocus::Games => {
-                        let len = self.games_data.as_ref().map_or(0, |d| d.games.len());
-                        let prev = self.selected_game_index;
-                        self.selected_game_index =
-                            change_index(self.selected_game_index, delta, len);
-                        if self.selected_game_index != prev {
-                            self.scoring_scroll_offset = 0;
-                            self.max_scoring_scroll = 0;
-                        }
-                    }
-                    MenuFocus::Standings => self.standings.shift_standings_type(delta == 1),
-                    MenuFocus::Teams => {}
-                }
+    /// Handle key event in normal mode
+    pub fn handle_key_event(&mut self, key_event: KeyEvent) {
+        match (
+            self.focus,
+            self.selected_menu,
+            key_event.code,
+            key_event.modifiers,
+        ) {
+            // Ctrl + c quits no matter what
+            (_, _, Char('c'), KeyModifiers::CONTROL) => self.should_quit = true,
+            // q also quits no matter what
+            (_, _, Char('q'), _) => self.should_quit = true,
+            // In DatePicker mode, capture all input
+            (PaneFocus::DatePicker, _, Char(c), _) => {
+                self.date_input.is_valid = true; // reset status
+                self.date_input.text.push(c);
             }
-            Action::CycleFocus => self.focus = self.focus.switch(),
-            Action::NextStandings | Action::PrevStandings if self.focus == PaneFocus::Content => {
+            // Key events for normal mode
+            (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Tab, _) => {
+                self.previous_focus = self.focus;
+                self.focus = self.focus.switch();
+            }
+            (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char(':'), _) => {
+                self.focus = PaneFocus::DatePicker;
+                self.previous_focus = self.focus;
+                self.date_input.text.clear();
+            }
+            // (_, _, KeyCode::Char('r), _) => self.refresh(),
+            // In menu pane
+            (PaneFocus::Menu, _, KeyCode::Up | KeyCode::Char('k'), _) => {
+                self.selected_menu = self.selected_menu.prev();
+            }
+            (PaneFocus::Menu, _, KeyCode::Down | KeyCode::Char('j'), _) => {
+                self.selected_menu = self.selected_menu.next();
+            }
+            // In Games content pane
+            (PaneFocus::Content, MenuFocus::Games, KeyCode::Up | KeyCode::Char('k'), _) => {
+                self.scoring_scroll_offset = self.scoring_scroll_offset.saturating_sub(1);
+            }
+            (PaneFocus::Content, MenuFocus::Games, KeyCode::Down | KeyCode::Char('j'), _) => {
+                self.scoring_scroll_offset = self
+                    .scoring_scroll_offset
+                    .saturating_add(1)
+                    .min(self.max_scoring_scroll);
+            }
+            (PaneFocus::Content, MenuFocus::Games, KeyCode::Left | KeyCode::Char('h'), _) => {
+                self.select_prev_game_index();
+            }
+            (PaneFocus::Content, MenuFocus::Games, KeyCode::Right | KeyCode::Char('l'), _) => {
+                self.select_next_game_index();
+            }
+            // Toggle box score and overview
+            (PaneFocus::Content, MenuFocus::Games, KeyCode::Char(','), _) => {
+                todo!()
+            }
+            (PaneFocus::Content, MenuFocus::Games, KeyCode::Char('.'), _) => {
+                todo!()
+            }
+            // Change dates quickly
+            (PaneFocus::Content, MenuFocus::Games, KeyCode::Char('t'), _) => {
+                todo!()
+            }
+            (PaneFocus::Content, MenuFocus::Games, KeyCode::Char('y'), _) => {
+                todo!()
+            }
+            // In standings content pane
+            (PaneFocus::Content, MenuFocus::Standings, KeyCode::Up | KeyCode::Char('k'), _) => {
+                self.standings.move_selection(-1);
+            }
+            (PaneFocus::Content, MenuFocus::Standings, KeyCode::Down | KeyCode::Char('j'), _) => {
+                self.standings.move_selection(1);
+            }
+            (PaneFocus::Content, MenuFocus::Standings, KeyCode::Left | KeyCode::Char('h'), _) => {
+                self.standings.shift_standings_type(false);
+            }
+            (PaneFocus::Content, MenuFocus::Standings, KeyCode::Right | KeyCode::Char('l'), _) => {
+                self.standings.shift_standings_type(true);
+            }
+            (PaneFocus::Content, MenuFocus::Standings, KeyCode::Char(',') | KeyCode::Char('.'), _) => {
                 self.standings
-                    .cycle_focus(matches!(action, Action::NextStandings));
+                    .cycle_focus(matches!(key_event.code, KeyCode::Char('.')));
             }
-            Action::Quit => self.should_quit = true,
-            Action::Refresh | _ => {}
+            // In teams content pane
+            (PaneFocus::Content, MenuFocus::Teams, _, _) => {
+                todo!()
+            }
+            // Specific DatePicker commands
+            // (PaneFocus::DatePicker, _, KeyCode::Enter, _) => {
+            // if self.try_update_date_from_input().is_ok() {
+            //     let previous_tab = self.previous_focus;
+            //     guard.update_tab(previous_tab);
+            //     handle_date_change(guard, network_requests).await;
+            // }
+            // }
+            (PaneFocus::DatePicker, _, KeyCode::Right, _) => {
+                self.move_date_selector_by_arrow(true);
+            }
+            (PaneFocus::DatePicker, _, KeyCode::Left, _) => {
+                self.move_date_selector_by_arrow(false);
+            }
+            (PaneFocus::DatePicker, _, KeyCode::Esc, _) => {
+                self.date_input.text.clear();
+                self.focus = self.previous_focus;
+            }
+            (PaneFocus::DatePicker, _, KeyCode::Backspace, _) => {
+                self.date_input.text.pop();
+            }
+            _ => {}
         }
     }
+    pub fn move_date_selector_by_arrow(&mut self, right_arrow: bool) {
+        let date = self.date_selector.set_date_with_arrows(right_arrow);
+        self.date_input.text.clear();
+        self.date_input.text.push_str(&date.to_string());
+    }
+
+    pub fn select_prev_game_index(&mut self) {
+        let prev = self.selected_game_index;
+        self.selected_game_index = self.prev_index(self.selected_game_index);
+        if self.selected_game_index != prev {
+            self.reset_scoring_scroll();
+        }
+    }
+    pub fn select_next_game_index(&mut self) {
+        let max_index = self.games_data.as_ref().map_or(0, |d| d.games.len());
+        let prev = self.selected_game_index;
+        self.selected_game_index = self.next_index(self.selected_game_index, max_index);
+        if self.selected_game_index != prev {
+            self.reset_scoring_scroll();
+        }
+    }
+    pub fn prev_index(&self, index: usize) -> usize {
+        index.saturating_sub(1)
+    }
+    pub fn next_index(&self, index: usize, max_index: usize) -> usize {
+        (index + 1).min(max_index.saturating_sub(1))
+    }
+
+    /// Handle a mapped action.
+    // pub fn handle_action(&mut self, action: Action) {
+    //     if matches!(self.focus, PaneFocus::DatePicker) {
+    //         handle_date_picker_action(action);
+    //     }
+    //     // Handle global actions
+    //     match action {
+    //         Action::CycleFocus => self.focus = self.focus.switch(),
+    //         // Enter date selector
+    //         Action::DateSelector => {
+    //             self.focus = PaneFocus::DatePicker;
+    //             self.input_mode = InputMode::EditingDate;
+    //             self.date_input.text.clear();
+    //         }
+    //         Action::Quit => self.should_quit = true,
+    //         Action::Refresh => {}
+    //     }
+    //     // Then handle pane specific actions
+    //     match self.focus {
+    //         PaneFocus::Content => self.handle_content_action(action),
+    //         PaneFocus::DatePicker => self.handle_datepicker_action(action),
+    //     }
+    //     ////// Old
+    //     match action {
+    //         Action::MoveUp => self.move_selection(-1),
+    //         Action::MoveDown => self.move_selection(1),
+    //         Action::MoveLeft | Action::MoveRight => {
+    //             let delta = if matches!(action, Action::MoveRight) {
+    //                 1
+    //             } else {
+    //                 -1
+    //             };
+    //             match self.focus {
+    //                 PaneFocus::Content => match self.selected_menu {
+    //                     MenuFocus::Games => {
+    //                         let len = self.games_data.as_ref().map_or(0, |d| d.games.len());
+    //                         let prev = self.selected_game_index;
+    //                         self.selected_game_index =
+    //                             change_index(self.selected_game_index, delta, len);
+    //                         if self.selected_game_index != prev {
+    //                             self.reset_scoring_scroll();
+    //                         }
+    //                     }
+    //                     MenuFocus::Standings => self.standings.shift_standings_type(delta == 1),
+    //                     MenuFocus::Teams => {}
+    //                 },
+    //                 PaneFocus::DatePicker => {
+    //                     let forward = if delta == 1 { true } else { false };
+    //                     self.date_selector.set_date_with_arrows(forward);
+    //                 }
+    //                 _ => {}
+    //             }
+    //         }
+    //         Action::NextContent | Action::PrevContent if self.focus == PaneFocus::Content => {
+    //             self.standings
+    //                 .cycle_focus(matches!(action, Action::NextContent));
+    //         }
+    //         _ => {}
+    //     }
+    // }
+
+    // // When we are on a content pane
+    // fn handle_content_action(&mut self, action: Action) {
+    //     let delta = match action {
+    //         Action::MoveRight => 1,
+    //         Action::MoveLeft => -1,
+    //         _ => 0,
+    //     };
+    //     match self.selected_menu {
+    //         MenuFocus::Games => match action {
+    //             Action::MoveUp => {
+    //                 self.scoring_scroll_offset = self.scoring_scroll_offset.saturating_sub(1)
+    //             }
+    //             Action::MoveDown => {
+    //                 self.scoring_scroll_offset = self
+    //                     .scoring_scroll_offset
+    //                     .saturating_add(1)
+    //                     .min(self.max_scoring_scroll)
+    //             }
+    //             Action::MoveLeft | Action::MoveRight => {
+    //                 let len = self.games_data.as_ref().map_or(0, |d| d.games.len());
+    //                 let prev = self.selected_game_index;
+    //                 self.selected_game_index = change_index(self.selected_game_index, delta, len);
+    //                 if self.selected_game_index != prev {
+    //                     self.reset_scoring_scroll();
+    //                 }
+    //             }
+    //             _ => {}
+    //         },
+    //         MenuFocus::Standings => match action {
+    //             Action::MoveUp => {
+    //                 self.scoring_scroll_offset = self.scoring_scroll_offset.saturating_sub(1)
+    //             }
+    //             Action::MoveDown => {
+    //                 self.scoring_scroll_offset = self
+    //                     .scoring_scroll_offset
+    //                     .saturating_add(1)
+    //                     .min(self.max_scoring_scroll)
+    //             }
+    //             Action::MoveLeft | Action::MoveRight => {
+    //                 let len = self.games_data.as_ref().map_or(0, |d| d.games.len());
+    //                 let prev = self.selected_game_index;
+    //                 self.selected_game_index = change_index(self.selected_game_index, delta, len);
+    //                 if self.selected_game_index != prev {
+    //                     self.reset_scoring_scroll();
+    //                 }
+    //             }
+    //             _ => {}
+    //         },
+    //         MenuFocus::Teams => {}
+    //     }
+    // }
 
     /// Move the selection in the focused pane by `delta` (+1 = down, -1 = up).
     fn move_selection(&mut self, delta: i32) {
@@ -184,7 +416,13 @@ impl AppState {
                 }
                 _ => {}
             },
+            _ => {}
         }
+    }
+
+    fn reset_scoring_scroll(&mut self) {
+        self.scoring_scroll_offset = 0;
+        self.max_scoring_scroll = 0;
     }
 }
 

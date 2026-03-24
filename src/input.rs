@@ -4,20 +4,23 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 /// Actions that can be triggered by keyboard input.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
-    /// Move selection up in the focused pane.
+    /// Navigation in a pane
     MoveUp,
-    /// Move selection down in the focused pane.
     MoveDown,
-    /// Focus the previous (left) pane.
-    FocusLeft,
-    /// Focus the next (right) pane.
-    FocusRight,
-    /// Cycle focus to the next pane.
+    MoveLeft,
+    MoveRight,
+    /// Cycle main focus pane (menu or content)
     CycleFocus,
-    /// Next standings (e.g. Eastern to Western Conference)
-    NextStandings,
-    /// Previous standings (e.g. Western to Eastern Conference)
-    PrevStandings,
+    /// Sub content navigation (e.g. Eastern to Western in Conference standings or game overview to box score)
+    NextContent,
+    PrevContent,
+    /// Date selector commands
+    DateSelector,
+    Escape,
+    Backspace,
+    DateInput,
+    /// Display help menu
+    Help,
     /// Force refresh all data sources.
     Refresh,
     /// Quit the application.
@@ -43,15 +46,16 @@ pub fn map_key(event: KeyEvent) -> Option<Action> {
         // Navigation
         KeyCode::Up | KeyCode::Char('k') => Some(Action::MoveUp),
         KeyCode::Down | KeyCode::Char('j') => Some(Action::MoveDown),
-        KeyCode::Left | KeyCode::Char('h') => Some(Action::FocusLeft),
-        KeyCode::Right | KeyCode::Char('l') => Some(Action::FocusRight),
-        KeyCode::Char('.') => Some(Action::NextStandings),
-        KeyCode::Char(',') => Some(Action::PrevStandings),
+        KeyCode::Left | KeyCode::Char('h') => Some(Action::MoveLeft),
+        KeyCode::Right | KeyCode::Char('l') => Some(Action::MoveRight),
+        KeyCode::Char('.') => Some(Action::NextContent),
+        KeyCode::Char(',') => Some(Action::PrevContent),
+        KeyCode::Char(':') => Some(Action::DateSelector),
         KeyCode::Tab => Some(Action::CycleFocus),
 
         // Actions
         KeyCode::Char('r') => Some(Action::Refresh),
-        KeyCode::Char('q') | KeyCode::Esc => Some(Action::Quit),
+        KeyCode::Char('q') => Some(Action::Quit),
 
         _ => None,
     }

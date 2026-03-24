@@ -1,10 +1,11 @@
-use std::vec;
-
 use crate::app::App;
 use crate::models::games::{
     GameData, GameState, GoalStrength, PeriodDescriptor, PeriodType, SituationDesc,
 };
 use crate::ui::PaneFocus;
+use chrono_tz::Tz;
+use core::time;
+use std::vec;
 
 use ratatui::{
     Frame,
@@ -26,7 +27,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         ])
         .split(area);
 
-    let titles: Vec<Line> = app
+    let matchups: Vec<Line> = app
         .state
         .games_data
         .as_ref()
@@ -58,9 +59,13 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(Modifier::BOLD)
         .add_modifier(Modifier::UNDERLINED);
 
-    let tabs = Tabs::new(titles)
+    let tabs = Tabs::new(matchups)
         .select(app.state.selected_game_index)
-        .block(Block::bordered().border_style(border_style))
+        .block(
+            Block::bordered()
+                .border_style(border_style)
+                .title(app.state.date_selector.format_date_border_title()),
+        )
         .highlight_style(selected_color);
 
     frame.render_widget(tabs, tab_content_chunks[0]);
@@ -94,7 +99,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                     Constraint::Length(1), // Shots on goal
                 ])
                 .split(upper_score_lower[0]);
-            render_time_remaining(game, frame, upper_info_chunks[0]);
+            render_time_remaining(game, app.settings.timezone, frame, upper_info_chunks[0]);
             render_sweeping_status(
                 game,
                 10,
@@ -136,7 +141,7 @@ pub fn get_color_from_game_state(state: &GameState) -> Style {
     }
 }
 
-pub fn render_time_remaining(game: &GameData, frame: &mut Frame, area: Rect) {
+pub fn render_time_remaining(game: &GameData, timezone: Tz, frame: &mut Frame, area: Rect) {
     // Not in intermission
     if matches!(game.game_state, GameState::LIVE | GameState::CRIT) {
         if let Some(clock) = &game.clock {
@@ -178,7 +183,12 @@ pub fn render_time_remaining(game: &GameData, frame: &mut Frame, area: Rect) {
         }
     }
     let line = match game.game_state {
-        GameState::FUT | GameState::PRE => Line::from(format!("{}", game.start_time_utc)),
+        GameState::FUT | GameState::PRE => Line::from(format!(
+            "{}",
+            game.compute_local_time(timezone)
+                .format("%-I:%M %p")
+                .to_string()
+        )),
         GameState::LIVE | GameState::CRIT => {
             // in intermission or clock is None
             match game.clock.as_ref() {
@@ -409,7 +419,6 @@ pub fn render_scoring(
                 if current_period != 0 {
                     away_lines.push(Line::from("")); // keep rows synced
                     home_lines.push(Line::from("")); // keep rows synced
-                    period_lines.pop(); // Remove no goals message
                 }
                 current_period = goal.period_descriptor.number;
                 period_lines.push(
