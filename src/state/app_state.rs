@@ -4,9 +4,14 @@ use crate::input::{Action, map_key};
 use crate::models::games::GamesResponse;
 use crate::models::standings::StandingsResponse;
 use crate::sources::AppEvent;
+use crate::sources::games::GamesCommand;
+use crate::sources::standings::StandingsCommand;
 use crate::state::date_input::DateInput;
 use crate::state::date_selector::DateSelector;
 use crate::state::standings_state::StandingsState;
+use chrono::{NaiveDate, ParseError};
+use chrono_tz::Tz;
+use tokio::sync::mpsc::Sender;
 
 /// Which pane currently has keyboard focus.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -63,6 +68,10 @@ impl MenuFocus {
 pub struct AppState {
     pub date_input: DateInput,
     pub date_selector: DateSelector,
+    pub timezone: Tz,
+
+    pub games_tx: Sender<GamesCommand>,
+    pub standings_tx: Sender<StandingsCommand>,
 
     pub selected_menu: MenuFocus,
     pub standings: StandingsState,
@@ -79,11 +88,15 @@ pub struct AppState {
     pub should_quit: bool,
 }
 
-impl Default for AppState {
-    fn default() -> Self {
+impl AppState {
+    pub fn new(games_tx: Sender<GamesCommand>, standings_tx: Sender<StandingsCommand>) -> Self {
         Self {
             date_input: DateInput::default(),
             date_selector: DateSelector::default(),
+            timezone: Tz::default(),
+
+            games_tx,
+            standings_tx,
 
             selected_menu: MenuFocus::default(),
             standings: StandingsState::default(),
@@ -143,8 +156,8 @@ impl AppState {
                 self.focus = self.focus.switch();
             }
             Action::EnterDatePicker => {
-                self.focus = PaneFocus::DatePicker;
                 self.previous_focus = self.focus;
+                self.focus = PaneFocus::DatePicker;
                 self.date_input.text.clear();
             }
             Action::InputChar(c) => {
@@ -185,6 +198,12 @@ impl AppState {
                 self.date_input.text.clear();
                 self.focus = self.previous_focus;
             }
+            Action::UpdateDate => {
+                if self.try_update_date_from_input().is_ok() {
+                    self.handle_date_change();
+                    self.focus = self.previous_focus;
+                }
+            }
 
             Action::None => {}
         }
@@ -196,13 +215,35 @@ impl AppState {
         self.date_input.text.clear();
         self.date_input.text.push_str(&date.to_string());
     }
+    fn set_date_from_valid_input(&mut self, date: NaiveDate) {
+        self.date_selector.set_date_from_valid_input(date);
+    }
+    fn try_update_date_from_input(&mut self) -> Result<(), ParseError> {
+        let valid_date = self.date_input.validate_input(self.timezone)?;
+
+        self.set_date_from_valid_input(valid_date);
+        Ok(())
+    }
+    fn handle_date_change(&mut self) {
+        let date = self.date_selector.date.to_string();
+        let games_ok = self
+            .games_tx
+            .try_send(GamesCommand::SetDate(date.clone()))
+            .is_ok();
+        let standings_ok = self
+            .standings_tx
+            .try_send(StandingsCommand::SetDate(date))
+            .is_ok();
+        if games_ok || standings_ok {
+            self.reset_state_after_date_change();
+        }
+    }
     fn shift_game_index(&mut self, forward: bool) {
         let prev = self.selected_game_index;
         if forward {
             let max_index = self.games_data.as_ref().map_or(0, |d| d.games.len());
             self.selected_game_index = self.next_index(self.selected_game_index, max_index);
-        }
-        else {
+        } else {
             self.selected_game_index = self.prev_index(self.selected_game_index);
         }
         if self.selected_game_index != prev {
@@ -218,5 +259,10 @@ impl AppState {
     fn reset_scoring_scroll(&mut self) {
         self.scoring_scroll_offset = 0;
         self.max_scoring_scroll = 0;
+    }
+    fn reset_state_after_date_change(&mut self) {
+        self.standings = StandingsState::default();
+        self.selected_game_index = 0;
+        self.reset_scoring_scroll();
     }
 }

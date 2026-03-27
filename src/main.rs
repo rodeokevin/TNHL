@@ -8,7 +8,11 @@ mod ui;
 
 use crate::{
     app::App,
-    sources::{AppEvent, Source, games::GamesSource, standings::StandingsSource},
+    sources::{
+        AppEvent, Source,
+        games::{GamesCommand, GamesSource},
+        standings::{StandingsCommand, StandingsSource},
+    },
 };
 
 use simplelog::*;
@@ -24,6 +28,7 @@ use ratatui::{
     },
 };
 use std::{error::Error, io};
+use tokio::sync::mpsc::Receiver;
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
@@ -42,9 +47,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
     WriteLogger::init(LevelFilter::Info, Config::default(), log_file)?;
 
     // create app and run it
-    let mut app = App::new();
+    let (games_cmd_tx, games_cmd_rx) = tokio::sync::mpsc::channel(8);
+    let (standings_cmd_tx, standings_cmd_rx) = tokio::sync::mpsc::channel(8);
+
+    let mut app = App::new(games_cmd_tx.clone(), standings_cmd_tx.clone());
     let cancel = CancellationToken::new();
-    let _ = run_app(&mut terminal, &mut app, cancel.clone()).await;
+    let _ = run_app(
+        &mut terminal,
+        &mut app,
+        cancel.clone(),
+        games_cmd_rx,
+        standings_cmd_rx,
+    )
+    .await;
 
     // restore terminal
     disable_raw_mode()?;
@@ -62,6 +77,8 @@ async fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     app: &mut App,
     cancel: CancellationToken,
+    games_rx: Receiver<GamesCommand>,
+    standings_rx: Receiver<StandingsCommand>,
 ) -> io::Result<()>
 where
     io::Error: From<B::Error>,
@@ -69,7 +86,7 @@ where
     let (tx, mut rx) = tokio::sync::mpsc::channel::<AppEvent>(32);
 
     // Spawn standings source
-    let standings_source = Box::new(StandingsSource::new());
+    let standings_source = Box::new(StandingsSource::new(standings_rx));
     let standings_tx = tx.clone();
     let standings_cancel = cancel.clone();
     tokio::spawn(async move {
@@ -77,11 +94,11 @@ where
     });
 
     // Spawn games source
-    let games_source = Box::new(GamesSource::new());
+    let games_source = GamesSource::new(games_rx);
     let games_tx = tx.clone();
     let games_cancel = cancel.clone();
     tokio::spawn(async move {
-        games_source.run(games_tx, games_cancel).await;
+        Box::new(games_source).run(games_tx, games_cancel).await;
     });
 
     // Spawn terminal event reader

@@ -10,7 +10,7 @@ impl StatefulWidget for DateSelectorWidget {
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let border_color = if state.is_valid {
-            Color::Blue
+            Color::Yellow
         } else {
             Color::Red
         };

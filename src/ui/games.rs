@@ -408,7 +408,9 @@ pub fn render_scoring(
     let away_team_abbrev = &game.away_team.abbrev;
     let home_team_abbrev = &game.home_team.abbrev;
 
-    if let Some(goals) = &game.goals {
+    if let Some(goals) = &game.goals
+        && !goals.is_empty()
+    {
         let mut away_lines = vec![Line::from("Scoring").style(Style::default().fg(Color::Blue))];
         let mut home_lines = vec![Line::from("")];
         let mut period_lines = vec![];
@@ -520,14 +522,14 @@ pub fn render_scoring(
     } else if matches!(game.game_state, GameState::LIVE | GameState::CRIT) {
         // No goals yet but game is live
         frame.render_widget(
-            Paragraph::new("Scoring")
+            Paragraph::new("\nScoring")
                 .alignment(Alignment::Left)
                 .style(Style::default().fg(Color::Blue)),
             area,
         );
         frame.render_widget(
-            Paragraph::new("\"No goals.\" - Juuse Saros")
-                .alignment(Alignment::Left)
+            Paragraph::new("\n\"No goals.\" - Juuse Saros")
+                .alignment(Alignment::Center)
                 .style(Style::default().fg(Color::DarkGray)),
             area,
         );

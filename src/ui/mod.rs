@@ -1,6 +1,7 @@
 pub mod date_selector;
 pub mod games;
 pub mod input_popup;
+pub mod layout;
 pub mod standings;
 
 use ratatui::{
@@ -13,6 +14,9 @@ use ratatui::{
 
 use crate::app::App;
 use crate::state::app_state::{MenuFocus, PaneFocus};
+use crate::ui::date_selector::DateSelectorWidget;
+use crate::ui::input_popup::{InputPopup, popup_cursor_position};
+use crate::ui::layout::LayoutAreas;
 
 pub fn render(frame: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
@@ -37,6 +41,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         MenuFocus::Games => games::render_games(frame, app, content_menu_chunks[1]),
         MenuFocus::Standings => standings::render_standings(frame, app, content_menu_chunks[1]),
         MenuFocus::Teams => {}
+    }
+    if app.state.focus == PaneFocus::DatePicker {
+        render_date_picker(frame, app, frame.area());
     }
 
     // Render footer
@@ -76,4 +83,12 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
     state.select(Some(app.state.selected_menu.index()));
 
     frame.render_stateful_widget(list, area, &mut state);
+}
+
+fn render_date_picker(f: &mut Frame, app: &mut App, rect: Rect) {
+    let chunk = LayoutAreas::create_date_picker(rect);
+    f.render_stateful_widget(DateSelectorWidget {}, chunk, &mut app.state.date_input);
+
+    let (cx, cy) = popup_cursor_position(chunk, app.state.date_input.text.len() as u16);
+    f.set_cursor_position((cx, cy));
 }

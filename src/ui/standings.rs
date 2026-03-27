@@ -82,7 +82,11 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let tabs = Tabs::new(titles)
         .select(selected_standings)
-        .block(Block::bordered().border_style(border_style))
+        .block(
+            Block::bordered()
+                .border_style(border_style)
+                .title(app.state.date_selector.format_date_border_title()),
+        )
         .highlight_style(highlight_style);
 
     frame.render_widget(tabs, tab_content_chunks[0]);

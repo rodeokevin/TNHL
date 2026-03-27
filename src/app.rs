@@ -1,5 +1,10 @@
-use crate::state::{app_settings::AppSettings, app_state::AppState};
+use crate::sources::games::GamesCommand;
+use crate::{
+    sources::standings::StandingsCommand,
+    state::{app_settings::AppSettings, app_state::AppState},
+};
 use chrono::Utc;
+use tokio::sync::mpsc::Sender;
 
 pub struct App {
     pub state: AppState,
@@ -7,18 +12,19 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> Self {
+    pub fn new(games_tx: Sender<GamesCommand>, standings_tx: Sender<StandingsCommand>) -> Self {
         let mut app = Self {
-            state: AppState::default(),
+            state: AppState::new(games_tx, standings_tx),
             settings: AppSettings::load_from_file(),
         };
         app.configure();
         app
     }
 
-    /// Run any final configuration that might need to access multiple parts of state.
+    /// Run any final configuration
     fn configure(&mut self) {
         self.set_all_datepickers_to_today();
+        self.set_time_zone();
         // self.state.standings.favorite_team = self.settings.favorite_team;
 
         // override log level if set
@@ -34,5 +40,10 @@ impl App {
             .with_timezone(&self.settings.timezone)
             .date_naive();
         self.state.date_selector.date = today;
+    }
+
+    /// Set the timezone in the state to the settings' timezone
+    fn set_time_zone(&mut self) {
+        self.state.timezone = self.settings.timezone;
     }
 }
