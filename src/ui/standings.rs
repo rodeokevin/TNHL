@@ -16,24 +16,24 @@ const STANDINGS_COLUMNS: [&str; 18] = [
 ];
 
 const STANDINGS_COLUMN_WIDTHS: [Constraint; 18] = [
-    Constraint::Length(4),
+    Constraint::Length(3),
+    Constraint::Length(25),
     Constraint::Length(5),
-    Constraint::Length(4),
-    Constraint::Length(4),
-    Constraint::Length(4),
-    Constraint::Length(4),
+    Constraint::Length(5),
+    Constraint::Length(5),
     Constraint::Length(5),
     Constraint::Length(6),
-    Constraint::Length(4),
-    Constraint::Length(4),
-    Constraint::Length(5),
-    Constraint::Length(5),
-    Constraint::Length(5),
-    Constraint::Length(10),
-    Constraint::Length(10),
-    Constraint::Length(5),
     Constraint::Length(8),
     Constraint::Length(5),
+    Constraint::Length(5),
+    Constraint::Length(6),
+    Constraint::Length(6),
+    Constraint::Length(6),
+    Constraint::Length(11),
+    Constraint::Length(11),
+    Constraint::Length(6),
+    Constraint::Length(9),
+    Constraint::Length(6),
 ];
 
 use crate::models::standings::{StandingsResponse, TeamData};
@@ -224,36 +224,52 @@ fn render_wildcard_standings(
     teams: &StandingsResponse,
     border_style: Style,
 ) {
-    let (table_state, div1, div2, conf, title) = match selected_wildcard {
+    let (table_state, div1_abbr, div1_full, div2_abbr, div2_full, conf, title) = match selected_wildcard {
         ConferenceFocus::Eastern => (
             eastern_wildcard_table_state,
             "A",
+            "Atlantic",
             "M",
+            "Metropolitan",
             "E",
             " Eastern Wildcard Standings ",
         ),
         ConferenceFocus::Western => (
             western_wildcard_table_state,
             "C",
+            "Central",
             "P",
+            "Pacific",
             "W",
             " Western Wildcard Standings ",
         ),
     };
-
+    let division_conference_rows_style = Style::default().fg(Color::Blue).add_modifier(Modifier::UNDERLINED);
     let mut rows = Vec::new();
+    rows.extend(vec![
+    Row::new(vec!["", div1_full])
+        .style(division_conference_rows_style),
+]);
     rows.extend(map_rows(
         teams,
-        |t| t.division_abbrev == div1,
+        |t| t.division_abbrev == div1_abbr,
         |t| t.division_sequence,
         Some(3),
     ));
+    rows.extend(vec![
+    Row::new(vec!["", div2_full])
+        .style(division_conference_rows_style),
+]);
     rows.extend(map_rows(
         teams,
-        |t| t.division_abbrev == div2,
+        |t| t.division_abbrev == div2_abbr,
         |t| t.division_sequence,
         Some(3),
     ));
+    rows.extend(vec![
+    Row::new(vec!["", "Wildcard"])
+        .style(division_conference_rows_style),
+]);
     rows.extend(map_rows(
         teams,
         |t| t.conference_abbrev == conf && t.wildcard_sequence != 0,
@@ -306,7 +322,7 @@ where
         .map(|team| {
             Row::new(vec![
                 sort_key(team).to_string(),
-                team.team_abbrev.default.clone(),
+                team.team_name.default.clone(),
                 team.games_played.to_string(),
                 team.wins.to_string(),
                 team.losses.to_string(),

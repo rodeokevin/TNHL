@@ -3,7 +3,7 @@ use ratatui::widgets::TableState;
 const LEAGUE_NUM_TEAMS: usize = 32;
 const CONFERENCE_NUM_TEAMS: usize = 16;
 const DIVISION_NUM_TEAMS: usize = 8;
-const WILDCARD_NUM_TEAMS: usize = 16;
+const WILDCARD_NUM_TEAMS: usize = 16 + 3; // + 3 for the division/conference rows
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum StandingsFocus {
