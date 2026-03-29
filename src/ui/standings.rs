@@ -9,6 +9,7 @@ use ratatui::{
     text::Line,
     widgets::{Block, Row, Table, TableState, Tabs},
 };
+use reqwest::Client;
 
 const STANDINGS_COLUMNS: [&str; 18] = [
     "#", "Team", "GP", "W", "L", "OT", "PTS", "P%", "RW", "ROW", "GF", "GA", "DIFF", "HOME",
@@ -224,32 +225,34 @@ fn render_wildcard_standings(
     teams: &StandingsResponse,
     border_style: Style,
 ) {
-    let (table_state, div1_abbr, div1_full, div2_abbr, div2_full, conf, title) = match selected_wildcard {
-        ConferenceFocus::Eastern => (
-            eastern_wildcard_table_state,
-            "A",
-            "Atlantic",
-            "M",
-            "Metropolitan",
-            "E",
-            " Eastern Wildcard Standings ",
-        ),
-        ConferenceFocus::Western => (
-            western_wildcard_table_state,
-            "C",
-            "Central",
-            "P",
-            "Pacific",
-            "W",
-            " Western Wildcard Standings ",
-        ),
-    };
-    let division_conference_rows_style = Style::default().fg(Color::Blue).add_modifier(Modifier::UNDERLINED);
+    let (table_state, div1_abbr, div1_full, div2_abbr, div2_full, conf, title) =
+        match selected_wildcard {
+            ConferenceFocus::Eastern => (
+                eastern_wildcard_table_state,
+                "A",
+                "Atlantic",
+                "M",
+                "Metropolitan",
+                "E",
+                " Eastern Wildcard Standings ",
+            ),
+            ConferenceFocus::Western => (
+                western_wildcard_table_state,
+                "C",
+                "Central",
+                "P",
+                "Pacific",
+                "W",
+                " Western Wildcard Standings ",
+            ),
+        };
+    let division_conference_rows_style = Style::default()
+        .fg(Color::Blue)
+        .add_modifier(Modifier::UNDERLINED);
     let mut rows = Vec::new();
     rows.extend(vec![
-    Row::new(vec!["", div1_full])
-        .style(division_conference_rows_style),
-]);
+        Row::new(vec!["", div1_full]).style(division_conference_rows_style),
+    ]);
     rows.extend(map_rows(
         teams,
         |t| t.division_abbrev == div1_abbr,
@@ -257,9 +260,8 @@ fn render_wildcard_standings(
         Some(3),
     ));
     rows.extend(vec![
-    Row::new(vec!["", div2_full])
-        .style(division_conference_rows_style),
-]);
+        Row::new(vec!["", div2_full]).style(division_conference_rows_style),
+    ]);
     rows.extend(map_rows(
         teams,
         |t| t.division_abbrev == div2_abbr,
@@ -267,9 +269,8 @@ fn render_wildcard_standings(
         Some(3),
     ));
     rows.extend(vec![
-    Row::new(vec!["", "Wildcard"])
-        .style(division_conference_rows_style),
-]);
+        Row::new(vec!["", "Wildcard"]).style(division_conference_rows_style),
+    ]);
     rows.extend(map_rows(
         teams,
         |t| t.conference_abbrev == conf && t.wildcard_sequence != 0,
@@ -320,9 +321,14 @@ where
         .into_iter()
         .take(n.unwrap_or(usize::MAX)) // take all entries if n is not specified
         .map(|team| {
+            let team_name = if let Some(indicator) = &team.clinch_indicator {
+                team.team_name.default.clone() + " - " + indicator
+            } else {
+                team.team_name.default.clone()
+            };
             Row::new(vec![
                 sort_key(team).to_string(),
-                team.team_name.default.clone(),
+                team_name,
                 team.games_played.to_string(),
                 team.wins.to_string(),
                 team.losses.to_string(),
