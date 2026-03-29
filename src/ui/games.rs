@@ -2,9 +2,12 @@ use crate::app::App;
 use crate::models::games::{
     GameData, GameState, GoalStrength, PeriodDescriptor, PeriodType, SituationDesc,
 };
-use crate::ui::PaneFocus;
+use crate::ui::{
+    BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR, PaneFocus, split_area_horizontal,
+    split_area_vertical,
+};
 use chrono_tz::Tz;
-use core::time;
+use std::rc::Rc;
 use std::vec;
 
 use ratatui::{
@@ -17,15 +20,17 @@ use ratatui::{
 
 use tui_big_text::{BigText, PixelSize};
 
+const MIDDLE_LENGTH: u16 = 10;
+
 pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
-    let tab_content_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
+    let tab_content_chunks = split_area_vertical(
+        area,
+        [
             Constraint::Length(3), // tabs
             Constraint::Min(1),    // table
-        ])
-        .split(area);
+        ],
+    );
 
     let matchups: Vec<Line> = app
         .state
@@ -49,10 +54,10 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     let focused = app.state.focus == PaneFocus::Content;
     let border_style = if focused {
         Style::default()
-            .fg(Color::Rgb(247, 194, 0))
+            .fg(BORDER_FOCUSED_COLOR)
             .add_modifier(Modifier::BOLD)
     } else {
-        Style::default().fg(Color::DarkGray)
+        Style::default().fg(BORDER_UNFOCUSED_COLOR)
     };
 
     let selected_color = Style::default()
@@ -77,28 +82,28 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let inner = block.inner(tab_content_chunks[1]);
 
-    let upper_score_lower = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
+    let upper_score_lower = split_area_vertical(
+        inner,
+        [
             Constraint::Length(5), // upper info
             Constraint::Length(4), // score (big text)
             Constraint::Fill(1),   // lower info
-        ])
-        .split(inner);
+        ],
+    );
 
     // Render game information
     if let Some(games_data) = &mut app.state.games_data {
         if let Some(game) = games_data.games.get(app.state.selected_game_index) {
             // Upper info
-            let upper_info_chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
+            let upper_info_chunks = split_area_vertical(
+                upper_score_lower[0],
+                [
                     Constraint::Length(1), // Time remaining
                     Constraint::Length(1), // Status bar
                     Constraint::Length(1), // Teams and strength status
                     Constraint::Length(1), // Shots on goal
-                ])
-                .split(upper_score_lower[0]);
+                ],
+            );
             render_time_remaining(game, app.settings.timezone, frame, upper_info_chunks[0]);
             render_sweeping_status(
                 game,
@@ -109,17 +114,10 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             );
             render_team_status(game, frame, upper_info_chunks[2]);
             render_shots_on_goal(game, frame, upper_info_chunks[3]);
-
-            // Score in big text
             render_big_score(game, frame, upper_score_lower[1]);
 
             // Lower info
-            let lower_info_chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Min(0), // Scoring
-                ])
-                .split(upper_score_lower[2]);
+            let lower_info_chunks = split_area_vertical(upper_score_lower[2], [Constraint::Min(0)]);
             render_scoring(
                 game,
                 frame,
@@ -146,14 +144,14 @@ pub fn render_time_remaining(game: &GameData, timezone: Tz, frame: &mut Frame, a
     if matches!(game.game_state, GameState::LIVE | GameState::CRIT) {
         if let Some(clock) = &game.clock {
             if !clock.in_intermission {
-                let chunks = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([
+                let chunks = split_area_horizontal(
+                    area,
+                    [
                         Constraint::Fill(1),
                         Constraint::Length(22),
                         Constraint::Fill(1),
-                    ])
-                    .split(area);
+                    ],
+                );
 
                 let time = Line::from(format!(
                     "{} - {}",
@@ -161,6 +159,7 @@ pub fn render_time_remaining(game: &GameData, timezone: Tz, frame: &mut Frame, a
                     clock.time_remaining,
                 ))
                 .alignment(Alignment::Center);
+
                 frame.render_widget(time, chunks[1]);
 
                 let spans: Vec<Span> = game
@@ -230,14 +229,7 @@ pub fn render_sweeping_status(
 ) {
     match game.game_state {
         GameState::LIVE | GameState::CRIT => {
-            let chunks = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([
-                    Constraint::Fill(1),
-                    Constraint::Length(10), // middle part to align with the time above
-                    Constraint::Fill(1),
-                ])
-                .split(area);
+            let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
             if let Some(clock) = &game.clock {
                 if clock.running {
                     let spans: Vec<_> = (0..width)
@@ -269,14 +261,7 @@ pub fn render_sweeping_status(
 }
 
 pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(1),    // Strength status if necessary
-            Constraint::Length(10), // middle
-            Constraint::Fill(1),    // Strength status if necessary
-        ])
-        .split(area);
+    let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
 
     let mut left_spans = vec![];
     let situation = game.situation.as_ref();
@@ -337,14 +322,7 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
 }
 
 pub fn render_big_score(game: &GameData, frame: &mut Frame, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(1),
-            Constraint::Length(10), // space for the "-"
-            Constraint::Fill(1),
-        ])
-        .split(area);
+    let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
 
     let away_score = BigText::builder()
         .pixel_size(PixelSize::Sextant)
@@ -376,14 +354,7 @@ pub fn render_big_score(game: &GameData, frame: &mut Frame, area: Rect) {
 }
 
 pub fn render_shots_on_goal(game: &GameData, frame: &mut Frame, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(1),
-            Constraint::Length(10),
-            Constraint::Fill(1),
-        ])
-        .split(area);
+    let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
     frame.render_widget(
         Line::from(format!("SOG: {}", game.away_team.sog.unwrap_or(0)))
             .style(Style::default().fg(Color::DarkGray))
@@ -507,14 +478,7 @@ pub fn render_scoring(
         );
 
         // Re-split the content area horizontally
-        let chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Fill(1),
-                Constraint::Length(14),
-                Constraint::Fill(1),
-            ])
-            .split(vert_chunks[1]);
+        let chunks = split_info_left_middle_right(vert_chunks[1], 14);
 
         frame.render_widget(Paragraph::new(visible_away), chunks[0]);
         frame.render_widget(Paragraph::new(visible_period), chunks[1]);
@@ -553,4 +517,16 @@ pub fn get_period_title(period: &PeriodDescriptor) -> String {
         PeriodType::SO => "Shootout".to_string(),
         _ => "Unknown Period".to_string(),
     }
+}
+
+// Helper to create the areas for left-center-right
+fn split_info_left_middle_right(area: Rect, middle_length: u16) -> Rc<[Rect]> {
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Fill(1),
+            Constraint::Length(middle_length),
+            Constraint::Fill(1),
+        ])
+        .split(area)
 }

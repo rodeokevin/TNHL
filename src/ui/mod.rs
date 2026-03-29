@@ -4,29 +4,25 @@ pub mod input_popup;
 pub mod layout;
 pub mod standings;
 
+use std::rc::Rc;
+
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::Line,
-    widgets::{Block, List, ListItem, ListState, Paragraph},
+    widgets::{Block, List, ListItem, ListState},
 };
 
 use crate::app::App;
 use crate::state::app_state::{MenuFocus, PaneFocus};
 use crate::ui::date_selector::DateSelectorWidget;
-use crate::ui::input_popup::{InputPopup, popup_cursor_position};
+use crate::ui::input_popup::popup_cursor_position;
 use crate::ui::layout::LayoutAreas;
 
-pub fn render(frame: &mut Frame, app: &mut App) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Min(1),    // main display area
-            Constraint::Length(3), // footer
-        ])
-        .split(frame.area());
+const BORDER_FOCUSED_COLOR: Color = Color::Rgb(247, 194, 0); // Orange-yellowish
+const BORDER_UNFOCUSED_COLOR: Color = Color::DarkGray;
 
+pub fn render(frame: &mut Frame, app: &mut App) {
     // Split main area into menu + main content
     let content_menu_chunks = Layout::default()
         .direction(Direction::Horizontal)
@@ -34,7 +30,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             Constraint::Percentage(15), // sidebar
             Constraint::Percentage(85), // content
         ])
-        .split(chunks[0]);
+        .split(frame.area());
     render_menu(frame, app, content_menu_chunks[0]);
 
     match app.state.selected_menu {
@@ -45,13 +41,6 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     if app.state.focus == PaneFocus::DatePicker {
         render_date_picker(frame, app, frame.area());
     }
-
-    // Render footer
-    let footer_block = Block::bordered();
-    let commands = Line::from("Quit [q]");
-    let footer = Paragraph::new(commands).block(footer_block);
-
-    frame.render_widget(footer, chunks[1]);
 }
 
 fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
@@ -91,4 +80,19 @@ fn render_date_picker(f: &mut Frame, app: &mut App, rect: Rect) {
 
     let (cx, cy) = popup_cursor_position(chunk, app.state.date_input.text.len() as u16);
     f.set_cursor_position((cx, cy));
+}
+
+pub fn split_area_horizontal(area: Rect, constraints: impl Into<Vec<Constraint>>) -> Vec<Rect> {
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(constraints.into())
+        .split(area)
+        .to_vec()
+}
+
+pub fn split_area_vertical(area: Rect, constraints: impl Into<Vec<Constraint>>) -> Rc<[Rect]> {
+    Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(constraints.into())
+        .split(area)
 }

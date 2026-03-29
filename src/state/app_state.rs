@@ -165,10 +165,20 @@ impl AppState {
                 self.date_input.text.push(c);
             }
             Action::MenuUp => {
+                let prev = self.selected_menu;
                 self.selected_menu = self.selected_menu.prev();
+                if prev != self.selected_menu {
+                    self.reset_games_selection_state();
+                    self.reset_standings_selection_state();
+                }
             }
             Action::MenuDown => {
+                let prev = self.selected_menu;
                 self.selected_menu = self.selected_menu.next();
+                if prev != self.selected_menu {
+                    self.reset_games_selection_state();
+                    self.reset_standings_selection_state();
+                }
             }
             Action::GamesScrollUp => {
                 self.scoring_scroll_offset = self.scoring_scroll_offset.saturating_sub(1);
@@ -235,7 +245,8 @@ impl AppState {
             .try_send(StandingsCommand::SetDate(date))
             .is_ok();
         if games_ok || standings_ok {
-            self.reset_state_after_date_change();
+            self.reset_games_selection_state();
+            self.reset_standings_selection_state();
         }
     }
     fn shift_game_index(&mut self, forward: bool) {
@@ -260,9 +271,11 @@ impl AppState {
         self.scoring_scroll_offset = 0;
         self.max_scoring_scroll = 0;
     }
-    fn reset_state_after_date_change(&mut self) {
-        self.standings = StandingsState::default();
+    fn reset_games_selection_state(&mut self) {
         self.selected_game_index = 0;
         self.reset_scoring_scroll();
+    }
+    fn reset_standings_selection_state(&mut self) {
+        self.standings = StandingsState::default();
     }
 }
