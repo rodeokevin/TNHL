@@ -50,6 +50,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 .collect()
         })
         .unwrap_or_default();
+    let num_matchups = matchups.len();
 
     let focused = app.state.focus == PaneFocus::Content;
     let border_style = if focused {
@@ -64,16 +65,26 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(Modifier::BOLD)
         .add_modifier(Modifier::UNDERLINED);
 
-    let tabs = Tabs::new(matchups)
-        .select(app.state.selected_game_index)
-        .block(
-            Block::bordered()
-                .border_style(border_style)
-                .title(app.state.date_selector.format_date_border_title()),
-        )
-        .highlight_style(selected_color);
-
-    frame.render_widget(tabs, tab_content_chunks[0]);
+    if num_matchups == 0 && !app.state.games_data.is_none() {
+        let tabs = Tabs::new(vec!["No games today :("])
+            .block(
+                Block::bordered()
+                    .border_style(border_style)
+                    .title(app.state.date_selector.format_date_border_title()),
+            )
+            .highlight_style(Style::default().add_modifier(Modifier::BOLD));
+        frame.render_widget(tabs, tab_content_chunks[0]);
+    } else {
+        let tabs = Tabs::new(matchups)
+            .select(app.state.selected_game_index)
+            .block(
+                Block::bordered()
+                    .border_style(border_style)
+                    .title(app.state.date_selector.format_date_border_title()),
+            )
+            .highlight_style(selected_color);
+        frame.render_widget(tabs, tab_content_chunks[0]);
+    }
 
     let block = Block::bordered()
         .title(" Overview ")
@@ -127,7 +138,9 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             );
         }
     } else {
-        // Todo: no data
+        let error_paragraph =
+            Paragraph::new(Line::from("Error loading data :(").alignment(Alignment::Center));
+        frame.render_widget(error_paragraph, inner);
     }
 }
 
@@ -214,7 +227,10 @@ pub fn render_time_remaining(game: &GameData, timezone: Tz, frame: &mut Frame, a
                 PeriodType::SO => Line::from("Final/SO"),
             }
         }
-        GameState::Unknown => Line::from("Unknown game state"),
+        GameState::Unknown => {
+            log::info!("Unknown game state");
+            Line::from("")
+        }
     };
 
     frame.render_widget(line.alignment(Alignment::Center), area);

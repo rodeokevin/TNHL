@@ -9,7 +9,6 @@ use ratatui::{
     text::Line,
     widgets::{Block, Row, Table, TableState, Tabs},
 };
-use reqwest::Client;
 
 const STANDINGS_COLUMNS: [&str; 18] = [
     "#", "Team", "GP", "W", "L", "OT", "PTS", "P%", "RW", "ROW", "GF", "GA", "DIFF", "HOME",
@@ -18,18 +17,18 @@ const STANDINGS_COLUMNS: [&str; 18] = [
 
 const STANDINGS_COLUMN_WIDTHS: [Constraint; 18] = [
     Constraint::Length(3),
-    Constraint::Length(25),
+    Constraint::Min(23),
+    Constraint::Length(4),
+    Constraint::Length(4),
+    Constraint::Length(4),
+    Constraint::Length(4),
+    Constraint::Length(5),
+    Constraint::Length(7),
+    Constraint::Length(4),
+    Constraint::Length(4),
     Constraint::Length(5),
     Constraint::Length(5),
     Constraint::Length(5),
-    Constraint::Length(5),
-    Constraint::Length(6),
-    Constraint::Length(8),
-    Constraint::Length(5),
-    Constraint::Length(5),
-    Constraint::Length(6),
-    Constraint::Length(6),
-    Constraint::Length(6),
     Constraint::Length(11),
     Constraint::Length(11),
     Constraint::Length(6),

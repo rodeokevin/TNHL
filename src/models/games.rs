@@ -3,7 +3,7 @@ use chrono_tz::Tz;
 use serde::Deserialize;
 use std::fmt;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct GamesResponse {
     pub games: Vec<GameData>,
 }
@@ -24,7 +24,8 @@ pub struct GameData {
     pub game_state: GameState,
     pub away_team: Team,
     pub home_team: Team,
-    pub period: Option<u32>,
+    #[serde(default)]
+    pub period: usize,
     pub clock: Option<Clock>,
     pub period_descriptor: Option<PeriodDescriptor>, // If the game is not live, there is no PeriodDescriptor
     pub situation: Option<GameSituation>,
@@ -38,7 +39,7 @@ impl GameData {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Venue {
     pub default: String,
 }
@@ -82,8 +83,8 @@ pub struct TeamName {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Clock {
+    #[serde(default)]
     pub time_remaining: String,
-    pub seconds_remaining: u32,
     pub running: bool,
     pub in_intermission: bool,
 }
@@ -94,7 +95,6 @@ pub struct PeriodDescriptor {
     pub number: u32,
     pub period_type: PeriodType,
     pub ot_periods: Option<u32>,
-    pub max_regulation_periods: u32,
 }
 
 #[derive(Deserialize, Debug)]
