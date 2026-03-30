@@ -1,4 +1,5 @@
 mod app;
+mod banner;
 mod config;
 mod input;
 mod models;

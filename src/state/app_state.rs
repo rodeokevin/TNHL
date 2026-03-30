@@ -8,6 +8,7 @@ use crate::sources::games::GamesCommand;
 use crate::sources::standings::StandingsCommand;
 use crate::state::date_input::DateInput;
 use crate::state::date_selector::DateSelector;
+use crate::state::help::HelpState;
 use crate::state::standings_state::StandingsState;
 use chrono::{NaiveDate, ParseError};
 use chrono_tz::Tz;
@@ -20,6 +21,7 @@ pub enum PaneFocus {
     Menu,
     Content,
     DatePicker,
+    Help,
 }
 
 impl PaneFocus {
@@ -27,7 +29,7 @@ impl PaneFocus {
         match self {
             PaneFocus::Menu => PaneFocus::Content,
             PaneFocus::Content => PaneFocus::Menu,
-            PaneFocus::DatePicker => PaneFocus::DatePicker,
+            _ => self
         }
     }
 }
@@ -83,6 +85,8 @@ pub struct AppState {
     pub scoring_scroll_offset: usize,
     pub max_scoring_scroll: usize,
 
+    pub help: HelpState,
+
     pub focus: PaneFocus,
     pub previous_focus: PaneFocus,
     pub should_quit: bool,
@@ -107,6 +111,8 @@ impl AppState {
             sweeping_status_offset: 0,
             scoring_scroll_offset: 0,
             max_scoring_scroll: 0,
+
+            help: HelpState::default(),
 
             focus: PaneFocus::default(),
             previous_focus: PaneFocus::default(),
@@ -155,11 +161,6 @@ impl AppState {
                 self.previous_focus = self.focus;
                 self.focus = self.focus.switch();
             }
-            Action::EnterDatePicker => {
-                self.previous_focus = self.focus;
-                self.focus = PaneFocus::DatePicker;
-                self.date_input.text.clear();
-            }
             Action::InputChar(c) => {
                 self.date_input.is_valid = true; // reset status
                 self.date_input.text.push(c);
@@ -198,7 +199,12 @@ impl AppState {
             Action::StandingsRight => self.standings.shift_standings_type(true),
             Action::PrevStandingsType => self.standings.cycle_focus(false),
             Action::NextStandingsType => self.standings.cycle_focus(true),
-
+            
+            Action::EnterDatePicker => {
+                self.previous_focus = self.focus;
+                self.focus = PaneFocus::DatePicker;
+                self.date_input.text.clear();
+            }
             Action::DateLeft => self.move_date_selector_by_arrow(false),
             Action::DateRight => self.move_date_selector_by_arrow(true),
             Action::DateBackspace => {
@@ -214,6 +220,16 @@ impl AppState {
                     self.focus = self.previous_focus;
                 }
             }
+            
+            Action::EnterHelp => {
+                self.previous_focus = self.focus;
+                self.focus = PaneFocus::Help;
+            }
+            Action::HelpScrollUp => self.help.previous(),
+            Action::HelpScrollDown => self.help.next(),
+            Action::HelpPageUp => self.help.page_up(),
+            Action::HelpPageDown => self.help.page_down(),
+            Action::ExitHelp => self.focus = self.previous_focus,
 
             Action::None => {}
         }

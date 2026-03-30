@@ -115,7 +115,13 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                     Constraint::Length(1), // Shots on goal
                 ],
             );
-            render_time_remaining(game, app.settings.timezone, &app.settings.timezone_abbreviation, frame, upper_info_chunks[0]);
+            render_time_remaining(
+                game,
+                app.settings.timezone,
+                &app.settings.timezone_abbreviation,
+                frame,
+                upper_info_chunks[0],
+            );
             render_sweeping_status(
                 game,
                 10,
@@ -152,7 +158,13 @@ pub fn get_color_from_game_state(state: &GameState) -> Style {
     }
 }
 
-pub fn render_time_remaining(game: &GameData, timezone: Tz, timezone_abbr: &str, frame: &mut Frame, area: Rect) {
+pub fn render_time_remaining(
+    game: &GameData,
+    timezone: Tz,
+    timezone_abbr: &str,
+    frame: &mut Frame,
+    area: Rect,
+) {
     // Not in intermission
     if matches!(game.game_state, GameState::LIVE | GameState::CRIT) {
         if let Some(clock) = &game.clock {
@@ -199,7 +211,10 @@ pub fn render_time_remaining(game: &GameData, timezone: Tz, timezone_abbr: &str,
             "{}",
             game.compute_local_time(timezone)
                 .format("%-I:%M %p")
-                .to_string() + " " + timezone_abbr)),
+                .to_string()
+                + " "
+                + timezone_abbr
+        )),
         GameState::LIVE | GameState::CRIT => {
             // in intermission or clock is None
             match game.clock.as_ref() {
