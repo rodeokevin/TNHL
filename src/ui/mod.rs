@@ -100,7 +100,9 @@ fn render_help(frame: &mut Frame, area: Rect, app: &mut App) {
     //     return;
     // }
 
-    let block = Block::bordered().title(" Help ").border_style(Style::default().fg(BORDER_FOCUSED_COLOR));
+    let block = Block::bordered()
+        .title(" Help ")
+        .border_style(Style::default().fg(BORDER_FOCUSED_COLOR));
     frame.render_widget(block, area);
 
     frame.render_stateful_widget(HelpWidget {}, area, &mut app.state.help.state);

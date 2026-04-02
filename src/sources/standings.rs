@@ -31,6 +31,7 @@ impl StandingsSource {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
                     let _ = tx.send(AppEvent::StandingsUpdate(body)).await;
+                    log::info!("Sending standings data to app");
                 }
             }
             Err(err) => {

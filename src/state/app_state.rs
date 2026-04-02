@@ -1,15 +1,12 @@
 use std::fmt::Debug;
 
 use crate::input::{Action, map_key};
-use crate::models::games::GamesResponse;
-use crate::models::standings::StandingsResponse;
-use crate::sources::AppEvent;
-use crate::sources::games::GamesCommand;
-use crate::sources::standings::StandingsCommand;
-use crate::state::date_input::DateInput;
-use crate::state::date_selector::DateSelector;
-use crate::state::help::HelpState;
-use crate::state::standings_state::StandingsState;
+use crate::models::{games::GamesResponse, standings::StandingsResponse};
+use crate::sources::{AppEvent, games::GamesCommand, standings::StandingsCommand};
+use crate::state::{
+    date_input::DateInput, date_selector::DateSelector, games_state::GamesState, help::HelpState,
+    standings_state::StandingsState,
+};
 use chrono::{NaiveDate, ParseError};
 use chrono_tz::Tz;
 use tokio::sync::mpsc::Sender;
@@ -29,7 +26,7 @@ impl PaneFocus {
         match self {
             PaneFocus::Menu => PaneFocus::Content,
             PaneFocus::Content => PaneFocus::Menu,
-            _ => self
+            _ => self,
         }
     }
 }
@@ -77,13 +74,7 @@ pub struct AppState {
 
     pub selected_menu: MenuFocus,
     pub standings: StandingsState,
-    pub league_data: Option<StandingsResponse>,
-
-    pub games_data: Option<GamesResponse>,
-    pub selected_game_index: usize,
-    pub sweeping_status_offset: usize, // For the --- under the time remaining
-    pub scoring_scroll_offset: usize,
-    pub max_scoring_scroll: usize,
+    pub games: GamesState,
 
     pub help: HelpState,
 
@@ -103,14 +94,8 @@ impl AppState {
             standings_tx,
 
             selected_menu: MenuFocus::default(),
-            standings: StandingsState::default(),
-            league_data: None,
-
-            games_data: None,
-            selected_game_index: 0,
-            sweeping_status_offset: 0,
-            scoring_scroll_offset: 0,
-            max_scoring_scroll: 0,
+            standings: StandingsState::default(), // all state related to standings
+            games: GamesState::default(), // all state related to games
 
             help: HelpState::default(),
 
@@ -128,7 +113,10 @@ impl AppState {
             AppEvent::StandingsUpdate(data) => {
                 log::info!("Updating standings data");
                 match StandingsResponse::from_json(&data) {
-                    Ok(parsed_standings) => self.league_data = Some(parsed_standings),
+                    Ok(parsed_standings) => {
+                        log::info!("Standings data successfully parsed!");
+                        self.standings.standings_data = Some(parsed_standings);
+                    }
                     Err(e) => log::error!("Failed to parse standings: {}", e),
                 }
             }
@@ -136,7 +124,7 @@ impl AppState {
                 log::info!("Updating games data");
                 match GamesResponse::from_json(&data) {
                     Ok(parsed_games) => {
-                        self.games_data = Some(parsed_games);
+                        self.games.games_data = Some(parsed_games);
                     }
                     Err(e) => log::error!("Failed to parse games: {}", e),
                 }
@@ -147,7 +135,8 @@ impl AppState {
                 self.handle_action(action);
             }
             AppEvent::Tick => {
-                self.sweeping_status_offset = self.sweeping_status_offset.wrapping_add(1);
+                self.games.sweeping_status_offset =
+                    self.games.sweeping_status_offset.wrapping_add(1);
             }
         }
     }
@@ -182,13 +171,15 @@ impl AppState {
                 }
             }
             Action::GamesScrollUp => {
-                self.scoring_scroll_offset = self.scoring_scroll_offset.saturating_sub(1);
+                self.games.scoring_scroll_offset =
+                    self.games.scoring_scroll_offset.saturating_sub(1);
             }
             Action::GamesScrollDown => {
-                self.scoring_scroll_offset = self
+                self.games.scoring_scroll_offset = self
+                    .games
                     .scoring_scroll_offset
                     .saturating_add(1)
-                    .min(self.max_scoring_scroll);
+                    .min(self.games.max_scoring_scroll);
             }
             Action::PrevGame => self.shift_game_index(false),
             Action::NextGame => self.shift_game_index(true),
@@ -199,7 +190,7 @@ impl AppState {
             Action::StandingsRight => self.standings.shift_standings_type(true),
             Action::PrevStandingsType => self.standings.cycle_focus(false),
             Action::NextStandingsType => self.standings.cycle_focus(true),
-            
+
             Action::EnterDatePicker => {
                 self.previous_focus = self.focus;
                 self.focus = PaneFocus::DatePicker;
@@ -220,7 +211,7 @@ impl AppState {
                     self.focus = self.previous_focus;
                 }
             }
-            
+
             Action::EnterHelp => {
                 self.previous_focus = self.focus;
                 self.focus = PaneFocus::Help;
@@ -266,14 +257,15 @@ impl AppState {
         }
     }
     fn shift_game_index(&mut self, forward: bool) {
-        let prev = self.selected_game_index;
+        let prev = self.games.selected_game_index;
         if forward {
-            let max_index = self.games_data.as_ref().map_or(0, |d| d.games.len());
-            self.selected_game_index = self.next_index(self.selected_game_index, max_index);
+            let max_index = self.games.games_data.as_ref().map_or(0, |d| d.games.len());
+            self.games.selected_game_index =
+                self.next_index(self.games.selected_game_index, max_index);
         } else {
-            self.selected_game_index = self.prev_index(self.selected_game_index);
+            self.games.selected_game_index = self.prev_index(self.games.selected_game_index);
         }
-        if self.selected_game_index != prev {
+        if self.games.selected_game_index != prev {
             self.reset_scoring_scroll();
         }
     }
@@ -284,14 +276,14 @@ impl AppState {
         (index + 1).min(max_index.saturating_sub(1))
     }
     fn reset_scoring_scroll(&mut self) {
-        self.scoring_scroll_offset = 0;
-        self.max_scoring_scroll = 0;
+        self.games.scoring_scroll_offset = 0;
+        self.games.max_scoring_scroll = 0;
     }
     fn reset_games_selection_state(&mut self) {
-        self.selected_game_index = 0;
+        self.games.selected_game_index = 0;
         self.reset_scoring_scroll();
     }
     fn reset_standings_selection_state(&mut self) {
-        self.standings = StandingsState::default();
+        self.standings.reset_selections();
     }
 }

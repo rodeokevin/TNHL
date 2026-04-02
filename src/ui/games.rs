@@ -34,6 +34,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let matchups: Vec<Line> = app
         .state
+        .games
         .games_data
         .as_ref()
         .map(|data| {
@@ -65,7 +66,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(Modifier::BOLD)
         .add_modifier(Modifier::UNDERLINED);
 
-    if num_matchups == 0 && !app.state.games_data.is_none() {
+    if num_matchups == 0 && !app.state.games.games_data.is_none() {
         let tabs = Tabs::new(vec!["No games today :("])
             .block(
                 Block::bordered()
@@ -76,7 +77,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         frame.render_widget(tabs, tab_content_chunks[0]);
     } else {
         let tabs = Tabs::new(matchups)
-            .select(app.state.selected_game_index)
+            .select(app.state.games.selected_game_index)
             .block(
                 Block::bordered()
                     .border_style(border_style)
@@ -103,8 +104,8 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     );
 
     // Render game information
-    if let Some(games_data) = &mut app.state.games_data {
-        if let Some(game) = games_data.games.get(app.state.selected_game_index) {
+    if let Some(games_data) = &mut app.state.games.games_data {
+        if let Some(game) = games_data.games.get(app.state.games.selected_game_index) {
             // Upper info
             let upper_info_chunks = split_area_vertical(
                 upper_score_lower[0],
@@ -125,7 +126,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             render_sweeping_status(
                 game,
                 10,
-                app.state.sweeping_status_offset,
+                app.state.games.sweeping_status_offset,
                 frame,
                 upper_info_chunks[1],
             );
@@ -139,8 +140,8 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 game,
                 frame,
                 lower_info_chunks[0],
-                app.state.scoring_scroll_offset,
-                &mut app.state.max_scoring_scroll,
+                app.state.games.scoring_scroll_offset,
+                &mut app.state.games.max_scoring_scroll,
             );
         }
     } else {
@@ -412,7 +413,7 @@ pub fn render_scoring(
     if let Some(goals) = &game.goals
         && !goals.is_empty()
     {
-        let mut away_lines = vec![Line::from("Scoring").style(Style::default().fg(Color::Blue))];
+        let mut away_lines = vec![Line::from("Scoring").style(Style::default().fg(BORDER_FOCUSED_COLOR))];
         let mut home_lines = vec![Line::from("")];
         let mut period_lines = vec![];
         let mut current_period = 0;
@@ -427,7 +428,7 @@ pub fn render_scoring(
                 period_lines.push(
                     Line::from(get_period_title(&goal.period_descriptor))
                         .alignment(Alignment::Center)
-                        .style(Style::default().fg(Color::Blue)),
+                        .style(Style::default().fg(BORDER_FOCUSED_COLOR)),
                 );
             }
             let goals_to_date = goal
@@ -518,7 +519,7 @@ pub fn render_scoring(
         frame.render_widget(
             Paragraph::new("\nScoring")
                 .alignment(Alignment::Left)
-                .style(Style::default().fg(Color::Blue)),
+                .style(Style::default().fg(BORDER_FOCUSED_COLOR)),
             area,
         );
         frame.render_widget(

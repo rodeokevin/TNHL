@@ -1,5 +1,7 @@
 use ratatui::widgets::TableState;
 
+use crate::models::standings::StandingsResponse;
+
 const LEAGUE_NUM_TEAMS: usize = 32;
 const CONFERENCE_NUM_TEAMS: usize = 16;
 const DIVISION_NUM_TEAMS: usize = 8;
@@ -80,6 +82,7 @@ impl DivisionFocus {
 }
 
 pub struct StandingsState {
+    pub standings_data: Option<StandingsResponse>,
     pub focus: StandingsFocus,
 
     pub selected_conference: ConferenceFocus,
@@ -108,6 +111,8 @@ impl Default for StandingsState {
         }
 
         Self {
+            standings_data: None,
+
             focus: StandingsFocus::default(),
 
             selected_conference: ConferenceFocus::default(),
@@ -193,5 +198,26 @@ impl StandingsState {
             StandingsFocus::WildCard => self.selected_wildcard = self.selected_wildcard.toggle(),
             StandingsFocus::League => {}
         }
+    }
+
+    pub fn reset_selections(&mut self) {
+        self.focus = StandingsFocus::default();
+
+        self.selected_conference = ConferenceFocus::default();
+        self.eastern_table_state.select(Some(0));
+        self.western_table_state.select(Some(0));
+
+        self.selected_division = DivisionFocus::default();
+        self.atlantic_table_state.select(Some(0));
+        self.metropolitan_table_state.select(Some(0));
+        self.central_table_state.select(Some(0));
+        self.pacific_table_state.select(Some(0));
+
+        self.selected_wildcard = ConferenceFocus::default();
+        self.eastern_wildcard_table_state.select(Some(0));
+        self.western_wildcard_table_state.select(Some(0));
+
+        self.league_table_state.select(Some(0));
+
     }
 }

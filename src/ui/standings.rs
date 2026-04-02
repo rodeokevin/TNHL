@@ -1,7 +1,9 @@
 use crate::app::App;
 use crate::state::app_state::PaneFocus;
 use crate::state::standings_state::{ConferenceFocus, DivisionFocus, StandingsFocus};
+use crate::ui::BORDER_FOCUSED_COLOR;
 
+use ratatui::widgets::Paragraph;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -91,7 +93,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
 
     frame.render_widget(tabs, tab_content_chunks[0]);
 
-    if let Some(data) = &app.state.league_data {
+    if let Some(data) = &app.state.standings.standings_data {
         match app.state.standings.focus {
             StandingsFocus::WildCard => {
                 render_wildcard_standings(
@@ -139,7 +141,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
             }
         };
     } else {
-        // Todo: no data
+        frame.render_widget(Paragraph::new(Line::from("No data yet")), area);
     }
 }
 
@@ -246,7 +248,7 @@ fn render_wildcard_standings(
             ),
         };
     let division_conference_rows_style = Style::default()
-        .fg(Color::Blue)
+        .fg(BORDER_FOCUSED_COLOR)
         .add_modifier(Modifier::UNDERLINED);
     let mut rows = Vec::new();
     rows.extend(vec![

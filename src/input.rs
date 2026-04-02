@@ -100,12 +100,24 @@ pub fn map_key(key_event: KeyEvent, focus: PaneFocus, menu: MenuFocus) -> Action
         // }
 
         // In standings content pane
-        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Up | KeyCode::Char('k'), _) => Action::StandingsUp,
-        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Down | KeyCode::Char('j'), _) => Action::StandingsDown,
-        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Left | KeyCode::Char('h'), _) => Action::StandingsLeft,
-        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Right | KeyCode::Char('l'), _) => Action::StandingsRight,
-        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Char('<'), _) => Action::PrevStandingsType,
-        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Char('>'), _) => Action::NextStandingsType,
+        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Up | KeyCode::Char('k'), _) => {
+            Action::StandingsUp
+        }
+        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Down | KeyCode::Char('j'), _) => {
+            Action::StandingsDown
+        }
+        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Left | KeyCode::Char('h'), _) => {
+            Action::StandingsLeft
+        }
+        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Right | KeyCode::Char('l'), _) => {
+            Action::StandingsRight
+        }
+        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Char('<'), _) => {
+            Action::PrevStandingsType
+        }
+        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Char('>'), _) => {
+            Action::NextStandingsType
+        }
 
         // In date picker
         (PaneFocus::DatePicker, _, KeyCode::Enter, _) => Action::UpdateDate,
@@ -115,8 +127,10 @@ pub fn map_key(key_event: KeyEvent, focus: PaneFocus, menu: MenuFocus) -> Action
         (PaneFocus::DatePicker, _, KeyCode::Esc, _) => Action::ExitDatePicker,
 
         // In help page
-        (PaneFocus::Help, _, Char('K'), _) | (PaneFocus::Help, _, KeyCode::Up, KeyModifiers::SHIFT) => Action::HelpPageUp,
-        (PaneFocus::Help, _, Char('J'), _) | (PaneFocus::Help, _, KeyCode::Down, KeyModifiers::SHIFT) => Action::HelpPageDown,
+        (PaneFocus::Help, _, Char('K'), _)
+        | (PaneFocus::Help, _, KeyCode::Up, KeyModifiers::SHIFT) => Action::HelpPageUp,
+        (PaneFocus::Help, _, Char('J'), _)
+        | (PaneFocus::Help, _, KeyCode::Down, KeyModifiers::SHIFT) => Action::HelpPageDown,
         (PaneFocus::Help, _, KeyCode::Up | KeyCode::Char('k'), _) => Action::HelpScrollUp,
         (PaneFocus::Help, _, KeyCode::Down | KeyCode::Char('j'), _) => Action::HelpScrollDown,
         (PaneFocus::Help, _, KeyCode::Esc, _) => Action::ExitHelp,
