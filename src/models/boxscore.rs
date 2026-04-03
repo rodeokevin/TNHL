@@ -1,9 +1,9 @@
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BoxscoreResponse {
-    pub player_by_game_stats: PlayerByGameStats,
+    pub player_by_game_stats: Option<PlayerByGameStats>,
 }
 
 impl BoxscoreResponse {
@@ -12,70 +12,71 @@ impl BoxscoreResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerByGameStats {
-    pub away_team: Team,
-    pub home_team: Team,
+    pub away_team: TeamData,
+    pub home_team: TeamData,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Team {
-    forwards: Vec<Skater>,
-    defense: Vec<Skater>,
-    goalies: Vec<Goalie>,
+#[derive(Debug, Clone, Deserialize)]
+pub struct TeamData {
+    pub forwards: Vec<Skater>,
+    pub defense: Vec<Skater>,
+    pub goalies: Vec<Goalie>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Skater {
-    player_id: u32,
-    sweater_number: u8,
-    name: PlayerName,
-    position: Position,
-    goals: u8,
-    assists: u8,
-    points: u8,
-    plus_minus: i8,
-    pim: u8,
-    hits: u8,
-    power_play_goals: u8,
-    sog: u8,
-    faceoff_winning_pctg: Option<f32>,
-    toi: String,
-    blocked_shots: u8,
-    shifts: u8,
-    giveaways: u8,
-    takeaways: u8,
+    pub player_id: u32,
+    pub sweater_number: u8,
+    pub name: PlayerName,
+    pub position: Position,
+    pub goals: u8,
+    pub assists: u8,
+    pub points: u8,
+    pub plus_minus: i8,
+    pub pim: u8,
+    pub hits: u8,
+    pub power_play_goals: u8,
+    pub sog: u8,
+    pub faceoff_winning_pctg: Option<f32>,
+    pub toi: String,
+    pub blocked_shots: u8,
+    pub shifts: u8,
+    pub giveaways: u8,
+    pub takeaways: u8,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Goalie {
-    plyer_id: u32,
-    sweater_number: u8,
-    name: PlayerName,
-    position: Position,
-    even_strength_shots_against: String,
-    power_play_shots_against: String,
-    shorthanded_shots_against: String,
-    save_shots_against: String,
-    save_pctg: f32,
-    even_strength_goals_against: u8,
-    power_play_goals_against: u8,
-    shorthanded_goals_against: u8,
-    goals_against: u8,
-    toi: String,
-    shots_against: u16,
-    saves: u16,
+    pub player_id: u32,
+    pub sweater_number: u8,
+    pub pim: u8,
+    pub name: PlayerName,
+    pub position: Position,
+    pub even_strength_shots_against: String,
+    pub power_play_shots_against: String,
+    pub shorthanded_shots_against: String,
+    pub save_shots_against: String,
+    pub save_pctg: Option<f32>,
+    pub even_strength_goals_against: u8,
+    pub power_play_goals_against: u8,
+    pub shorthanded_goals_against: u8,
+    pub goals_against: u8,
+    pub toi: String,
+    pub shots_against: u16,
+    pub saves: u16,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct PlayerName {
-    default: String,
+    pub default: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum Position {
     #[serde(rename = "L")]
     LeftWing,

@@ -16,8 +16,8 @@ use ratatui::{
 
 use crate::app::App;
 use crate::state::app_state::{MenuFocus, PaneFocus};
-use crate::ui::games::overview;
 use crate::ui::date_selector::DateSelectorWidget;
+use crate::ui::games::overview;
 use crate::ui::help::HelpWidget;
 use crate::ui::input_popup::popup_cursor_position;
 use crate::ui::layout::LayoutAreas;

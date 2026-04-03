@@ -45,6 +45,8 @@ impl StandingsSource {
 impl Source for StandingsSource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
         let mut interval = tokio::time::interval(Duration::from_secs(30));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
         loop {
             tokio::select! {
                 _ = cancel.cancelled() => break,
@@ -53,6 +55,7 @@ impl Source for StandingsSource {
                         StandingsCommand::SetDate(date) => {
                             self.current_date = date;
                             self.fetch(&tx).await;
+                            interval.reset();
                         }
                     }
                 },

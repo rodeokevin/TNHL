@@ -1,38 +1,45 @@
-use tokio::sync::mpsc::Receiver;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
 
 pub enum BoxscoreCommand {
-    SetGameId(u32),
+    SetGameIds(Vec<u32>),
 }
 
 pub struct BoxscoreSource {
     rx: Receiver<BoxscoreCommand>,
-    game_id: Option<u32>,
+    game_ids: Vec<u32>,
 }
+
 impl BoxscoreSource {
     pub fn new(rx: Receiver<BoxscoreCommand>) -> Self {
         Self {
             rx,
-            game_id: None,
+            game_ids: Vec::new(),
         }
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
-        if let Some(id) = self.game_id {
-            let url = format!("https://api-web.nhle.com/v1/gamecenter/{}/boxscore", id);
+        if !self.game_ids.is_empty() {
+            for &id in &self.game_ids {
+                let url = format!("https://api-web.nhle.com/v1/gamecenter/{}/boxscore", id);
 
-            match reqwest::get(&url).await {
-                Ok(resp) => {
-                    if let Ok(body) = resp.text().await {
-                        let _ = tx.send(AppEvent::BoxscoreUpdate(body)).await;
+                match reqwest::get(&url).await {
+                    Ok(resp) => {
+                        if let Ok(body) = resp.text().await {
+                            let _ = tx
+                                .send(AppEvent::BoxscoreUpdate {
+                                    game_id: id,
+                                    data: body,
+                                })
+                                .await;
+                        }
                     }
-                }
-                Err(err) => {
-                    log::info!("Failed to fetch boxscore: {}", err);
+                    Err(err) => {
+                        log::info!("Failed to fetch boxscore for game id {}: {}", id, err);
+                    }
                 }
             }
         }
@@ -42,7 +49,8 @@ impl BoxscoreSource {
 #[async_trait::async_trait]
 impl Source for BoxscoreSource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
-        let mut interval = tokio::time::interval(Duration::from_secs(10));
+        let mut interval = tokio::time::interval(Duration::from_secs(30));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
             tokio::select! {
@@ -50,13 +58,19 @@ impl Source for BoxscoreSource {
 
                 Some(cmd) = self.rx.recv() => {
                     match cmd {
-                        BoxscoreCommand::SetGameId(id) => {
-                            self.game_id = Some(id);
-                            self.fetch(&tx).await;
+                        BoxscoreCommand::SetGameIds(mut ids) => {
+                            ids.sort();
+                            let mut current = self.game_ids.clone();
+                            current.sort();
+                            // Only fetch if game ids changed since this command is called on every GamesUpdate event
+                            if ids != current {
+                                self.game_ids = ids;
+                                self.fetch(&tx).await;
+                                interval.reset();
+                            }
                         }
                     }
                 },
-
                 _ = interval.tick() => {
                     self.fetch(&tx).await;
                 }

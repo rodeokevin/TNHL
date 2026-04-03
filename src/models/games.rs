@@ -71,8 +71,8 @@ pub struct Team {
     pub id: u32,
     pub name: TeamName,
     pub abbrev: String,
-    pub score: Option<u32>,
-    pub sog: Option<u32>,
+    pub score: Option<u8>,
+    pub sog: Option<u16>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -92,7 +92,7 @@ pub struct Clock {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PeriodDescriptor {
-    pub number: u32,
+    pub number: u8,
     pub period_type: PeriodType,
     pub ot_periods: Option<u8>,
 }
@@ -133,7 +133,7 @@ pub struct GoalData {
     pub goal_modifier: GoalModifier,
     pub assists: Vec<AssistInfo>,
     pub team_abbrev: String,
-    pub goals_to_date: Option<u32>,
+    pub goals_to_date: Option<u16>,
     pub strength: GoalStrength,
 }
 
@@ -180,5 +180,5 @@ pub enum GoalStrength {
 #[serde(rename_all = "camelCase")]
 pub struct GameOutcome {
     pub last_period_type: PeriodType,
-    pub ot_periods: Option<u32>,
+    pub ot_periods: Option<u8>,
 }

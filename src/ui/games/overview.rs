@@ -2,6 +2,7 @@ use crate::app::App;
 use crate::models::games::{
     GameData, GameState, GoalStrength, PeriodDescriptor, PeriodType, SituationDesc,
 };
+use crate::state::boxscore_state::BoxscoreState;
 use crate::ui::{
     BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR, PaneFocus, split_area_horizontal,
     split_area_vertical,
@@ -136,8 +137,9 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
 
             // Lower info
             let lower_info_chunks = split_area_vertical(upper_score_lower[2], [Constraint::Min(0)]);
-            render_scoring(
+            render_scoring_and_stats(
                 game,
+                &app.state.boxscore,
                 frame,
                 lower_info_chunks[0],
                 app.state.games.scoring_scroll_offset,
@@ -400,8 +402,9 @@ pub fn render_shots_on_goal(game: &GameData, frame: &mut Frame, area: Rect) {
     );
 }
 
-pub fn render_scoring(
+pub fn render_scoring_and_stats(
     game: &GameData,
+    boxscore: &BoxscoreState,
     frame: &mut Frame,
     area: Rect,
     scroll_offset: usize,
@@ -413,7 +416,8 @@ pub fn render_scoring(
     if let Some(goals) = &game.goals
         && !goals.is_empty()
     {
-        let mut away_lines = vec![Line::from("Scoring").style(Style::default().fg(BORDER_FOCUSED_COLOR))];
+        let mut away_lines =
+            vec![Line::from("Scoring").style(Style::default().fg(BORDER_FOCUSED_COLOR))];
         let mut home_lines = vec![Line::from("")];
         let mut period_lines = vec![];
         let mut current_period = 0;
@@ -422,7 +426,7 @@ pub fn render_scoring(
             if goal.period_descriptor.number > current_period {
                 if current_period != 0 {
                     away_lines.push(Line::from("")); // keep rows synced
-                    home_lines.push(Line::from("")); // keep rows synced
+                    home_lines.push(Line::from(""));
                 }
                 current_period = goal.period_descriptor.number;
                 period_lines.push(
@@ -470,12 +474,65 @@ pub fn render_scoring(
                     ));
                 }
                 away_lines.push(Line::from(""));
-                home_lines.push(Line::from(home_spans).alignment(Alignment::Left));
+                home_lines.push(Line::from(home_spans));
                 period_lines.push(Line::from(""));
             }
         }
 
-        // Split area into top indicator, content, bottom indicator
+        // Add the additional statistics lines
+        // if let Some(game_boxscore) = boxscore.games.get(&game.id) {
+        //     away_lines.push(Line::from(""));
+        //     home_lines.push(Line::from(""));
+        //     period_lines.push(Line::from(""));
+        //     // Shots on goal
+        //     away_lines.push(Line::from("Game Stats").style(Style::default().fg(BORDER_FOCUSED_COLOR)));
+        //     home_lines.push(Line::from(""));
+        //     period_lines.push(Line::from("Shots On Goal").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
+        //     away_lines.push(Line::from(format!("{}", game.away_team.sog.unwrap_or(0))).alignment(Alignment::Right));
+        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
+        //     home_lines.push(Line::from(format!("{}", game.home_team.sog.unwrap_or(0))));
+        //     // Faceoff %
+        //     // Powerplay %
+        //     // Penalty minutes
+        //     away_lines.push(Line::from(""));
+        //     home_lines.push(Line::from(""));
+        //     period_lines.push(Line::from("Penalty Minutes").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
+        //     away_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.away.penalty_minutes)).alignment(Alignment::Right));
+        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
+        //     home_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.home.penalty_minutes)));
+        //     // Hits
+        //     away_lines.push(Line::from(""));
+        //     home_lines.push(Line::from(""));
+        //     period_lines.push(Line::from("Hits").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
+        //     away_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.away.hits)).alignment(Alignment::Right));
+        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
+        //     home_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.home.hits)));
+        //     // Blocked shots
+        //     away_lines.push(Line::from(""));
+        //     home_lines.push(Line::from(""));
+        //     period_lines.push(Line::from("Blocked Shots").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
+        //     away_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.away.blocked_shots)).alignment(Alignment::Right));
+        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
+        //     home_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.home.blocked_shots)));
+        //     // Giveaways
+        //     away_lines.push(Line::from(""));
+        //     home_lines.push(Line::from(""));
+        //     period_lines.push(Line::from("Giveaways").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
+        //     away_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.away.giveaways)).alignment(Alignment::Right));
+        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
+        //     home_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.home.giveaways)));
+        //     // Takeaways
+        //     away_lines.push(Line::from(""));
+        //     home_lines.push(Line::from(""));
+        //     period_lines.push(Line::from("Takeaways").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
+        //     away_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.away.takeaways)).alignment(Alignment::Right));
+        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
+        //     home_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.home.takeaways)));
+        // }
+        // else {
+        // }
+
+        // Split area into top scroll indicator, content and bottom scroll indicator
         let vert_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -509,7 +566,7 @@ pub fn render_scoring(
         );
 
         // Re-split the content area horizontally
-        let chunks = split_info_left_middle_right(vert_chunks[1], 14);
+        let chunks = split_info_left_middle_right(vert_chunks[1], 25);
 
         frame.render_widget(Paragraph::new(visible_away), chunks[0]);
         frame.render_widget(Paragraph::new(visible_period), chunks[1]);
@@ -529,14 +586,6 @@ pub fn render_scoring(
             area,
         );
     }
-}
-
-pub fn render_game_stats(
-    game: &GameData,
-    frame: &mut Frame,
-    area: Rect,
-) {
-    
 }
 
 pub fn get_period_title(period: &PeriodDescriptor) -> String {

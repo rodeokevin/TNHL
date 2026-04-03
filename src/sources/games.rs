@@ -41,6 +41,7 @@ impl GamesSource {
 impl Source for GamesSource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
         let mut interval = tokio::time::interval(Duration::from_secs(10));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
             tokio::select! {
@@ -51,6 +52,7 @@ impl Source for GamesSource {
                         GamesCommand::SetDate(date) => {
                             self.current_date = date;
                             self.fetch(&tx).await;
+                            interval.reset();
                         }
                     }
                 },

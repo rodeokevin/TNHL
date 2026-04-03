@@ -11,6 +11,7 @@ use crate::{
     app::App,
     sources::{
         AppEvent, Source,
+        boxscore::{BoxscoreCommand, BoxscoreSource},
         games::{GamesCommand, GamesSource},
         standings::{StandingsCommand, StandingsSource},
     },
@@ -50,8 +51,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // create app and run it
     let (games_cmd_tx, games_cmd_rx) = tokio::sync::mpsc::channel(8);
     let (standings_cmd_tx, standings_cmd_rx) = tokio::sync::mpsc::channel(8);
+    let (boxscore_cmd_tx, boxscore_cmd_rx) = tokio::sync::mpsc::channel(8);
 
-    let mut app = App::new(games_cmd_tx.clone(), standings_cmd_tx.clone());
+    let mut app = App::new(
+        games_cmd_tx.clone(),
+        standings_cmd_tx.clone(),
+        boxscore_cmd_tx.clone(),
+    );
     let cancel = CancellationToken::new();
     let _ = run_app(
         &mut terminal,
@@ -59,6 +65,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         cancel.clone(),
         games_cmd_rx,
         standings_cmd_rx,
+        boxscore_cmd_rx,
     )
     .await;
 
@@ -80,6 +87,7 @@ async fn run_app<B: Backend>(
     cancel: CancellationToken,
     games_rx: Receiver<GamesCommand>,
     standings_rx: Receiver<StandingsCommand>,
+    boxscore_rx: Receiver<BoxscoreCommand>,
 ) -> io::Result<()>
 where
     io::Error: From<B::Error>,
@@ -100,6 +108,16 @@ where
     let games_cancel = cancel.clone();
     tokio::spawn(async move {
         Box::new(games_source).run(games_tx, games_cancel).await;
+    });
+
+    // Spawn boxscore source
+    let boxscore_source = BoxscoreSource::new(boxscore_rx);
+    let boxscore_tx = tx.clone();
+    let boxscore_cancel = cancel.clone();
+    tokio::spawn(async move {
+        Box::new(boxscore_source)
+            .run(boxscore_tx, boxscore_cancel)
+            .await;
     });
 
     // Spawn terminal event reader

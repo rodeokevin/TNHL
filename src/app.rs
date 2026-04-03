@@ -1,6 +1,5 @@
-use crate::sources::games::GamesCommand;
 use crate::{
-    sources::standings::StandingsCommand,
+    sources::{boxscore::BoxscoreCommand, games::GamesCommand, standings::StandingsCommand},
     state::{app_settings::AppSettings, app_state::AppState},
 };
 use chrono::Utc;
@@ -12,9 +11,13 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(games_tx: Sender<GamesCommand>, standings_tx: Sender<StandingsCommand>) -> Self {
+    pub fn new(
+        games_tx: Sender<GamesCommand>,
+        standings_tx: Sender<StandingsCommand>,
+        boxscore_tx: Sender<BoxscoreCommand>,
+    ) -> Self {
         let mut app = Self {
-            state: AppState::new(games_tx, standings_tx),
+            state: AppState::new(games_tx, standings_tx, boxscore_tx),
             settings: AppSettings::load_from_file(),
         };
         app.configure();

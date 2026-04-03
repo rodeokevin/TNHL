@@ -218,6 +218,5 @@ impl StandingsState {
         self.western_wildcard_table_state.select(Some(0));
 
         self.league_table_state.select(Some(0));
-
     }
 }
