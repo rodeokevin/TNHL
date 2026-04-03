@@ -138,7 +138,7 @@ where
                             break;
                         }
                         None => break,
-                        _ => {} // Ignore mouse/resize for now
+                        _ => {}
                     }
                 }
             }

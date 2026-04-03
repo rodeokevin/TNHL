@@ -150,13 +150,11 @@ impl AppState {
 
                 match BoxscoreResponse::from_json(&data) {
                     Ok(parsed_boxscore) => {
-                        let derived_stats = GameBoxscore::compute_totals(&parsed_boxscore);
                         self.boxscore.games.insert(
                             game_id,
                             GameBoxscore {
                                 game_id,
                                 data: parsed_boxscore,
-                                derived_stats,
                             },
                         );
                     }

@@ -479,59 +479,6 @@ pub fn render_scoring_and_stats(
             }
         }
 
-        // Add the additional statistics lines
-        // if let Some(game_boxscore) = boxscore.games.get(&game.id) {
-        //     away_lines.push(Line::from(""));
-        //     home_lines.push(Line::from(""));
-        //     period_lines.push(Line::from(""));
-        //     // Shots on goal
-        //     away_lines.push(Line::from("Game Stats").style(Style::default().fg(BORDER_FOCUSED_COLOR)));
-        //     home_lines.push(Line::from(""));
-        //     period_lines.push(Line::from("Shots On Goal").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
-        //     away_lines.push(Line::from(format!("{}", game.away_team.sog.unwrap_or(0))).alignment(Alignment::Right));
-        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
-        //     home_lines.push(Line::from(format!("{}", game.home_team.sog.unwrap_or(0))));
-        //     // Faceoff %
-        //     // Powerplay %
-        //     // Penalty minutes
-        //     away_lines.push(Line::from(""));
-        //     home_lines.push(Line::from(""));
-        //     period_lines.push(Line::from("Penalty Minutes").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
-        //     away_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.away.penalty_minutes)).alignment(Alignment::Right));
-        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
-        //     home_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.home.penalty_minutes)));
-        //     // Hits
-        //     away_lines.push(Line::from(""));
-        //     home_lines.push(Line::from(""));
-        //     period_lines.push(Line::from("Hits").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
-        //     away_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.away.hits)).alignment(Alignment::Right));
-        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
-        //     home_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.home.hits)));
-        //     // Blocked shots
-        //     away_lines.push(Line::from(""));
-        //     home_lines.push(Line::from(""));
-        //     period_lines.push(Line::from("Blocked Shots").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
-        //     away_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.away.blocked_shots)).alignment(Alignment::Right));
-        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
-        //     home_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.home.blocked_shots)));
-        //     // Giveaways
-        //     away_lines.push(Line::from(""));
-        //     home_lines.push(Line::from(""));
-        //     period_lines.push(Line::from("Giveaways").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
-        //     away_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.away.giveaways)).alignment(Alignment::Right));
-        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
-        //     home_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.home.giveaways)));
-        //     // Takeaways
-        //     away_lines.push(Line::from(""));
-        //     home_lines.push(Line::from(""));
-        //     period_lines.push(Line::from("Takeaways").alignment(Alignment::Center).style(Style::default().fg(BORDER_FOCUSED_COLOR)));
-        //     away_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.away.takeaways)).alignment(Alignment::Right));
-        //     period_lines.push(Line::from("---").alignment(Alignment::Center));
-        //     home_lines.push(Line::from(format!("{}", game_boxscore.derived_stats.home.takeaways)));
-        // }
-        // else {
-        // }
-
         // Split area into top scroll indicator, content and bottom scroll indicator
         let vert_chunks = Layout::default()
             .direction(Direction::Vertical)
