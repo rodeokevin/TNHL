@@ -94,7 +94,7 @@ pub struct Clock {
 pub struct PeriodDescriptor {
     pub number: u32,
     pub period_type: PeriodType,
-    pub ot_periods: Option<u32>,
+    pub ot_periods: Option<u8>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -162,7 +162,7 @@ pub enum GoalModifier {
 pub struct AssistInfo {
     pub player_id: u32,
     pub name: PlayerName,
-    pub assists_to_date: u32,
+    pub assists_to_date: u16,
 }
 
 #[derive(Debug, Deserialize)]

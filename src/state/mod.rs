@@ -5,3 +5,4 @@ pub mod date_selector;
 pub mod games_state;
 pub mod help;
 pub mod standings_state;
+pub mod boxscore_state;

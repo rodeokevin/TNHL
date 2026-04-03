@@ -59,8 +59,9 @@ pub fn map_key(key_event: KeyEvent, focus: PaneFocus, menu: MenuFocus) -> Action
         // In DatePicker, capture all input
         (PaneFocus::DatePicker, _, Char(c), _) => Action::InputChar(c),
 
-        // Tab switches focus if on main panes
+        // Switch focus if on main panes
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Tab, _) => Action::SwitchPaneFocus,
+        (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Right | KeyCode::Left, KeyModifiers::SHIFT) => Action::SwitchPaneFocus,
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char(':'), _) => Action::EnterDatePicker,
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char('?'), _) => Action::EnterHelp,
 

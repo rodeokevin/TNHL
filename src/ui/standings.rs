@@ -312,7 +312,7 @@ fn map_rows<F, S>(
 ) -> Vec<Row<'static>>
 where
     F: Fn(&TeamData) -> bool,
-    S: Fn(&TeamData) -> u32,
+    S: Fn(&TeamData) -> u8,
 {
     let mut standings: Vec<_> = data.standings.iter().filter(|team| filter(team)).collect();
 
@@ -367,7 +367,7 @@ fn render_standings_table(
     area: Rect,
     teams: &StandingsResponse,
     filter: impl Fn(&TeamData) -> bool,
-    sort_key: impl Fn(&TeamData) -> u32,
+    sort_key: impl Fn(&TeamData) -> u8,
     title: String,
     border_style: Style,
 ) {

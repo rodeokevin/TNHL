@@ -16,6 +16,7 @@ use ratatui::{
 
 use crate::app::App;
 use crate::state::app_state::{MenuFocus, PaneFocus};
+use crate::ui::games::overview;
 use crate::ui::date_selector::DateSelectorWidget;
 use crate::ui::help::HelpWidget;
 use crate::ui::input_popup::popup_cursor_position;
@@ -39,7 +40,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             render_menu(frame, app, content_menu_chunks[0]);
 
             match app.state.selected_menu {
-                MenuFocus::Games => games::render_games(frame, app, content_menu_chunks[1]),
+                MenuFocus::Games => overview::render_games(frame, app, content_menu_chunks[1]),
                 MenuFocus::Standings => {
                     standings::render_standings(frame, app, content_menu_chunks[1])
                 }

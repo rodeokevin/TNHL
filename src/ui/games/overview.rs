@@ -531,6 +531,14 @@ pub fn render_scoring(
     }
 }
 
+pub fn render_game_stats(
+    game: &GameData,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    
+}
+
 pub fn get_period_title(period: &PeriodDescriptor) -> String {
     match period.period_type {
         PeriodType::REG => match period.number {

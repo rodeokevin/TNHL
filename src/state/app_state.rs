@@ -1,11 +1,12 @@
 use std::fmt::Debug;
 
 use crate::input::{Action, map_key};
+use crate::models::boxscore::BoxscoreResponse;
 use crate::models::{games::GamesResponse, standings::StandingsResponse};
 use crate::sources::{AppEvent, games::GamesCommand, standings::StandingsCommand};
 use crate::state::{
     date_input::DateInput, date_selector::DateSelector, games_state::GamesState, help::HelpState,
-    standings_state::StandingsState,
+    standings_state::StandingsState, boxscore_state::BoxscoreState,
 };
 use chrono::{NaiveDate, ParseError};
 use chrono_tz::Tz;
@@ -75,6 +76,7 @@ pub struct AppState {
     pub selected_menu: MenuFocus,
     pub standings: StandingsState,
     pub games: GamesState,
+    pub boxscore: BoxscoreState,
 
     pub help: HelpState,
 
@@ -96,6 +98,7 @@ impl AppState {
             selected_menu: MenuFocus::default(),
             standings: StandingsState::default(), // all state related to standings
             games: GamesState::default(), // all state related to games
+            boxscore: BoxscoreState::default(), // all state related to boxscore
 
             help: HelpState::default(),
 
@@ -127,6 +130,15 @@ impl AppState {
                         self.games.games_data = Some(parsed_games);
                     }
                     Err(e) => log::error!("Failed to parse games: {}", e),
+                }
+            }
+            AppEvent::BoxscoreUpdate(data) => {
+                log::info!("Updating boxscore data");
+                match BoxscoreResponse::from_json(&data) {
+                    Ok(parsed_boxscore) => {
+                        self.boxscore.boxscore_data = Some(parsed_boxscore);
+                    }
+                    Err(e) => log::error!("Failed to parse boxscore: {}", e),
                 }
             }
             AppEvent::Input(key_event) => {
