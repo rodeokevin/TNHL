@@ -4,12 +4,26 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct BoxscoreResponse {
     pub player_by_game_stats: Option<PlayerByGameStats>,
+    pub home_team: Team,
+    pub away_team: Team,
 }
 
 impl BoxscoreResponse {
     pub fn from_json(data: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(data)
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Team {
+    pub common_name: CommonName,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommonName {
+    pub default: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -10,7 +10,7 @@ use ratatui::{
 use crate::app::App;
 use crate::state::app_state::{MenuFocus, PaneFocus};
 use crate::ui::{
-    date_selector::DateSelectorWidget, games::overview, help::HelpWidget,
+    date_selector::DateSelectorWidget, games::games, help::HelpWidget,
     input_popup::popup_cursor_position, layout::LayoutAreas, standings,
 };
 
@@ -32,7 +32,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             render_menu(frame, app, content_menu_chunks[0]);
 
             match app.state.selected_menu {
-                MenuFocus::Games => overview::render_games(frame, app, content_menu_chunks[1]),
+                MenuFocus::Games => games::render_games(frame, app, content_menu_chunks[1]),
                 MenuFocus::Standings => {
                     standings::render_standings(frame, app, content_menu_chunks[1])
                 }

@@ -1,6 +1,6 @@
-use crate::models::boxscore::BoxscoreResponse;
-use crate::models::games::GamesResponse;
+use crate::models::{boxscore::BoxscoreResponse, games::GamesResponse};
 use std::collections::HashMap;
+use ratatui::widgets::TableState;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum GamesFocus {
@@ -52,6 +52,7 @@ pub struct GamesState {
     pub focus: GamesFocus,
     pub boxscore_selected_team: BoxscoreTeam,
     pub boxscore_selected_position: BoxscorePosition,
+    pub boxscore_table_state: TableState,
 
     pub games_data: Option<GamesResponse>,
     pub boxscore_data: HashMap<u32, BoxscoreResponse>,
@@ -60,6 +61,7 @@ pub struct GamesState {
     pub scoring_scroll_offset: usize,
     pub max_scoring_scroll: usize,
 }
+
 impl GamesState {
     pub fn shift_game_index(&mut self, forward: bool) {
         let prev = self.selected_game_index;
@@ -71,6 +73,7 @@ impl GamesState {
         }
         if self.selected_game_index != prev {
             self.reset_scoring_scroll();
+            self.boxscore_table_state.select(Some(0));
         }
     }
     pub fn reset_scoring_scroll(&mut self) {
@@ -90,6 +93,53 @@ impl GamesState {
             self.focus.prev()
         };
     }
+
+    // Move rows in boxscore
+    pub fn move_boxscore_selection(&mut self, delta: i32) {
+        let len = self.get_current_boxscore_len();
+        let table = &mut self.boxscore_table_state;
+        let current = table.selected().unwrap_or(0);
+
+        let new = current as i32 + delta;
+        let next = if new < 0 || new >= len as i32 {
+            current
+        } else {
+            new as usize
+        };
+
+        table.select(Some(next));
+    }
+
+    fn get_current_boxscore_len(&self) -> usize {
+        let boxscore = self
+            .current_game_id()
+            .and_then(|id| self.boxscore_data.get(&id));
+
+        match boxscore {
+            Some(b) => {
+                let team = match b.player_by_game_stats.as_ref() {
+                    Some(stats) => match self.boxscore_selected_team {
+                        BoxscoreTeam::Away => &stats.away_team,
+                        BoxscoreTeam::Home => &stats.home_team,
+                    },
+                    None => return 0,
+                };
+                match self.boxscore_selected_position {
+                    BoxscorePosition::Forwards => team.forwards.len(),
+                    BoxscorePosition::Defensemen => team.defense.len(),
+                    BoxscorePosition::Goalies => team.goalies.len(),
+                }
+            }
+            None => 0,
+        }
+    }
+
+    pub fn current_game_id(&self) -> Option<u32> {
+        self.games_data
+            .as_ref()
+            .and_then(|g| g.games.get(self.selected_game_index))
+            .map(|g| g.id)
+    }
 }
 
 fn next_index(index: usize, max_index: usize) -> usize {
@@ -101,10 +151,17 @@ fn prev_index(index: usize) -> usize {
 
 impl Default for GamesState {
     fn default() -> Self {
+        fn table() -> TableState {
+            let mut t = TableState::default();
+            t.select(Some(0));
+            t
+        }
+
         Self {
             focus: GamesFocus::default(),
             boxscore_selected_team: BoxscoreTeam::default(),
             boxscore_selected_position: BoxscorePosition::default(),
+            boxscore_table_state: table(),
 
             games_data: None,
             boxscore_data: HashMap::new(),
@@ -115,3 +172,5 @@ impl Default for GamesState {
         }
     }
 }
+
+

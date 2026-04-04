@@ -39,7 +39,7 @@ const BOXSCORE_GOALIES_COLUMNS: [&str; 10] = [
 
 const BOXSCORE_FORWARDS_COLUMN_WIDTHS: [Constraint; 17] = [
     Constraint::Length(3),
-    Constraint::Length(20),
+    Constraint::Min(20),
     Constraint::Length(4),
     Constraint::Length(3),
     Constraint::Length(3),
@@ -59,7 +59,7 @@ const BOXSCORE_FORWARDS_COLUMN_WIDTHS: [Constraint; 17] = [
 
 const BOXSCORE_DEFENSE_COLUMN_WIDTHS: [Constraint; 15] = [
     Constraint::Length(3),
-    Constraint::Length(20),
+    Constraint::Min(20),
     Constraint::Length(3),
     Constraint::Length(3),
     Constraint::Length(3),
@@ -77,7 +77,7 @@ const BOXSCORE_DEFENSE_COLUMN_WIDTHS: [Constraint; 15] = [
 
 const BOXSCORE_GOALIES_COLUMN_WIDTHS: [Constraint; 10] = [
     Constraint::Length(3),
-    Constraint::Length(20),
+    Constraint::Min(20),
     Constraint::Length(4),
     Constraint::Length(4),
     Constraint::Length(4),
@@ -124,8 +124,8 @@ pub fn render_boxscore(frame: &mut Frame, app: &mut App, area: Rect) {
                     (&BOXSCORE_GOALIES_COLUMN_WIDTHS, &BOXSCORE_GOALIES_COLUMNS)
                 }
             };
-        let table = create_table(rows, "Boxscore".to_string(), border_style, widths, header);
-        frame.render_widget(table, area);
+        let table = create_table(rows, get_boxscore_title(is_home, boxscore), border_style, widths, header);
+        frame.render_stateful_widget(table, area, &mut app.state.games.boxscore_table_state);
     } else {
         // Todo
     }
@@ -259,4 +259,12 @@ fn create_table<'a>(
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol(">> ")
+}
+
+fn get_boxscore_title(is_home: bool, boxscore: &BoxscoreResponse) -> String {
+    if is_home {
+        " ".to_string() + &boxscore.home_team.common_name.default + " "
+    } else {
+        " ".to_string() + &boxscore.away_team.common_name.default + " "
+    }
 }

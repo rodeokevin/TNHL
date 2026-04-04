@@ -194,8 +194,16 @@ impl AppState {
             }
             Action::PrevGame => self.games.shift_game_index(false),
             Action::NextGame => self.games.shift_game_index(true),
-            Action::PrevGamesDisplay => self.games.cycle_display(false),
-            Action::NextGamesDisplay => self.games.cycle_display(true),
+            Action::PrevGamesDisplay => {
+                self.games.cycle_display(false);
+                self.games.reset_scoring_scroll();
+                self.games.boxscore_table_state.select(Some(0));
+            }
+            Action::NextGamesDisplay => {
+                self.games.cycle_display(true);
+                self.games.reset_scoring_scroll();
+                self.games.boxscore_table_state.select(Some(0));
+            }
             Action::OverviewScrollUp => {
                 self.games.scoring_scroll_offset =
                     self.games.scoring_scroll_offset.saturating_sub(1);
@@ -207,18 +215,23 @@ impl AppState {
                     .saturating_add(1)
                     .min(self.games.max_scoring_scroll);
             }
-            Action::BoxscoreUp => {}
-            Action::BoxscoreDown => {}
+            Action::BoxscoreUp => self.games.move_boxscore_selection(-1),
+            Action::BoxscoreDown => self.games.move_boxscore_selection(1),
             Action::BoxscoreForwards => {
+                self.games.boxscore_table_state.select(Some(0));
                 self.games.boxscore_selected_position = BoxscorePosition::Forwards
             }
             Action::BoxscoreDefensemen => {
+                self.games.boxscore_table_state.select(Some(0));
                 self.games.boxscore_selected_position = BoxscorePosition::Defensemen
             }
             Action::BoxscoreGoalies => {
+                self.games.boxscore_table_state.select(Some(0));
                 self.games.boxscore_selected_position = BoxscorePosition::Goalies
             }
             Action::BoxscoreToggleTeam => {
+                self.games.boxscore_table_state.select(Some(0));
+                self.games.boxscore_selected_position = BoxscorePosition::default();
                 self.games.boxscore_selected_team = self.games.boxscore_selected_team.toggle()
             }
 
