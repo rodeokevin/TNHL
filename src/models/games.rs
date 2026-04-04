@@ -171,7 +171,6 @@ pub enum GoalStrength {
     EV,
     SH,
     PP,
-    EmptyNet,
     #[serde(other)]
     Unknown,
 }

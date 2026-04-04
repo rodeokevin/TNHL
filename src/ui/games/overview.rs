@@ -1,5 +1,5 @@
 use crate::models::games::{
-    GameData, GameState, GoalStrength, PeriodDescriptor, PeriodType,
+    GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType
 };
 use crate::ui::render::BORDER_FOCUSED_COLOR;
 use std::rc::Rc;
@@ -12,6 +12,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Paragraph},
 };
+use serde_with::NoneAsEmptyString;
 
 pub fn render_scoring_and_stats(
     game: &GameData,
@@ -49,40 +50,52 @@ pub fn render_scoring_and_stats(
                 .goals_to_date
                 .map(|n| format!(" ({})", n))
                 .unwrap_or_default();
-            let strength = match goal.strength {
-                GoalStrength::PP => Some("PPG"),
-                GoalStrength::EmptyNet => Some("ENG"),
-                GoalStrength::SH => Some("SHG"),
-                _ => None,
-            };
+            let mut strengths = vec![];
+            match goal.strength {
+                GoalStrength::PP => strengths.push("PPG"),
+                GoalStrength::SH => strengths.push("SHG"),
+                GoalStrength::EV => {}
+                _ => {}
+            }
+            match goal.goal_modifier {
+                GoalModifier::EmptyNet => strengths.push("ENG"),
+                GoalModifier::PenaltyShot => strengths.push("Penalty shot"),
+                _ => {}
+            }
 
             if goal.team_abbrev == *away_team_abbrev {
                 let mut away_spans = vec![];
-                if let Some(s) = strength {
+
+                if !strengths.is_empty() {
+                    let label = strengths.join(", ");
                     away_spans.push(Span::styled(
-                        format!("[{}] ", s),
+                        format!("[{}] ", label),
                         Style::default().fg(Color::Red),
                     ));
                 }
+
                 away_spans.push(Span::raw(format!(
                     "{} {}{}",
                     goal.first_name, goal.last_name, goals_to_date
                 )));
 
                 away_lines.push(Line::from(away_spans).alignment(Alignment::Right));
-                home_lines.push(Line::from("")); // keep rows synced
+                home_lines.push(Line::from(""));
                 period_lines.push(Line::from(""));
             } else if goal.team_abbrev == *home_team_abbrev {
                 let mut home_spans = vec![Span::raw(format!(
                     "{} {}{}",
                     goal.first_name, goal.last_name, goals_to_date
                 ))];
-                if let Some(s) = strength {
+
+                if !strengths.is_empty() {
+                    let label = strengths.join(", ");
                     home_spans.push(Span::styled(
-                        format!(" [{}]", s),
+                        format!(" [{}]", label),
                         Style::default().fg(Color::Red),
                     ));
                 }
+
                 away_lines.push(Line::from(""));
                 home_lines.push(Line::from(home_spans));
                 period_lines.push(Line::from(""));
