@@ -1,4 +1,4 @@
-use crate::state::app_state::{MenuFocus, PaneFocus};
+use crate::state::{app_state::{AppState, MenuFocus, PaneFocus}, games_state::GamesFocus};
 /// Keyboard input handling
 use crossterm::event::{KeyCode, KeyCode::Char, KeyEvent, KeyEventKind, KeyModifiers};
 
@@ -13,17 +13,26 @@ pub enum Action {
     MenuUp,
     MenuDown,
 
-    GamesScrollUp,
-    GamesScrollDown,
     PrevGame,
     NextGame,
+    PrevGamesDisplay,
+    NextGamesDisplay,
+    OverviewScrollUp,
+    OverviewScrollDown,
+    BoxscoreUp,
+    BoxscoreDown,
+    BoxscoreForwards,
+    BoxscoreDefensemen,
+    BoxscoreGoalies,
+    BoxscoreToggleTeam,
+    
 
     StandingsUp,
     StandingsDown,
     StandingsLeft,
     StandingsRight,
-    PrevStandingsType,
-    NextStandingsType,
+    PrevStandingsDisplay,
+    NextStandingsDisplay,
 
     DateLeft,
     DateRight,
@@ -45,12 +54,12 @@ pub enum Action {
 ///
 /// Only handles `Press` and `Repeat` events — `Release` events are ignored
 /// to prevent double-firing actions.
-pub fn map_key(key_event: KeyEvent, focus: PaneFocus, menu: MenuFocus) -> Action {
+pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
     // Only handle Press and Repeat events, ignore Release
     if !matches!(key_event.kind, KeyEventKind::Press | KeyEventKind::Repeat) {
         return Action::None;
     }
-    match (focus, menu, key_event.code, key_event.modifiers) {
+    match (&state.focus, &state.selected_menu, key_event.code, key_event.modifiers) {
         // Ctrl + c quits no matter what
         (_, _, Char('c'), KeyModifiers::CONTROL) => Action::Quit,
         // q also quits no matter what
@@ -76,34 +85,35 @@ pub fn map_key(key_event: KeyEvent, focus: PaneFocus, menu: MenuFocus) -> Action
         (PaneFocus::Menu, _, KeyCode::Up | KeyCode::Char('k'), _) => Action::MenuUp,
         (PaneFocus::Menu, _, KeyCode::Down | KeyCode::Char('j'), _) => Action::MenuDown,
 
-        // In Games content pane
-        (PaneFocus::Content, MenuFocus::Games, KeyCode::Up | KeyCode::Char('k'), _) => {
-            Action::GamesScrollUp
+        // In games content pane
+        (PaneFocus::Content, MenuFocus::Games, _, _) => {
+            match (&state.games.focus, key_event.code, key_event.modifiers) {
+                (_, KeyCode::Left | KeyCode::Char('h'), _) => Action::PrevGame,
+                (_, KeyCode::Right | KeyCode::Char('l'), _) => Action::NextGame,
+                (_, KeyCode::Char('<'), _) => Action::PrevGamesDisplay,
+                (_, KeyCode::Char('>'), _) => Action::NextGamesDisplay,
+                // Overview actions
+                (GamesFocus::Overview, KeyCode::Up | KeyCode::Char('k'), _) => {
+                    Action::OverviewScrollUp
+                }
+                (GamesFocus::Overview, KeyCode::Down | KeyCode::Char('j'), _) => {
+                    Action::OverviewScrollDown
+                }
+                // Boxscore actions
+                (GamesFocus::Boxscore, KeyCode::Up | KeyCode::Char('k'), _) => {
+                    Action::BoxscoreUp
+                }
+                (GamesFocus::Boxscore, KeyCode::Down | KeyCode::Char('j'), _) => {
+                    Action::BoxscoreDown
+                }
+                (GamesFocus::Boxscore, KeyCode::Char('f'), _) => Action::BoxscoreForwards,
+                (GamesFocus::Boxscore, KeyCode::Char('d'), _) => Action::BoxscoreDefensemen,
+                (GamesFocus::Boxscore, KeyCode::Char('g'), _) => Action::BoxscoreGoalies,
+                (GamesFocus::Boxscore, KeyCode::Char('t'), _) => Action::BoxscoreToggleTeam,
+                (_, _, _) => Action::None,
+                
+            }
         }
-        (PaneFocus::Content, MenuFocus::Games, KeyCode::Down | KeyCode::Char('j'), _) => {
-            Action::GamesScrollDown
-        }
-        (PaneFocus::Content, MenuFocus::Games, KeyCode::Left | KeyCode::Char('h'), _) => {
-            Action::PrevGame
-        }
-        (PaneFocus::Content, MenuFocus::Games, KeyCode::Right | KeyCode::Char('l'), _) => {
-            Action::NextGame
-        }
-
-        // Toggle box score and overview
-        // (PaneFocus::Content, MenuFocus::Games, KeyCode::Char(','), _) => {
-        //     todo!()
-        // }
-        // (PaneFocus::Content, MenuFocus::Games, KeyCode::Char('.'), _) => {
-        //     todo!()
-        // }
-        // // Change dates quickly
-        // (PaneFocus::Content, MenuFocus::Games, KeyCode::Char('t'), _) => {
-        //     todo!()
-        // }
-        // (PaneFocus::Content, MenuFocus::Games, KeyCode::Char('y'), _) => {
-        //     todo!()
-        // }
 
         // In standings content pane
         (PaneFocus::Content, MenuFocus::Standings, KeyCode::Up | KeyCode::Char('k'), _) => {
@@ -119,10 +129,10 @@ pub fn map_key(key_event: KeyEvent, focus: PaneFocus, menu: MenuFocus) -> Action
             Action::StandingsRight
         }
         (PaneFocus::Content, MenuFocus::Standings, KeyCode::Char('<'), _) => {
-            Action::PrevStandingsType
+            Action::PrevStandingsDisplay
         }
         (PaneFocus::Content, MenuFocus::Standings, KeyCode::Char('>'), _) => {
-            Action::NextStandingsType
+            Action::NextStandingsDisplay
         }
 
         // In date picker

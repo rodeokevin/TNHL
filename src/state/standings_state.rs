@@ -182,8 +182,8 @@ impl StandingsState {
         };
     }
 
-    // Cycle between a standings type
-    pub fn cycle_focus(&mut self, next: bool) {
+    // Cycle between a standings display (change conference, division or wildcard depending on standings type)
+    pub fn cycle_display(&mut self, next: bool) {
         match self.focus {
             StandingsFocus::Conference => {
                 self.selected_conference = self.selected_conference.toggle()
@@ -200,7 +200,7 @@ impl StandingsState {
         }
     }
 
-    pub fn reset_selections(&mut self) {
+    pub fn reset_selection_state(&mut self) {
         self.focus = StandingsFocus::default();
 
         self.selected_conference = ConferenceFocus::default();

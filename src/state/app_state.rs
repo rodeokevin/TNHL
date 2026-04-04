@@ -7,6 +7,7 @@ use crate::models::{
 use crate::sources::{
     AppEvent, boxscore::BoxscoreCommand, games::GamesCommand, standings::StandingsCommand,
 };
+use crate::state::games_state::{BoxscorePosition, BoxscoreTeam};
 use crate::state::{
     date_input::DateInput, date_selector::DateSelector, games_state::GamesState, help::HelpState,
     standings_state::StandingsState,
@@ -154,7 +155,7 @@ impl AppState {
             }
             AppEvent::Input(key_event) => {
                 log::info!("Key event detected: {:?}", key_event);
-                let action = map_key(key_event, self.focus, self.selected_menu);
+                let action = map_key(key_event, self);
                 self.handle_action(action);
             }
             AppEvent::Tick => {
@@ -181,38 +182,45 @@ impl AppState {
                 let prev = self.selected_menu;
                 self.selected_menu = self.selected_menu.prev();
                 if prev != self.selected_menu {
-                    self.reset_games_selection_state();
-                    self.reset_standings_selection_state();
+                    self.reset_selections();
                 }
             }
             Action::MenuDown => {
                 let prev = self.selected_menu;
                 self.selected_menu = self.selected_menu.next();
                 if prev != self.selected_menu {
-                    self.reset_games_selection_state();
-                    self.reset_standings_selection_state();
+                    self.reset_selections();
                 }
             }
-            Action::GamesScrollUp => {
+            Action::PrevGame => self.games.shift_game_index(false),
+            Action::NextGame => self.games.shift_game_index(true),
+            Action::PrevGamesDisplay => self.games.cycle_display(false),
+            Action::NextGamesDisplay => self.games.cycle_display(true),
+            Action::OverviewScrollUp => {
                 self.games.scoring_scroll_offset =
                     self.games.scoring_scroll_offset.saturating_sub(1);
             }
-            Action::GamesScrollDown => {
+            Action::OverviewScrollDown => {
                 self.games.scoring_scroll_offset = self
                     .games
                     .scoring_scroll_offset
                     .saturating_add(1)
                     .min(self.games.max_scoring_scroll);
             }
-            Action::PrevGame => self.shift_game_index(false),
-            Action::NextGame => self.shift_game_index(true),
+            Action::BoxscoreUp => {}
+            Action::BoxscoreDown => {}
+            Action::BoxscoreForwards => self.games.boxscore_selected_position = BoxscorePosition::Forwards,
+            Action::BoxscoreDefensemen => self.games.boxscore_selected_position = BoxscorePosition::Defensemen,
+            Action::BoxscoreGoalies => self.games.boxscore_selected_position = BoxscorePosition::Goalies,
+            Action::BoxscoreToggleTeam => self.games.boxscore_selected_team = self.games.boxscore_selected_team.toggle(),
+
 
             Action::StandingsUp => self.standings.move_selection(-1),
             Action::StandingsDown => self.standings.move_selection(1),
             Action::StandingsLeft => self.standings.shift_standings_type(false),
             Action::StandingsRight => self.standings.shift_standings_type(true),
-            Action::PrevStandingsType => self.standings.cycle_focus(false),
-            Action::NextStandingsType => self.standings.cycle_focus(true),
+            Action::PrevStandingsDisplay => self.standings.cycle_display(false),
+            Action::NextStandingsDisplay => self.standings.cycle_display(true),
 
             Action::EnterDatePicker => {
                 self.previous_focus = self.focus;
@@ -275,39 +283,13 @@ impl AppState {
             .try_send(StandingsCommand::SetDate(date))
             .is_ok();
         if games_ok || standings_ok {
-            self.reset_games_selection_state();
-            self.reset_standings_selection_state();
+            self.reset_selections();
         }
         self.games.boxscore_data.clear();
     }
-    fn shift_game_index(&mut self, forward: bool) {
-        let prev = self.games.selected_game_index;
-        if forward {
-            let max_index = self.games.games_data.as_ref().map_or(0, |d| d.games.len());
-            self.games.selected_game_index =
-                self.next_index(self.games.selected_game_index, max_index);
-        } else {
-            self.games.selected_game_index = self.prev_index(self.games.selected_game_index);
-        }
-        if self.games.selected_game_index != prev {
-            self.reset_scoring_scroll();
-        }
-    }
-    fn prev_index(&self, index: usize) -> usize {
-        index.saturating_sub(1)
-    }
-    fn next_index(&self, index: usize, max_index: usize) -> usize {
-        (index + 1).min(max_index.saturating_sub(1))
-    }
-    fn reset_scoring_scroll(&mut self) {
-        self.games.scoring_scroll_offset = 0;
-        self.games.max_scoring_scroll = 0;
-    }
-    fn reset_games_selection_state(&mut self) {
-        self.games.selected_game_index = 0;
-        self.reset_scoring_scroll();
-    }
-    fn reset_standings_selection_state(&mut self) {
-        self.standings.reset_selections();
+
+    fn reset_selections(&mut self) {
+        self.games.reset_selection_state();
+        self.standings.reset_selection_state();
     }
 }
