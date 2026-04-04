@@ -2,7 +2,6 @@ use crate::app::App;
 use crate::models::games::{
     GameData, GameState, GoalStrength, PeriodDescriptor, PeriodType, SituationDesc,
 };
-use crate::state::boxscore_state::BoxscoreState;
 use crate::ui::{
     BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR, PaneFocus, split_area_horizontal,
     split_area_vertical,
@@ -139,7 +138,6 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             let lower_info_chunks = split_area_vertical(upper_score_lower[2], [Constraint::Min(0)]);
             render_scoring_and_stats(
                 game,
-                &app.state.boxscore,
                 frame,
                 lower_info_chunks[0],
                 app.state.games.scoring_scroll_offset,
@@ -404,7 +402,6 @@ pub fn render_shots_on_goal(game: &GameData, frame: &mut Frame, area: Rect) {
 
 pub fn render_scoring_and_stats(
     game: &GameData,
-    boxscore: &BoxscoreState,
     frame: &mut Frame,
     area: Rect,
     scroll_offset: usize,

@@ -37,7 +37,7 @@ pub struct Skater {
     pub assists: u8,
     pub points: u8,
     pub plus_minus: i8,
-    pub pim: u8,
+    pub pim: Option<u8>,
     pub hits: u8,
     pub power_play_goals: u8,
     pub sog: u8,
@@ -54,7 +54,7 @@ pub struct Skater {
 pub struct Goalie {
     pub player_id: u32,
     pub sweater_number: u8,
-    pub pim: u8,
+    pub pim: Option<u8>,
     pub name: PlayerName,
     pub position: Position,
     pub even_strength_shots_against: String,

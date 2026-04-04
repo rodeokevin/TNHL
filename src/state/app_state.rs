@@ -1,15 +1,15 @@
 use std::fmt::Debug;
 
 use crate::input::{Action, map_key};
-use crate::models::boxscore::BoxscoreResponse;
-use crate::models::{games::GamesResponse, standings::StandingsResponse};
+use crate::models::{
+    boxscore::BoxscoreResponse, games::GamesResponse, standings::StandingsResponse,
+};
 use crate::sources::{
     AppEvent, boxscore::BoxscoreCommand, games::GamesCommand, standings::StandingsCommand,
 };
-use crate::state::boxscore_state::GameBoxscore;
 use crate::state::{
-    boxscore_state::BoxscoreState, date_input::DateInput, date_selector::DateSelector,
-    games_state::GamesState, help::HelpState, standings_state::StandingsState,
+    date_input::DateInput, date_selector::DateSelector, games_state::GamesState, help::HelpState,
+    standings_state::StandingsState,
 };
 use chrono::{NaiveDate, ParseError};
 use chrono_tz::Tz;
@@ -80,7 +80,6 @@ pub struct AppState {
     pub selected_menu: MenuFocus,
     pub standings: StandingsState,
     pub games: GamesState,
-    pub boxscore: BoxscoreState,
 
     pub help: HelpState,
 
@@ -107,7 +106,6 @@ impl AppState {
             selected_menu: MenuFocus::default(),
             standings: StandingsState::default(), // all state related to standings
             games: GamesState::default(),         // all state related to games
-            boxscore: BoxscoreState::default(),   // all state related to boxscore
 
             help: HelpState::default(),
 
@@ -147,16 +145,9 @@ impl AppState {
             }
             AppEvent::BoxscoreUpdate { game_id, data } => {
                 log::info!("Updating boxscore data");
-
                 match BoxscoreResponse::from_json(&data) {
                     Ok(parsed_boxscore) => {
-                        self.boxscore.games.insert(
-                            game_id,
-                            GameBoxscore {
-                                game_id,
-                                data: parsed_boxscore,
-                            },
-                        );
+                        self.games.boxscore_data.insert(game_id, parsed_boxscore);
                     }
                     Err(e) => log::error!("Failed to parse boxscore: {}", e),
                 }
@@ -287,7 +278,7 @@ impl AppState {
             self.reset_games_selection_state();
             self.reset_standings_selection_state();
         }
-        self.boxscore.games.clear();
+        self.games.boxscore_data.clear();
     }
     fn shift_game_index(&mut self, forward: bool) {
         let prev = self.games.selected_game_index;
