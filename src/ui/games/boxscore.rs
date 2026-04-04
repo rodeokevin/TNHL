@@ -1,7 +1,7 @@
 use crate::app::App;
 use crate::models::boxscore::{Position, PlayerData, BoxscoreResponse, Forward, Defenseman, Goalie};
 use crate::state::games_state::{BoxscorePosition, BoxscoreTeam};
-use crate::ui::PaneFocus;
+use crate::state::app_state::PaneFocus;
 
 use ratatui::{
     Frame,

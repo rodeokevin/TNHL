@@ -2,8 +2,9 @@ use crate::app::App;
 use crate::models::games::{
     GameData, GameState, GoalStrength, PeriodDescriptor, PeriodType, SituationDesc,
 };
-use crate::ui::{
-    BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR, PaneFocus, split_area_horizontal,
+use crate::state::app_state::PaneFocus;
+use crate::ui::render::{
+    BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR, split_area_horizontal,
     split_area_vertical,
 };
 use chrono_tz::Tz;

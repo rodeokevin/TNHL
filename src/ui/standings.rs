@@ -1,7 +1,7 @@
 use crate::app::App;
 use crate::state::app_state::PaneFocus;
 use crate::state::standings_state::{ConferenceFocus, DivisionFocus, StandingsFocus};
-use crate::ui::BORDER_FOCUSED_COLOR;
+use crate::ui::render::BORDER_FOCUSED_COLOR;
 
 use ratatui::widgets::Paragraph;
 use ratatui::{

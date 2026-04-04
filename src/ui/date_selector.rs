@@ -1,5 +1,5 @@
 use crate::state::date_input::DateInput;
-use crate::ui::BORDER_FOCUSED_COLOR;
+use crate::ui::render::BORDER_FOCUSED_COLOR;
 use crate::ui::input_popup::InputPopup;
 use ratatui::prelude::*;
 use ratatui::style::Color;

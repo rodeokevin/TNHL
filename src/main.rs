@@ -162,7 +162,7 @@ where
 
     // Main event loop
     loop {
-        terminal.draw(|f| ui::render(f, app))?;
+        terminal.draw(|f| ui::render::render(f, app))?;
 
         if let Some(event) = rx.recv().await {
             app.state.handle_event(event);
