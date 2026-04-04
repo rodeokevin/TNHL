@@ -1,4 +1,7 @@
-use crate::state::{app_state::{AppState, MenuFocus, PaneFocus}, games_state::GamesFocus};
+use crate::state::{
+    app_state::{AppState, MenuFocus, PaneFocus},
+    games_state::GamesFocus,
+};
 /// Keyboard input handling
 use crossterm::event::{KeyCode, KeyCode::Char, KeyEvent, KeyEventKind, KeyModifiers};
 
@@ -25,7 +28,6 @@ pub enum Action {
     BoxscoreDefensemen,
     BoxscoreGoalies,
     BoxscoreToggleTeam,
-    
 
     StandingsUp,
     StandingsDown,
@@ -59,7 +61,12 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
     if !matches!(key_event.kind, KeyEventKind::Press | KeyEventKind::Repeat) {
         return Action::None;
     }
-    match (&state.focus, &state.selected_menu, key_event.code, key_event.modifiers) {
+    match (
+        &state.focus,
+        &state.selected_menu,
+        key_event.code,
+        key_event.modifiers,
+    ) {
         // Ctrl + c quits no matter what
         (_, _, Char('c'), KeyModifiers::CONTROL) => Action::Quit,
         // q also quits no matter what
@@ -100,9 +107,7 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
                     Action::OverviewScrollDown
                 }
                 // Boxscore actions
-                (GamesFocus::Boxscore, KeyCode::Up | KeyCode::Char('k'), _) => {
-                    Action::BoxscoreUp
-                }
+                (GamesFocus::Boxscore, KeyCode::Up | KeyCode::Char('k'), _) => Action::BoxscoreUp,
                 (GamesFocus::Boxscore, KeyCode::Down | KeyCode::Char('j'), _) => {
                     Action::BoxscoreDown
                 }
@@ -111,7 +116,6 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
                 (GamesFocus::Boxscore, KeyCode::Char('g'), _) => Action::BoxscoreGoalies,
                 (GamesFocus::Boxscore, KeyCode::Char('t'), _) => Action::BoxscoreToggleTeam,
                 (_, _, _) => Action::None,
-                
             }
         }
 

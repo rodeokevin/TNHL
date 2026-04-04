@@ -209,11 +209,18 @@ impl AppState {
             }
             Action::BoxscoreUp => {}
             Action::BoxscoreDown => {}
-            Action::BoxscoreForwards => self.games.boxscore_selected_position = BoxscorePosition::Forwards,
-            Action::BoxscoreDefensemen => self.games.boxscore_selected_position = BoxscorePosition::Defensemen,
-            Action::BoxscoreGoalies => self.games.boxscore_selected_position = BoxscorePosition::Goalies,
-            Action::BoxscoreToggleTeam => self.games.boxscore_selected_team = self.games.boxscore_selected_team.toggle(),
-
+            Action::BoxscoreForwards => {
+                self.games.boxscore_selected_position = BoxscorePosition::Forwards
+            }
+            Action::BoxscoreDefensemen => {
+                self.games.boxscore_selected_position = BoxscorePosition::Defensemen
+            }
+            Action::BoxscoreGoalies => {
+                self.games.boxscore_selected_position = BoxscorePosition::Goalies
+            }
+            Action::BoxscoreToggleTeam => {
+                self.games.boxscore_selected_team = self.games.boxscore_selected_team.toggle()
+            }
 
             Action::StandingsUp => self.standings.move_selection(-1),
             Action::StandingsDown => self.standings.move_selection(1),

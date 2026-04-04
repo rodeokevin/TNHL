@@ -1,13 +1,15 @@
 use crate::app::App;
-use crate::models::boxscore::{Position, PlayerData, BoxscoreResponse, Forward, Defenseman, Goalie};
-use crate::state::games_state::{BoxscorePosition, BoxscoreTeam};
+use crate::models::boxscore::{
+    BoxscoreResponse, Defenseman, Forward, Goalie, PlayerData, Position,
+};
 use crate::state::app_state::PaneFocus;
+use crate::state::games_state::{BoxscorePosition, BoxscoreTeam};
 
 use ratatui::{
     Frame,
     layout::{Constraint, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, Table, Row},
+    widgets::{Block, Row, Table},
 };
 
 const BOXSCORE_FORWARDS_COLUMNS: [&str; 17] = [
@@ -15,8 +17,21 @@ const BOXSCORE_FORWARDS_COLUMNS: [&str; 17] = [
     "GV", "TK", "FO%",
 ];
 const BOXSCORE_DEFENSE_COLUMNS: [&str; 15] = [
-    "#", "Defensemen", "G", "A", "P", "+/-", "PIM", "TOI", "SHIFT", "PPG", "S", "BLK", "HITS",
-    "GV", "TK",
+    "#",
+    "Defensemen",
+    "G",
+    "A",
+    "P",
+    "+/-",
+    "PIM",
+    "TOI",
+    "SHIFT",
+    "PPG",
+    "S",
+    "BLK",
+    "HITS",
+    "GV",
+    "TK",
 ];
 const BOXSCORE_GOALIES_COLUMNS: [&str; 10] = [
     "#", "Goalies", "SA", "SV", "GA", "EV", "PP", "SH", "SV%", "TOI",
@@ -83,29 +98,37 @@ pub fn render_boxscore(frame: &mut Frame, app: &mut App, area: Rect) {
         Style::default().fg(Color::DarkGray)
     };
     let is_home = matches!(&app.state.games.boxscore_selected_team, BoxscoreTeam::Home);
-    let boxscore = app.state.games.games_data
+    let boxscore = app
+        .state
+        .games
+        .games_data
         .as_ref()
         .and_then(|g| g.games.get(app.state.games.selected_game_index))
         .and_then(|g| app.state.games.boxscore_data.get(&g.id));
-    
+
     if let Some(boxscore) = boxscore {
         let rows = map_rows(
             boxscore,
             is_home,
             &app.state.games.boxscore_selected_position,
         );
-        let (widths, header): (&[Constraint], &[&str]) = match &app.state.games.boxscore_selected_position {
-            BoxscorePosition::Forwards => (&BOXSCORE_FORWARDS_COLUMN_WIDTHS, &BOXSCORE_FORWARDS_COLUMNS),
-            BoxscorePosition::Defensemen => (&BOXSCORE_DEFENSE_COLUMN_WIDTHS, &BOXSCORE_DEFENSE_COLUMNS),
-            BoxscorePosition::Goalies => (&BOXSCORE_GOALIES_COLUMN_WIDTHS, &BOXSCORE_GOALIES_COLUMNS),
-        };
+        let (widths, header): (&[Constraint], &[&str]) =
+            match &app.state.games.boxscore_selected_position {
+                BoxscorePosition::Forwards => {
+                    (&BOXSCORE_FORWARDS_COLUMN_WIDTHS, &BOXSCORE_FORWARDS_COLUMNS)
+                }
+                BoxscorePosition::Defensemen => {
+                    (&BOXSCORE_DEFENSE_COLUMN_WIDTHS, &BOXSCORE_DEFENSE_COLUMNS)
+                }
+                BoxscorePosition::Goalies => {
+                    (&BOXSCORE_GOALIES_COLUMN_WIDTHS, &BOXSCORE_GOALIES_COLUMNS)
+                }
+            };
         let table = create_table(rows, "Boxscore".to_string(), border_style, widths, header);
         frame.render_widget(table, area);
-    }
-    else {
+    } else {
         // Todo
     }
-    
 }
 
 fn map_forwards_rows(players: &[Forward]) -> Vec<Row<'static>> {
@@ -171,7 +194,6 @@ fn map_defensemen_rows(players: &[Defenseman]) -> Vec<Row<'static>> {
         .collect()
 }
 
-
 fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
     players
         .iter()
@@ -216,12 +238,20 @@ pub fn map_rows(
     }
 }
 
-fn create_table<'a>(rows: Vec<Row<'a>>, title: String, border_style: Style, widths: &[Constraint], header: &[&str]) -> Table<'a> {
+fn create_table<'a>(
+    rows: Vec<Row<'a>>,
+    title: String,
+    border_style: Style,
+    widths: &[Constraint],
+    header: &[&str],
+) -> Table<'a> {
     Table::new(rows, widths)
         .block(Block::bordered().title(title).border_style(border_style))
-        .header(Row::new(header.iter().map(|s| s.to_string()).collect::<Vec<_>>())
-            .style(Style::new().bold())
-            .bottom_margin(1))
+        .header(
+            Row::new(header.iter().map(|s| s.to_string()).collect::<Vec<_>>())
+                .style(Style::new().bold())
+                .bottom_margin(1),
+        )
         .column_spacing(1)
         .row_highlight_style(
             Style::default()

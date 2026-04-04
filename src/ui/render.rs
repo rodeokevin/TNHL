@@ -1,5 +1,4 @@
 use std::rc::Rc;
-use crate::ui::standings;
 
 use ratatui::{
     Frame,
@@ -10,11 +9,10 @@ use ratatui::{
 
 use crate::app::App;
 use crate::state::app_state::{MenuFocus, PaneFocus};
-use crate::ui::date_selector::DateSelectorWidget;
-use crate::ui::games::overview;
-use crate::ui::help::HelpWidget;
-use crate::ui::input_popup::popup_cursor_position;
-use crate::ui::layout::LayoutAreas;
+use crate::ui::{
+    date_selector::DateSelectorWidget, games::overview, help::HelpWidget,
+    input_popup::popup_cursor_position, layout::LayoutAreas, standings,
+};
 
 pub const BORDER_FOCUSED_COLOR: Color = Color::Rgb(247, 194, 0); // Orange-yellowish
 pub const BORDER_UNFOCUSED_COLOR: Color = Color::DarkGray;

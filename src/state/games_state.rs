@@ -37,7 +37,7 @@ impl BoxscoreTeam {
             BoxscoreTeam::Away => BoxscoreTeam::Home,
             BoxscoreTeam::Home => BoxscoreTeam::Away,
         }
-    }   
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -65,8 +65,7 @@ impl GamesState {
         let prev = self.selected_game_index;
         if forward {
             let max_index = self.games_data.as_ref().map_or(0, |d| d.games.len());
-            self.selected_game_index =
-                next_index(self.selected_game_index, max_index);
+            self.selected_game_index = next_index(self.selected_game_index, max_index);
         } else {
             self.selected_game_index = prev_index(self.selected_game_index);
         }
