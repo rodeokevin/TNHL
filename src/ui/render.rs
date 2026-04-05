@@ -25,8 +25,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             let content_menu_chunks = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([
-                    Constraint::Percentage(15), // sidebar
-                    Constraint::Percentage(85), // content
+                    Constraint::Percentage(if app.state.display_menu {15} else {0}), // sidebar
+                    Constraint::Percentage(if app.state.display_menu {85} else {100}), // content
                 ])
                 .split(frame.area());
             render_menu(frame, app, content_menu_chunks[0]);
@@ -41,6 +41,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             if app.state.focus == PaneFocus::DatePicker {
                 render_date_picker(frame, app, frame.area());
             }
+            
         }
     }
 }

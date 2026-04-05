@@ -79,6 +79,7 @@ pub struct AppState {
     pub boxscore_tx: Sender<BoxscoreCommand>,
 
     pub selected_menu: MenuFocus,
+    pub display_menu: bool,
     pub standings: StandingsState,
     pub games: GamesState,
 
@@ -105,6 +106,7 @@ impl AppState {
             boxscore_tx,
 
             selected_menu: MenuFocus::default(),
+            display_menu: true,
             standings: StandingsState::default(), // all state related to standings
             games: GamesState::default(),         // all state related to games
 
@@ -171,8 +173,19 @@ impl AppState {
             Action::Quit => self.should_quit = true,
 
             Action::SwitchPaneFocus => {
-                self.previous_focus = self.focus;
-                self.focus = self.focus.switch();
+                // Only switch if menu is visible
+                if self.display_menu {
+                    self.focus = self.focus.switch();
+                }
+            }
+            Action::ToggleDisplayMenu => {
+                if self.display_menu {
+                    self.focus = PaneFocus::Content;
+                }
+                else {
+                    self.focus = PaneFocus::Menu;
+                }
+                self.display_menu = !self.display_menu;
             }
             Action::InputChar(c) => {
                 self.date_input.is_valid = true; // reset status
