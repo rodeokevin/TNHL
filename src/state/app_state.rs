@@ -192,8 +192,16 @@ impl AppState {
                     self.reset_selections();
                 }
             }
-            Action::PrevGame => self.games.shift_game_index(false),
-            Action::NextGame => self.games.shift_game_index(true),
+            Action::PrevGame => {
+                self.games.boxscore_selected_position = BoxscorePosition::default();
+                self.games.boxscore_selected_team = BoxscoreTeam::default();
+                self.games.shift_game_index(false);
+            }
+            Action::NextGame => {
+                self.games.boxscore_selected_position = BoxscorePosition::default();
+                self.games.boxscore_selected_team = BoxscoreTeam::default();
+                self.games.shift_game_index(true);
+            }
             Action::PrevGamesDisplay => {
                 self.games.cycle_display(false);
                 self.games.reset_scoring_scroll();

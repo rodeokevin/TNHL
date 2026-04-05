@@ -24,6 +24,7 @@ use ratatui::{
 use tui_big_text::{BigText, PixelSize};
 
 const MIDDLE_LENGTH: u16 = 10;
+const MATCHUP_TAB_WIDTH: usize = 12;
 
 pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
@@ -55,6 +56,21 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         })
         .unwrap_or_default();
     let num_matchups = matchups.len();
+    // Compute the displayed tabs
+    let available_width = tab_content_chunks[0].width as usize;
+    let max_tabs = (available_width / MATCHUP_TAB_WIDTH).max(1);
+    let selected = app.state.games.selected_game_index;
+    let page = selected / max_tabs;
+
+    let start = page * max_tabs;
+    let end = (start + max_tabs).min(num_matchups);
+    let mut visible_matchups: Vec<Line> = matchups[start..end].to_vec();
+    if end < num_matchups {
+        visible_matchups.push(Line::from(">").style(Style::default().fg(Color::Gray)));
+    }
+    if start > 0 {
+        visible_matchups.insert(0, Line::from("<").style(Color::Gray));
+    }
 
     let focused = app.state.focus == PaneFocus::Content;
     let border_style = if focused {
@@ -79,8 +95,10 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             .highlight_style(Style::default().add_modifier(Modifier::BOLD));
         frame.render_widget(tabs, tab_content_chunks[0]);
     } else {
-        let tabs = Tabs::new(matchups)
-            .select(app.state.games.selected_game_index)
+        let add  = if selected / max_tabs > 0 { 1 } else { 0 };
+        let local_selected = selected % max_tabs;
+        let tabs = Tabs::new(visible_matchups)
+            .select(local_selected + add)
             .block(
                 Block::bordered()
                     .border_style(border_style)
