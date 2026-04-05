@@ -102,7 +102,7 @@ pub struct PeriodDescriptor {
 pub struct GameSituation {
     pub home_team: TeamSituation,
     pub away_team: TeamSituation,
-    pub time_remaining: String,
+    pub time_remaining: Option<String>,
     pub situation_code: String,
 }
 

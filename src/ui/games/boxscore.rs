@@ -157,7 +157,7 @@ fn map_forwards_rows(players: &[Forward]) -> Vec<Row<'static>> {
                 p.points.to_string(),
                 p.plus_minus.to_string(),
                 p.pim.unwrap_or(0).to_string(),
-                p.toi.clone(),
+                p.toi.as_ref().map_or("--".to_string(), |t| t.clone()),
                 p.shifts.to_string(),
                 p.power_play_goals.to_string(),
                 p.sog.to_string(),
@@ -187,7 +187,7 @@ fn map_defensemen_rows(players: &[Defenseman]) -> Vec<Row<'static>> {
                 p.points.to_string(),
                 p.plus_minus.to_string(),
                 p.pim.unwrap_or(0).to_string(),
-                p.toi.clone(),
+                p.toi.as_ref().map_or("--".to_string(), |t| t.clone()),
                 p.shifts.to_string(),
                 p.power_play_goals.to_string(),
                 p.sog.to_string(),
@@ -216,7 +216,7 @@ fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
                 p.save_pctg
                     .map(|f| format!("{:.4}", f))
                     .unwrap_or_else(|| "--".to_string()),
-                p.toi.clone(),
+                p.toi.as_ref().map_or("--".to_string(), |t| t.clone()),
             ])
         })
         .collect()

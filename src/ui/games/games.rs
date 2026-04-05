@@ -335,7 +335,10 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
                 .iter()
                 .map(|d| match d {
                     SituationDesc::PP => {
-                        format!("PP: {}", s.time_remaining)
+                        match &s.time_remaining {
+                            Some(t) => format!("PP: {}", t),
+                            None => "PP".to_string(),
+                        }
                     }
                     SituationDesc::EN => "EN".to_string(),
                     SituationDesc::Unknown => "Unknown".to_string(),
@@ -366,7 +369,10 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
                 .iter()
                 .map(|d| match d {
                     SituationDesc::PP => {
-                        format!("PP: {}", s.time_remaining)
+                        match &s.time_remaining {
+                            Some(t) => format!("PP: {}", t),
+                            None => "PP".to_string(),
+                        }
                     }
                     SituationDesc::EN => "EN".to_string(),
                     SituationDesc::Unknown => "Unknown".to_string(),
