@@ -4,6 +4,7 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
+use crate::sources::StandingsResponse;
 
 pub enum StandingsCommand {
     SetDate(String),
@@ -30,8 +31,15 @@ impl StandingsSource {
         match reqwest::get(&url).await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
-                    let _ = tx.send(AppEvent::StandingsUpdate(body)).await;
-                    log::info!("Sending standings data to app");
+                    // Parse the JSON
+                    match StandingsResponse::from_json(&body) {
+                        Ok(parsed_standings) => {
+                            log::info!("Standings data successfully parsed!");
+                            let _ = tx.send(AppEvent::StandingsUpdate(parsed_standings)).await;
+                            log::info!("Sent standings data to app");
+                        }
+                        Err(e) => log::error!("Failed to parse standings: {}", e),
+                    }
                 }
             }
             Err(err) => {

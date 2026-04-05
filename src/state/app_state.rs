@@ -123,37 +123,24 @@ impl AppState {
     // Handle an incoming event and update state accordingly
     pub fn handle_event(&mut self, event: AppEvent) {
         match event {
-            AppEvent::StandingsUpdate(data) => {
+            AppEvent::StandingsUpdate(parsed_standings) => {
                 log::info!("Updating standings data");
-                match StandingsResponse::from_json(&data) {
-                    Ok(parsed_standings) => {
-                        log::info!("Standings data successfully parsed!");
-                        self.standings.standings_data = Some(parsed_standings);
-                    }
-                    Err(e) => log::error!("Failed to parse standings: {}", e),
-                }
+                self.standings.standings_data = Some(parsed_standings);
             }
-            AppEvent::GamesUpdate(data) => {
+            AppEvent::GamesUpdate {
+                game_ids,
+                parsed_games,
+            } => {
                 log::info!("Updating games data");
-                match GamesResponse::from_json(&data) {
-                    Ok(parsed_games) => {
-                        let game_ids = parsed_games.games.iter().map(|g| g.id).collect();
-                        self.games.games_data = Some(parsed_games);
-                        let _ = self
-                            .boxscore_tx
-                            .try_send(BoxscoreCommand::SetGameIds(game_ids));
-                    }
-                    Err(e) => log::error!("Failed to parse games: {}", e),
-                }
+                self.games.games_data = Some(parsed_games);
+                log::info!("Sending game ids to boxscore");
+                let _ = self
+                    .boxscore_tx
+                    .try_send(BoxscoreCommand::SetGameIds(game_ids));
             }
-            AppEvent::BoxscoreUpdate { game_id, data } => {
+            AppEvent::BoxscoreUpdate { game_id, parsed_boxscore } => {
                 log::info!("Updating boxscore data");
-                match BoxscoreResponse::from_json(&data) {
-                    Ok(parsed_boxscore) => {
-                        self.games.boxscore_data.insert(game_id, parsed_boxscore);
-                    }
-                    Err(e) => log::error!("Failed to parse boxscore: {}", e),
-                }
+                self.games.boxscore_data.insert(game_id, parsed_boxscore);
             }
             AppEvent::Input(key_event) => {
                 log::info!("Key event detected: {:?}", key_event);
@@ -181,8 +168,7 @@ impl AppState {
             Action::ToggleDisplayMenu => {
                 if self.display_menu {
                     self.focus = PaneFocus::Content;
-                }
-                else {
+                } else {
                     self.focus = PaneFocus::Menu;
                 }
                 self.display_menu = !self.display_menu;

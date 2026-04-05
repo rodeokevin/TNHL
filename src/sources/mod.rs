@@ -1,5 +1,7 @@
 use tokio::sync::mpsc::Sender;
 
+use crate::models::{boxscore::BoxscoreResponse, games::GamesResponse, standings::StandingsResponse};
+
 pub mod boxscore;
 pub mod games;
 pub mod standings;
@@ -7,11 +9,14 @@ pub mod standings;
 /// Events sent to the main application loop.
 #[derive(Debug)]
 pub enum AppEvent {
-    StandingsUpdate(String),
-    GamesUpdate(String),
+    StandingsUpdate(StandingsResponse),
+    GamesUpdate {
+        game_ids: Vec<u32>,
+        parsed_games: GamesResponse,
+    },
     BoxscoreUpdate {
         game_id: u32,
-        data: String,
+        parsed_boxscore: BoxscoreResponse,
     },
     Input(crossterm::event::KeyEvent),
     /// Periodic tick to refresh UI

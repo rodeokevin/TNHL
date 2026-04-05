@@ -3,6 +3,7 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
+use crate::models::boxscore::BoxscoreResponse;
 
 pub enum BoxscoreCommand {
     SetGameIds(Vec<u32>),
@@ -23,22 +24,29 @@ impl BoxscoreSource {
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
         if !self.game_ids.is_empty() {
-            for &id in &self.game_ids {
-                let url = format!("https://api-web.nhle.com/v1/gamecenter/{}/boxscore", id);
+            for &game_id in &self.game_ids {
+                let url = format!("https://api-web.nhle.com/v1/gamecenter/{}/boxscore", game_id);
 
                 match reqwest::get(&url).await {
                     Ok(resp) => {
                         if let Ok(body) = resp.text().await {
-                            let _ = tx
-                                .send(AppEvent::BoxscoreUpdate {
-                                    game_id: id,
-                                    data: body,
-                                })
-                                .await;
+                            match BoxscoreResponse::from_json(&body) {
+                                Ok(parsed_boxscore) => {
+                                    let _ = tx
+                                        .send(AppEvent::BoxscoreUpdate {
+                                            game_id,
+                                            parsed_boxscore,
+                                        })
+                                        .await;
+                                }
+                                Err(e) => log::error!("Failed to parse boxscore for game id {}: {}", game_id, e),
+                            }
+
+                            
                         }
                     }
                     Err(err) => {
-                        log::info!("Failed to fetch boxscore for game id {}: {}", id, err);
+                        log::info!("Failed to fetch boxscore for game id {}: {}", game_id, err);
                     }
                 }
             }

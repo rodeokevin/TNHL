@@ -1,5 +1,5 @@
 use crate::models::games::{
-    GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType
+    GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType,
 };
 use crate::ui::render::BORDER_FOCUSED_COLOR;
 use std::rc::Rc;
@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Paragraph},
+    widgets::Paragraph,
 };
 use serde_with::NoneAsEmptyString;
 

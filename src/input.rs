@@ -9,7 +9,7 @@ use crossterm::event::{KeyCode, KeyCode::Char, KeyEvent, KeyEventKind, KeyModifi
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     Quit,
-    
+
     SwitchPaneFocus,
     ToggleDisplayMenu,
     EnterDatePicker,
@@ -78,7 +78,9 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         (PaneFocus::DatePicker, _, Char(c), _) => Action::InputChar(c),
 
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Tab, _) => Action::SwitchPaneFocus,
-        (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char('m'), _) => Action::ToggleDisplayMenu,
+        (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char('m'), _) => {
+            Action::ToggleDisplayMenu
+        }
         (
             PaneFocus::Content | PaneFocus::Menu,
             _,

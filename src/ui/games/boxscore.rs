@@ -124,7 +124,13 @@ pub fn render_boxscore(frame: &mut Frame, app: &mut App, area: Rect) {
                     (&BOXSCORE_GOALIES_COLUMN_WIDTHS, &BOXSCORE_GOALIES_COLUMNS)
                 }
             };
-        let table = create_table(rows, get_boxscore_title(is_home, boxscore), border_style, widths, header);
+        let table = create_table(
+            rows,
+            get_boxscore_title(is_home, boxscore),
+            border_style,
+            widths,
+            header,
+        );
         frame.render_stateful_widget(table, area, &mut app.state.games.boxscore_table_state);
     } else {
         // Todo

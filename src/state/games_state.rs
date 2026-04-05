@@ -1,6 +1,6 @@
 use crate::models::{boxscore::BoxscoreResponse, games::GamesResponse};
-use std::collections::HashMap;
 use ratatui::widgets::TableState;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum GamesFocus {
@@ -172,5 +172,3 @@ impl Default for GamesState {
         }
     }
 }
-
-

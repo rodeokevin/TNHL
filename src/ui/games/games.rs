@@ -95,7 +95,11 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             .highlight_style(Style::default().add_modifier(Modifier::BOLD));
         frame.render_widget(tabs, tab_content_chunks[0]);
     } else {
-        let add  = if app.state.games.selected_game_index > max_tabs - 1 { 1 } else { 0 };
+        let add = if app.state.games.selected_game_index > max_tabs - 1 {
+            1
+        } else {
+            0
+        };
         let local_selected = selected % max_tabs;
         let tabs = Tabs::new(visible_matchups)
             .select(local_selected + add)
@@ -171,7 +175,6 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                     boxscore::render_boxscore(frame, app, lower_info_chunks[0]);
                 }
             }
-            
         }
     } else {
         let error_paragraph =

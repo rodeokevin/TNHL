@@ -4,6 +4,7 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
+use crate::sources::GamesResponse;
 
 pub enum GamesCommand {
     SetDate(String),
@@ -27,7 +28,18 @@ impl GamesSource {
         match reqwest::get(&url).await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
-                    let _ = tx.send(AppEvent::GamesUpdate(body)).await;
+                    match GamesResponse::from_json(&body) {
+                        Ok(parsed_games) => {
+                            let game_ids = parsed_games.games.iter().map(|g| g.id).collect();
+                            let _ = tx
+                                .send(AppEvent::GamesUpdate {
+                                    game_ids,
+                                    parsed_games,
+                                })
+                                .await;
+                        }
+                        Err(e) => log::error!("Failed to parse games: {}", e),
+                    }
                 }
             }
             Err(err) => {
