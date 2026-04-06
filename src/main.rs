@@ -12,6 +12,7 @@ use crate::{
     sources::{
         AppEvent, Source,
         boxscore::{BoxscoreCommand, BoxscoreSource},
+        game_story::{GameStoryCommand, GameStorySource},
         games::{GamesCommand, GamesSource},
         standings::{StandingsCommand, StandingsSource},
     },
@@ -52,11 +53,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let (games_cmd_tx, games_cmd_rx) = tokio::sync::mpsc::channel(8);
     let (standings_cmd_tx, standings_cmd_rx) = tokio::sync::mpsc::channel(8);
     let (boxscore_cmd_tx, boxscore_cmd_rx) = tokio::sync::mpsc::channel(8);
+    let (game_story_tx, game_story_rx) = tokio::sync::mpsc::channel(8);
 
     let mut app = App::new(
         games_cmd_tx.clone(),
         standings_cmd_tx.clone(),
         boxscore_cmd_tx.clone(),
+        game_story_tx.clone(),
     );
     let cancel = CancellationToken::new();
     let _ = run_app(
@@ -66,6 +69,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         games_cmd_rx,
         standings_cmd_rx,
         boxscore_cmd_rx,
+        game_story_rx,
     )
     .await;
 
@@ -88,6 +92,7 @@ async fn run_app<B: Backend>(
     games_rx: Receiver<GamesCommand>,
     standings_rx: Receiver<StandingsCommand>,
     boxscore_rx: Receiver<BoxscoreCommand>,
+    game_story_rx: Receiver<GameStoryCommand>,
 ) -> io::Result<()>
 where
     io::Error: From<B::Error>,
@@ -117,6 +122,16 @@ where
     tokio::spawn(async move {
         Box::new(boxscore_source)
             .run(boxscore_tx, boxscore_cancel)
+            .await;
+    });
+
+    // Spawn game story source
+    let game_story_source = GameStorySource::new(game_story_rx);
+    let game_story_tx = tx.clone();
+    let game_story_cancel = cancel.clone();
+    tokio::spawn(async move {
+        Box::new(game_story_source)
+            .run(game_story_tx, game_story_cancel)
             .await;
     });
 

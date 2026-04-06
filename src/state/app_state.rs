@@ -1,9 +1,7 @@
 use std::fmt::Debug;
 
 use crate::input::{Action, map_key};
-use crate::models::{
-    boxscore::BoxscoreResponse, games::GamesResponse, standings::StandingsResponse,
-};
+use crate::sources::game_story::GameStoryCommand;
 use crate::sources::{
     AppEvent, boxscore::BoxscoreCommand, games::GamesCommand, standings::StandingsCommand,
 };
@@ -77,6 +75,7 @@ pub struct AppState {
     pub games_tx: Sender<GamesCommand>,
     pub standings_tx: Sender<StandingsCommand>,
     pub boxscore_tx: Sender<BoxscoreCommand>,
+    pub game_story_tx: Sender<GameStoryCommand>,
 
     pub selected_menu: MenuFocus,
     pub display_menu: bool,
@@ -95,20 +94,22 @@ impl AppState {
         games_tx: Sender<GamesCommand>,
         standings_tx: Sender<StandingsCommand>,
         boxscore_tx: Sender<BoxscoreCommand>,
+        game_story_tx: Sender<GameStoryCommand>,
     ) -> Self {
         Self {
+            games_tx,
+            standings_tx,
+            boxscore_tx,
+            game_story_tx,
+
             date_input: DateInput::default(),
             date_selector: DateSelector::default(),
             timezone: Tz::default(),
 
-            games_tx,
-            standings_tx,
-            boxscore_tx,
-
             selected_menu: MenuFocus::default(),
             display_menu: true,
-            standings: StandingsState::default(), // all state related to standings
-            games: GamesState::default(),         // all state related to games
+            standings: StandingsState::default(),
+            games: GamesState::default(),
 
             help: HelpState::default(),
 
@@ -133,14 +134,30 @@ impl AppState {
             } => {
                 log::info!("Updating games data");
                 self.games.games_data = Some(parsed_games);
-                log::info!("Sending game ids to boxscore");
-                let _ = self
-                    .boxscore_tx
-                    .try_send(BoxscoreCommand::SetGameIds(game_ids));
+                log::info!("Sending game ids to other sources");
+                self.boxscore_tx
+                    .try_send(BoxscoreCommand::SetGameIds(game_ids.clone()))
+                    .ok();
+
+                self.game_story_tx
+                    .try_send(GameStoryCommand::SetGameIds(game_ids.clone()))
+                    .ok();
             }
-            AppEvent::BoxscoreUpdate { game_id, parsed_boxscore } => {
+            AppEvent::BoxscoreUpdate {
+                game_id,
+                parsed_boxscore,
+            } => {
                 log::info!("Updating boxscore data");
                 self.games.boxscore_data.insert(game_id, parsed_boxscore);
+            }
+            AppEvent::GameStoryUpdate {
+                game_id,
+                parsed_game_story,
+            } => {
+                log::info!("Updating game story data");
+                self.games
+                    .game_story_data
+                    .insert(game_id, parsed_game_story);
             }
             AppEvent::Input(key_event) => {
                 log::info!("Key event detected: {:?}", key_event);

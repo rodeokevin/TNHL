@@ -1,8 +1,12 @@
 use tokio::sync::mpsc::Sender;
 
-use crate::models::{boxscore::BoxscoreResponse, games::GamesResponse, standings::StandingsResponse};
+use crate::models::{
+    boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse,
+    standings::StandingsResponse,
+};
 
 pub mod boxscore;
+pub mod game_story;
 pub mod games;
 pub mod standings;
 
@@ -17,6 +21,10 @@ pub enum AppEvent {
     BoxscoreUpdate {
         game_id: u32,
         parsed_boxscore: BoxscoreResponse,
+    },
+    GameStoryUpdate {
+        game_id: u32,
+        parsed_game_story: GameStoryReponse,
     },
     Input(crossterm::event::KeyEvent),
     /// Periodic tick to refresh UI

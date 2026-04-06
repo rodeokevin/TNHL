@@ -47,7 +47,7 @@ pub struct TeamName {
     pub default: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct TeamAbbrev {
     pub default: String,
 }

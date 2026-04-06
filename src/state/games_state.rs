@@ -1,4 +1,6 @@
-use crate::models::{boxscore::BoxscoreResponse, games::GamesResponse};
+use crate::models::{
+    boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse,
+};
 use ratatui::widgets::TableState;
 use std::collections::HashMap;
 
@@ -56,8 +58,9 @@ pub struct GamesState {
 
     pub games_data: Option<GamesResponse>,
     pub boxscore_data: HashMap<u32, BoxscoreResponse>,
+    pub game_story_data: HashMap<u32, GameStoryReponse>,
     pub selected_game_index: usize,
-    pub sweeping_status_offset: usize, // For the --- under the time remaining
+    pub sweeping_status_offset: usize, // For the dynamic display bar under the time remaining
     pub scoring_scroll_offset: usize,
     pub max_scoring_scroll: usize,
 }
@@ -81,6 +84,9 @@ impl GamesState {
         self.max_scoring_scroll = 0;
     }
     pub fn reset_selection_state(&mut self) {
+        self.focus = GamesFocus::default();
+        self.boxscore_selected_position = BoxscorePosition::default();
+        self.boxscore_selected_team = BoxscoreTeam::default();
         self.selected_game_index = 0;
         self.reset_scoring_scroll();
     }
@@ -165,6 +171,7 @@ impl Default for GamesState {
 
             games_data: None,
             boxscore_data: HashMap::new(),
+            game_story_data: HashMap::new(),
             selected_game_index: 0,
             sweeping_status_offset: 0,
             scoring_scroll_offset: 0,

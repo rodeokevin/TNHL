@@ -137,7 +137,7 @@ pub struct GoalData {
     pub strength: GoalStrength,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct PlayerName {
     pub default: String,
 }
@@ -162,7 +162,7 @@ pub enum GoalModifier {
 pub struct AssistInfo {
     pub player_id: u32,
     pub name: PlayerName,
-    pub assists_to_date: u16,
+    pub assists_to_date: Option<u16>,
 }
 
 #[derive(Debug, Deserialize)]

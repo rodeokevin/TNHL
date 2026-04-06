@@ -163,8 +163,9 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             let lower_info_chunks = split_area_vertical(upper_score_lower[2], [Constraint::Min(0)]);
             match &app.state.games.focus {
                 GamesFocus::Overview => {
-                    overview::render_scoring_and_stats(
+                    overview::render_scoring(
                         game,
+                        app.state.games.game_story_data.get(&game.id),
                         frame,
                         lower_info_chunks[0],
                         app.state.games.scoring_scroll_offset,
@@ -334,12 +335,10 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
             let parts: Vec<String> = descs
                 .iter()
                 .map(|d| match d {
-                    SituationDesc::PP => {
-                        match &s.time_remaining {
-                            Some(t) => format!("PP: {}", t),
-                            None => "PP".to_string(),
-                        }
-                    }
+                    SituationDesc::PP => match &s.time_remaining {
+                        Some(t) => format!("PP: {}", t),
+                        None => "PP".to_string(),
+                    },
                     SituationDesc::EN => "EN".to_string(),
                     SituationDesc::Unknown => "Unknown".to_string(),
                 })
@@ -368,12 +367,10 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
             let parts: Vec<String> = descs
                 .iter()
                 .map(|d| match d {
-                    SituationDesc::PP => {
-                        match &s.time_remaining {
-                            Some(t) => format!("PP: {}", t),
-                            None => "PP".to_string(),
-                        }
-                    }
+                    SituationDesc::PP => match &s.time_remaining {
+                        Some(t) => format!("PP: {}", t),
+                        None => "PP".to_string(),
+                    },
                     SituationDesc::EN => "EN".to_string(),
                     SituationDesc::Unknown => "Unknown".to_string(),
                 })

@@ -29,6 +29,7 @@ pub enum TypeDescKey {
     Stoppage,
     Faceoff,
     BlockedShot,
+    Misconduct,
     MissedShot,
     ShotOnGoal,
     DelayedPenalty,

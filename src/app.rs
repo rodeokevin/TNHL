@@ -1,5 +1,8 @@
 use crate::{
-    sources::{boxscore::BoxscoreCommand, games::GamesCommand, standings::StandingsCommand},
+    sources::{
+        AppEvent, boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
+        standings::StandingsCommand,
+    },
     state::{app_settings::AppSettings, app_state::AppState},
 };
 use chrono::Utc;
@@ -15,9 +18,10 @@ impl App {
         games_tx: Sender<GamesCommand>,
         standings_tx: Sender<StandingsCommand>,
         boxscore_tx: Sender<BoxscoreCommand>,
+        game_story_tx: Sender<GameStoryCommand>,
     ) -> Self {
         let mut app = Self {
-            state: AppState::new(games_tx, standings_tx, boxscore_tx),
+            state: AppState::new(games_tx, standings_tx, boxscore_tx, game_story_tx),
             settings: AppSettings::load_from_file(),
         };
         app.configure();
