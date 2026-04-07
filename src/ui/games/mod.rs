@@ -1,3 +1,4 @@
 pub mod boxscore;
 pub mod games;
-pub mod overview;
+pub mod scoring;
+pub mod stats;

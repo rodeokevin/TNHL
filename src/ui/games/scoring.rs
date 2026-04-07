@@ -20,7 +20,7 @@ pub fn render_scoring(
     frame: &mut Frame,
     area: Rect,
     scroll_offset: usize,
-    max_scoring_scroll: &mut usize,
+    max_scroll: &mut usize,
 ) {
     let away_team_abbrev = &game.away_team.abbrev;
     let home_team_abbrev = &game.home_team.abbrev;
@@ -33,25 +33,21 @@ pub fn render_scoring(
     if let Some(goals) = &game.goals
         && !goals.is_empty()
     {
-        away_lines.push(Line::from("Scoring").style(Style::default().fg(BORDER_FOCUSED_COLOR)));
-        home_lines.push(Line::from(""));
         let mut current_period = 0;
-        for goal in goals {
+        for (i, goal) in goals.iter().enumerate() {
             if matches!(goal.period_descriptor.period_type, PeriodType::SO) {
                 continue;
             }
             // Period
             if goal.period_descriptor.number > current_period {
-                if middle_lines.len() != 0 {
-                    away_lines.push(Line::from("")); // keep rows synced
-                    home_lines.push(Line::from(""));
-                }
-                current_period = goal.period_descriptor.number;
+                away_lines.push(Line::from(""));
+                home_lines.push(Line::from(""));
                 middle_lines.push(
                     Line::from(get_period_title(&goal.period_descriptor))
                         .alignment(Alignment::Center)
                         .style(Style::default().fg(BORDER_FOCUSED_COLOR)),
                 );
+                current_period = goal.period_descriptor.number;
             }
             let goals_to_date = goal
                 .goals_to_date
@@ -120,9 +116,13 @@ pub fn render_scoring(
                 home_lines.push(Line::from(""));
                 middle_lines.push(Line::from(""));
 
-                home_lines.push(Line::from(""));
-                away_lines.push(Line::from(""));
-                middle_lines.push(Line::from(""));
+                if let Some(next_goal) = goals.get(i + 1) {
+                    if next_goal.period_descriptor.number == goal.period_descriptor.number {
+                        home_lines.push(Line::from(""));
+                        away_lines.push(Line::from(""));
+                        middle_lines.push(Line::from(""));
+                    }
+                }
             } else if goal.team_abbrev == *home_team_abbrev {
                 let mut home_spans = vec![Span::raw(format!(
                     "{} {}{}",
@@ -170,10 +170,13 @@ pub fn render_scoring(
                 }
                 away_lines.push(Line::from(""));
                 middle_lines.push(Line::from(""));
-
-                home_lines.push(Line::from(""));
-                away_lines.push(Line::from(""));
-                middle_lines.push(Line::from(""));
+                if let Some(next_goal) = goals.get(i + 1) {
+                    if next_goal.period_descriptor.number == goal.period_descriptor.number {
+                        home_lines.push(Line::from(""));
+                        away_lines.push(Line::from(""));
+                        middle_lines.push(Line::from(""));
+                    }
+                }
             }
         }
         // Add shootout attempts if there are any
@@ -230,10 +233,10 @@ pub fn render_scoring(
         }
     } else if matches!(game.game_state, GameState::LIVE | GameState::CRIT) {
         // No goals yet but game is live (but not shootout)
-        away_lines.push(Line::from("Scoring").style(Style::default().fg(Color::DarkGray)));
         middle_lines.push(
             Line::from("\"No goals.\" - Juuse Saros").style(Style::default().fg(Color::DarkGray)),
         );
+        home_lines.push(Line::from(""));
         home_lines.push(Line::from(""));
     }
 
@@ -248,11 +251,11 @@ pub fn render_scoring(
         .split(area);
 
     let content_height = vert_chunks[1].height as usize;
-    let max_scroll = away_lines.len().saturating_sub(content_height);
-    *max_scoring_scroll = max_scroll;
-    let offset = scroll_offset.min(max_scroll);
+    let last_line = away_lines.len().saturating_sub(content_height);
+    *max_scroll = last_line;
+    let offset = scroll_offset.min(last_line);
     let can_scroll_up = offset > 0;
-    let can_scroll_down = offset < max_scroll;
+    let can_scroll_down = offset < last_line;
 
     // Slice to visible window
     let end = (offset + content_height).min(away_lines.len());

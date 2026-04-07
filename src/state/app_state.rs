@@ -228,16 +228,15 @@ impl AppState {
                 self.games.reset_scoring_scroll();
                 self.games.boxscore_table_state.select(Some(0));
             }
-            Action::OverviewScrollUp => {
-                self.games.scoring_scroll_offset =
-                    self.games.scoring_scroll_offset.saturating_sub(1);
+            Action::GamesScrollUp => {
+                self.games.scroll_offset = self.games.scroll_offset.saturating_sub(1);
             }
-            Action::OverviewScrollDown => {
-                self.games.scoring_scroll_offset = self
+            Action::GamesScrollDown => {
+                self.games.scroll_offset = self
                     .games
-                    .scoring_scroll_offset
+                    .scroll_offset
                     .saturating_add(1)
-                    .min(self.games.max_scoring_scroll);
+                    .min(self.games.max_scroll);
             }
             Action::BoxscoreUp => self.games.move_boxscore_selection(-1),
             Action::BoxscoreDown => self.games.move_boxscore_selection(1),

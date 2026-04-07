@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::fmt;
 
 use crate::models::{games::PlayerName, standings::TeamAbbrev};
 
@@ -49,7 +50,7 @@ pub struct TeamGameStats {
     pub home_value: StatValue,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum GameStatsCategory {
     Sog,
@@ -69,4 +70,14 @@ pub enum StatValue {
     Int(u16),
     Float(f64),
     Str(String),
+}
+
+impl fmt::Display for StatValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            StatValue::Int(v) => write!(f, "{}", v),
+            StatValue::Float(v) => write!(f, "{}", (v * 100.0).round() as u8),
+            StatValue::Str(v) => write!(f, "{}", v),
+        }
+    }
 }

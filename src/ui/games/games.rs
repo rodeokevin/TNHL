@@ -2,9 +2,9 @@ use crate::app::App;
 use crate::models::games::{GameData, GameState, PeriodDescriptor, PeriodType, SituationDesc};
 use crate::state::app_state::PaneFocus;
 use crate::state::games_state::GamesFocus;
-use crate::ui::games::boxscore;
+use crate::ui::games::{boxscore, stats};
 use crate::ui::{
-    games::overview,
+    games::scoring,
     render::{
         BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR, split_area_horizontal, split_area_vertical,
     },
@@ -56,9 +56,24 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         })
         .unwrap_or_default();
     let num_matchups = matchups.len();
+
+    let focused = app.state.focus == PaneFocus::Content;
+    let border_style = if focused {
+        Style::default()
+            .fg(BORDER_FOCUSED_COLOR)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(BORDER_UNFOCUSED_COLOR)
+    };
+    let selected_color = Style::default()
+        .add_modifier(Modifier::BOLD)
+        .add_modifier(Modifier::UNDERLINED);
+
     // Compute the displayed tabs
     let available_width = tab_content_chunks[0].width as usize;
-    let max_tabs = (available_width / MATCHUP_TAB_WIDTH).max(1);
+    let max_tabs = (available_width / MATCHUP_TAB_WIDTH)
+        .saturating_sub(1)
+        .max(1);
     let selected = app.state.games.selected_game_index;
     let page = selected / max_tabs;
 
@@ -72,20 +87,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         visible_matchups.insert(0, Line::from("<").style(Color::Gray));
     }
 
-    let focused = app.state.focus == PaneFocus::Content;
-    let border_style = if focused {
-        Style::default()
-            .fg(BORDER_FOCUSED_COLOR)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(BORDER_UNFOCUSED_COLOR)
-    };
-
-    let selected_color = Style::default()
-        .add_modifier(Modifier::BOLD)
-        .add_modifier(Modifier::UNDERLINED);
-
-    if num_matchups == 0 && !app.state.games.games_data.is_none() {
+    if num_matchups == 0 && app.state.games.games_data.is_some() {
         let tabs = Tabs::new(vec!["No games today :("])
             .block(
                 Block::bordered()
@@ -162,25 +164,28 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             // Lower info
             let lower_info_chunks = split_area_vertical(upper_score_lower[2], [Constraint::Min(0)]);
             match &app.state.games.focus {
-                GamesFocus::Overview => {
-                    overview::render_scoring(
+                GamesFocus::Scoring => {
+                    scoring::render_scoring(
                         game,
                         app.state.games.game_story_data.get(&game.id),
                         frame,
                         lower_info_chunks[0],
-                        app.state.games.scoring_scroll_offset,
-                        &mut app.state.games.max_scoring_scroll,
+                        app.state.games.scroll_offset,
+                        &mut app.state.games.max_scroll,
                     );
                 }
                 GamesFocus::Boxscore => {
                     boxscore::render_boxscore(frame, app, lower_info_chunks[0]);
                 }
+                GamesFocus::Stats => {
+                    stats::render_stats(frame, app, lower_info_chunks[0]);
+                }
             }
         }
     } else {
-        let error_paragraph =
-            Paragraph::new(Line::from("Error loading data :(").alignment(Alignment::Center));
-        frame.render_widget(error_paragraph, inner);
+        let no_data_paragraph =
+            Paragraph::new(Line::from("No data :(").alignment(Alignment::Center));
+        frame.render_widget(no_data_paragraph, inner);
     }
 }
 
@@ -468,7 +473,8 @@ pub fn split_info_left_middle_right(area: Rect, middle_length: u16) -> Rc<[Rect]
 
 pub fn get_block_title(focus: &GamesFocus) -> String {
     match focus {
-        GamesFocus::Overview => " Overview ".to_string(),
+        GamesFocus::Scoring => " Scoring ".to_string(),
         GamesFocus::Boxscore => " Boxscore ".to_string(),
+        GamesFocus::Stats => " Game Stats ".to_string(),
     }
 }

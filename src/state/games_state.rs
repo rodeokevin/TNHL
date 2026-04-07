@@ -7,21 +7,24 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum GamesFocus {
     #[default]
-    Overview,
+    Scoring,
+    Stats,
     Boxscore,
 }
 
 impl GamesFocus {
     pub fn next(self) -> Self {
         match self {
-            GamesFocus::Overview => GamesFocus::Boxscore,
-            GamesFocus::Boxscore => GamesFocus::Overview,
+            GamesFocus::Scoring => GamesFocus::Stats,
+            GamesFocus::Stats => GamesFocus::Boxscore,
+            GamesFocus::Boxscore => GamesFocus::Scoring,
         }
     }
     pub fn prev(self) -> Self {
         match self {
-            GamesFocus::Overview => GamesFocus::Boxscore,
-            GamesFocus::Boxscore => GamesFocus::Overview,
+            GamesFocus::Scoring => GamesFocus::Boxscore,
+            GamesFocus::Stats => GamesFocus::Scoring,
+            GamesFocus::Boxscore => GamesFocus::Stats,
         }
     }
 }
@@ -61,8 +64,8 @@ pub struct GamesState {
     pub game_story_data: HashMap<u32, GameStoryReponse>,
     pub selected_game_index: usize,
     pub sweeping_status_offset: usize, // For the dynamic display bar under the time remaining
-    pub scoring_scroll_offset: usize,
-    pub max_scoring_scroll: usize,
+    pub scroll_offset: usize,
+    pub max_scroll: usize,
 }
 
 impl GamesState {
@@ -80,8 +83,8 @@ impl GamesState {
         }
     }
     pub fn reset_scoring_scroll(&mut self) {
-        self.scoring_scroll_offset = 0;
-        self.max_scoring_scroll = 0;
+        self.scroll_offset = 0;
+        self.max_scroll = 0;
     }
     pub fn reset_selection_state(&mut self) {
         self.focus = GamesFocus::default();
@@ -91,7 +94,7 @@ impl GamesState {
         self.reset_scoring_scroll();
     }
 
-    // Cycle between games display (overview, boxscore, etc.)
+    // Cycle between games display (Scoring, boxscore, etc.)
     pub fn cycle_display(&mut self, next: bool) {
         self.focus = if next {
             self.focus.next()
@@ -174,8 +177,8 @@ impl Default for GamesState {
             game_story_data: HashMap::new(),
             selected_game_index: 0,
             sweeping_status_offset: 0,
-            scoring_scroll_offset: 0,
-            max_scoring_scroll: 0,
+            scroll_offset: 0,
+            max_scroll: 0,
         }
     }
 }

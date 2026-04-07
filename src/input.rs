@@ -22,8 +22,8 @@ pub enum Action {
     NextGame,
     PrevGamesDisplay,
     NextGamesDisplay,
-    OverviewScrollUp,
-    OverviewScrollDown,
+    GamesScrollUp,
+    GamesScrollDown,
     BoxscoreUp,
     BoxscoreDown,
     BoxscoreForwards,
@@ -103,13 +103,15 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
                 (_, KeyCode::Right | KeyCode::Char('l'), _) => Action::NextGame,
                 (_, KeyCode::Char('<'), _) => Action::PrevGamesDisplay,
                 (_, KeyCode::Char('>'), _) => Action::NextGamesDisplay,
-                // Overview actions
-                (GamesFocus::Overview, KeyCode::Up | KeyCode::Char('k'), _) => {
-                    Action::OverviewScrollUp
+                // Scoring or stats page actions
+                (GamesFocus::Scoring | GamesFocus::Stats, KeyCode::Up | KeyCode::Char('k'), _) => {
+                    Action::GamesScrollUp
                 }
-                (GamesFocus::Overview, KeyCode::Down | KeyCode::Char('j'), _) => {
-                    Action::OverviewScrollDown
-                }
+                (
+                    GamesFocus::Scoring | GamesFocus::Stats,
+                    KeyCode::Down | KeyCode::Char('j'),
+                    _,
+                ) => Action::GamesScrollDown,
                 // Boxscore actions
                 (GamesFocus::Boxscore, KeyCode::Up | KeyCode::Char('k'), _) => Action::BoxscoreUp,
                 (GamesFocus::Boxscore, KeyCode::Down | KeyCode::Char('j'), _) => {
