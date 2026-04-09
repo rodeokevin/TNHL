@@ -282,7 +282,7 @@ pub fn render_time_remaining(
         }
         GameState::Unknown => {
             log::info!("Unknown game state");
-            Line::from("")
+            Line::default()
         }
     };
 
@@ -322,10 +322,10 @@ pub fn render_sweeping_status(
                     frame.render_widget(Line::from(spans).alignment(Alignment::Center), chunks[1]);
                 }
             } else {
-                frame.render_widget(Line::from(""), area);
+                frame.render_widget(Line::default(), area);
             }
         }
-        _ => frame.render_widget(Line::from(""), area),
+        _ => frame.render_widget(Line::default(), area),
     }
 }
 

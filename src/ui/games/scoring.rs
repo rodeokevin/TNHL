@@ -14,6 +14,9 @@ use ratatui::{
     widgets::Paragraph,
 };
 
+// Length of the middle chunk for scoring and stats
+pub const MIDDLE_LENGTH: u16 = 25;
+
 pub fn render_scoring(
     game: &GameData,
     maybe_game_story: Option<&GameStoryReponse>,
@@ -40,8 +43,8 @@ pub fn render_scoring(
             }
             // Period
             if goal.period_descriptor.number > current_period {
-                away_lines.push(Line::from(""));
-                home_lines.push(Line::from(""));
+                away_lines.push(Line::default());
+                home_lines.push(Line::default());
                 middle_lines.push(
                     Line::from(get_period_title(&goal.period_descriptor))
                         .alignment(Alignment::Center)
@@ -83,8 +86,8 @@ pub fn render_scoring(
                 )));
 
                 away_lines.push(Line::from(away_spans).alignment(Alignment::Right));
-                home_lines.push(Line::from(""));
-                middle_lines.push(Line::from(""));
+                home_lines.push(Line::default());
+                middle_lines.push(Line::default());
 
                 if !goal.assists.is_empty() {
                     let assists_text = goal
@@ -113,14 +116,14 @@ pub fn render_scoring(
                             .alignment(Alignment::Right),
                     );
                 }
-                home_lines.push(Line::from(""));
-                middle_lines.push(Line::from(""));
+                home_lines.push(Line::default());
+                middle_lines.push(Line::default());
 
                 if let Some(next_goal) = goals.get(i + 1) {
                     if next_goal.period_descriptor.number == goal.period_descriptor.number {
-                        home_lines.push(Line::from(""));
-                        away_lines.push(Line::from(""));
-                        middle_lines.push(Line::from(""));
+                        home_lines.push(Line::default());
+                        away_lines.push(Line::default());
+                        middle_lines.push(Line::default());
                     }
                 }
             } else if goal.team_abbrev == *home_team_abbrev {
@@ -137,9 +140,9 @@ pub fn render_scoring(
                     ));
                 }
 
-                away_lines.push(Line::from(""));
+                away_lines.push(Line::default());
                 home_lines.push(Line::from(home_spans));
-                middle_lines.push(Line::from(""));
+                middle_lines.push(Line::default());
 
                 if !goal.assists.is_empty() {
                     let assists_text = goal
@@ -168,13 +171,13 @@ pub fn render_scoring(
                             .alignment(Alignment::Left),
                     );
                 }
-                away_lines.push(Line::from(""));
-                middle_lines.push(Line::from(""));
+                away_lines.push(Line::default());
+                middle_lines.push(Line::default());
                 if let Some(next_goal) = goals.get(i + 1) {
                     if next_goal.period_descriptor.number == goal.period_descriptor.number {
-                        home_lines.push(Line::from(""));
-                        away_lines.push(Line::from(""));
-                        middle_lines.push(Line::from(""));
+                        home_lines.push(Line::default());
+                        away_lines.push(Line::default());
+                        middle_lines.push(Line::default());
                     }
                 }
             }
@@ -185,13 +188,13 @@ pub fn render_scoring(
             && !summary.shootout.is_empty()
         {
             // Add shootout lines
-            away_lines.push(Line::from(""));
+            away_lines.push(Line::default());
             middle_lines.push(
                 Line::from("Shootout")
                     .alignment(Alignment::Center)
                     .style(Style::default().fg(BORDER_FOCUSED_COLOR)),
             );
-            home_lines.push(Line::from(""));
+            home_lines.push(Line::default());
             for shootout_attempt in &summary.shootout {
                 let (attempt_symbol, attempt_color) =
                     if matches!(shootout_attempt.result, ShootoutAttemptResult::Goal) {
@@ -213,8 +216,8 @@ pub fn render_scoring(
                         ])
                         .alignment(Alignment::Right),
                     );
-                    middle_lines.push(Line::from(""));
-                    home_lines.push(Line::from(""));
+                    middle_lines.push(Line::default());
+                    home_lines.push(Line::default());
                 } else {
                     home_lines.push(
                         Line::from(vec![
@@ -226,8 +229,8 @@ pub fn render_scoring(
                         ])
                         .alignment(Alignment::Left),
                     );
-                    middle_lines.push(Line::from(""));
-                    away_lines.push(Line::from(""));
+                    middle_lines.push(Line::default());
+                    away_lines.push(Line::default());
                 }
             }
         }
@@ -236,8 +239,8 @@ pub fn render_scoring(
         middle_lines.push(
             Line::from("\"No goals.\" - Juuse Saros").style(Style::default().fg(Color::DarkGray)),
         );
-        home_lines.push(Line::from(""));
-        home_lines.push(Line::from(""));
+        home_lines.push(Line::default());
+        home_lines.push(Line::default());
     }
 
     // Split area into top scroll indicator, content and bottom scroll indicator
@@ -260,9 +263,9 @@ pub fn render_scoring(
     // Slice to visible window
     let end = (offset + content_height).min(away_lines.len());
 
-    let visible_away: Vec<Line> = away_lines[offset..end].iter().cloned().collect();
-    let visible_home: Vec<Line> = home_lines[offset..end].iter().cloned().collect();
-    let visible_period: Vec<Line> = middle_lines[offset..end].iter().cloned().collect();
+    let visible_away: Vec<Line> = away_lines[offset..end].to_vec();
+    let visible_home: Vec<Line> = home_lines[offset..end].to_vec();
+    let visible_period: Vec<Line> = middle_lines[offset..end].to_vec();
 
     frame.render_widget(
         Line::from(if can_scroll_up { "▲" } else { "" }).alignment(Alignment::Center),
@@ -274,7 +277,7 @@ pub fn render_scoring(
     );
 
     // Re-split the content area horizontally
-    let chunks = split_info_left_middle_right(vert_chunks[1], 25);
+    let chunks = split_info_left_middle_right(vert_chunks[1]);
 
     frame.render_widget(Paragraph::new(visible_away), chunks[0]);
     frame.render_widget(Paragraph::new(visible_period), chunks[1]);
@@ -301,12 +304,12 @@ pub fn get_period_title(period: &PeriodDescriptor) -> String {
 }
 
 // Helper to create the areas for left-center-right
-fn split_info_left_middle_right(area: Rect, middle_length: u16) -> Rc<[Rect]> {
+pub fn split_info_left_middle_right(area: Rect) -> Rc<[Rect]> {
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Fill(1),
-            Constraint::Length(middle_length),
+            Constraint::Length(MIDDLE_LENGTH),
             Constraint::Fill(1),
         ])
         .split(area)

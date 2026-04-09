@@ -72,6 +72,16 @@ pub enum StatValue {
     Str(String),
 }
 
+impl StatValue {
+    pub fn is_zero(&self) -> bool {
+        match self {
+            StatValue::Int(v) => *v == 0,
+            StatValue::Float(v) => *v == 0.0,
+            StatValue::Str(_) => false,
+        }
+    }
+}
+
 impl fmt::Display for StatValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

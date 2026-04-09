@@ -78,8 +78,11 @@ impl GamesState {
             self.selected_game_index = prev_index(self.selected_game_index);
         }
         if self.selected_game_index != prev {
-            self.reset_scoring_scroll();
+            self.focus = GamesFocus::default();
+            self.boxscore_selected_position = BoxscorePosition::default();
+            self.boxscore_selected_team = BoxscoreTeam::default();
             self.boxscore_table_state.select(Some(0));
+            self.reset_scoring_scroll();
         }
     }
     pub fn reset_scoring_scroll(&mut self) {

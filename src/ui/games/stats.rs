@@ -1,15 +1,15 @@
 use crate::App;
-use crate::models::game_story::{GameStatsCategory, GameStoryReponse, TeamGameStats};
+use crate::models::game_story::{GameStatsCategory, StatValue};
 use crate::ui::render::BORDER_FOCUSED_COLOR;
 use std::collections::HashMap;
-use std::rc::Rc;
+use crate::ui::games::{games::split_info_left_middle_right, scoring::MIDDLE_LENGTH};
 use std::vec;
 
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::Line,
+    text::{Line, Span},
     widgets::Paragraph,
 };
 
@@ -43,56 +43,56 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
                     .style(Style::default().fg(BORDER_FOCUSED_COLOR))
                     .alignment(Alignment::Center),
             );
-            away_lines.push(Line::from(""));
-            home_lines.push(Line::from(""));
+            away_lines.push(Line::default());
+            home_lines.push(Line::default());
             away_lines.push(Line::from(sog.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(Line::from("---").alignment(Alignment::Center));
+            middle_lines.push(compute_middle_bar(&sog.away_value, &sog.home_value));
             home_lines.push(Line::from(sog.home_value.to_string()).alignment(Alignment::Left));
         }
         // Face-off %
-        if let Some(faceoff) = stats_map.get(&GameStatsCategory::FaceoffWinningPctg) {
+        if let Some(&faceoff) = stats_map.get(&GameStatsCategory::FaceoffWinningPctg) {
             middle_lines.push(
                 Line::from("Face-off %")
                     .style(Style::default().fg(BORDER_FOCUSED_COLOR))
                     .alignment(Alignment::Center),
             );
-            away_lines.push(Line::from(""));
-            home_lines.push(Line::from(""));
+            away_lines.push(Line::default());
+            home_lines.push(Line::default());
             away_lines.push(
                 Line::from(format!("{}%", faceoff.away_value.to_string()))
                     .alignment(Alignment::Right),
             );
-            middle_lines.push(Line::from("---").alignment(Alignment::Center));
+            middle_lines.push(compute_middle_bar(&faceoff.away_value, &faceoff.home_value));
             home_lines.push(
                 Line::from(format!("{}%", faceoff.home_value.to_string()))
                     .alignment(Alignment::Left),
             );
         }
         // Power Play %
-        if let Some(power_play_pctg) = stats_map.get(&GameStatsCategory::PowerPlayPctg) {
+        if let Some(&power_play_pctg) = stats_map.get(&GameStatsCategory::PowerPlayPctg) {
             middle_lines.push(
                 Line::from("Power Play %")
                     .style(Style::default().fg(BORDER_FOCUSED_COLOR))
                     .alignment(Alignment::Center),
             );
-            away_lines.push(Line::from(""));
-            home_lines.push(Line::from(""));
+            away_lines.push(Line::default());
+            home_lines.push(Line::default());
             away_lines.push(
                 Line::from(format!("{}%", power_play_pctg.away_value.to_string()))
                     .alignment(Alignment::Right),
             );
-            middle_lines.push(Line::from("---").alignment(Alignment::Center));
+            middle_lines.push(compute_middle_bar(&power_play_pctg.away_value, &power_play_pctg.home_value));
             home_lines.push(
                 Line::from(format!("{}%", power_play_pctg.home_value.to_string()))
                     .alignment(Alignment::Left),
             );
-            if let Some(power_play_rate) = stats_map.get(&GameStatsCategory::PowerPlay) {
+            if let Some(&power_play_rate) = stats_map.get(&GameStatsCategory::PowerPlay) {
                 away_lines.push(
                     Line::from(power_play_rate.away_value.to_string())
                         .style(Style::default().fg(Color::DarkGray))
                         .alignment(Alignment::Right),
                 );
-                middle_lines.push(Line::from("").alignment(Alignment::Center));
+                middle_lines.push(Line::default().alignment(Alignment::Center));
                 home_lines.push(
                     Line::from(power_play_rate.home_value.to_string())
                         .style(Style::default().fg(Color::DarkGray))
@@ -101,81 +101,86 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
             }
         }
         // Penalty minues
-        if let Some(pims) = stats_map.get(&GameStatsCategory::Pim) {
+        if let Some(&pims) = stats_map.get(&GameStatsCategory::Pim) {
             middle_lines.push(
                 Line::from("Penalty Minutes")
                     .style(Style::default().fg(BORDER_FOCUSED_COLOR))
                     .alignment(Alignment::Center),
             );
-            away_lines.push(Line::from(""));
-            home_lines.push(Line::from(""));
+            away_lines.push(Line::default());
+            home_lines.push(Line::default());
             away_lines.push(Line::from(pims.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(Line::from("---").alignment(Alignment::Center));
+            middle_lines.push(compute_middle_bar(&pims.away_value, &pims.home_value));
             home_lines.push(Line::from(pims.home_value.to_string()).alignment(Alignment::Left));
         }
         // Hits
-        if let Some(hits) = stats_map.get(&GameStatsCategory::Hits) {
+        if let Some(&hits) = stats_map.get(&GameStatsCategory::Hits) {
             middle_lines.push(
                 Line::from("Hits")
                     .style(Style::default().fg(BORDER_FOCUSED_COLOR))
                     .alignment(Alignment::Center),
             );
-            away_lines.push(Line::from(""));
-            home_lines.push(Line::from(""));
+            away_lines.push(Line::default());
+            home_lines.push(Line::default());
             away_lines.push(Line::from(hits.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(Line::from("---").alignment(Alignment::Center));
+            middle_lines.push(compute_middle_bar(&hits.away_value, &hits.home_value));
             home_lines.push(Line::from(hits.home_value.to_string()).alignment(Alignment::Left));
         }
         // Blocked Shots
-        if let Some(blocked_shots) = stats_map.get(&GameStatsCategory::BlockedShots) {
+        if let Some(&blocked_shots) = stats_map.get(&GameStatsCategory::BlockedShots) {
             middle_lines.push(
                 Line::from("Blocked Shots")
                     .style(Style::default().fg(BORDER_FOCUSED_COLOR))
                     .alignment(Alignment::Center),
             );
-            away_lines.push(Line::from(""));
-            home_lines.push(Line::from(""));
+            away_lines.push(Line::default());
+            home_lines.push(Line::default());
             away_lines
                 .push(Line::from(blocked_shots.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(Line::from("---").alignment(Alignment::Center));
+            middle_lines.push(compute_middle_bar(&blocked_shots.away_value, &blocked_shots.home_value));
             home_lines
                 .push(Line::from(blocked_shots.home_value.to_string()).alignment(Alignment::Left));
         }
         // Giveaways
-        if let Some(giveaways) = stats_map.get(&GameStatsCategory::Giveaways) {
+        if let Some(&giveaways) = stats_map.get(&GameStatsCategory::Giveaways) {
             middle_lines.push(
                 Line::from("Giveaways")
                     .style(Style::default().fg(BORDER_FOCUSED_COLOR))
                     .alignment(Alignment::Center),
             );
-            away_lines.push(Line::from(""));
-            home_lines.push(Line::from(""));
+            away_lines.push(Line::default());
+            home_lines.push(Line::default());
             away_lines
                 .push(Line::from(giveaways.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(Line::from("---").alignment(Alignment::Center));
+            middle_lines.push(compute_middle_bar(&giveaways.away_value, &giveaways.home_value));
             home_lines
                 .push(Line::from(giveaways.home_value.to_string()).alignment(Alignment::Left));
         }
         // Takeaways
-        if let Some(takeaways) = stats_map.get(&GameStatsCategory::Takeaways) {
+        if let Some(&takeaways) = stats_map.get(&GameStatsCategory::Takeaways) {
             middle_lines.push(
                 Line::from("Takeaways")
                     .style(Style::default().fg(BORDER_FOCUSED_COLOR))
                     .alignment(Alignment::Center),
             );
-            away_lines.push(Line::from(""));
-            home_lines.push(Line::from(""));
+            away_lines.push(Line::default());
+            home_lines.push(Line::default());
             away_lines
                 .push(Line::from(takeaways.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(Line::from("---").alignment(Alignment::Center));
+
+            middle_lines.push(compute_middle_bar(&takeaways.away_value, &takeaways.home_value));
             home_lines
                 .push(Line::from(takeaways.home_value.to_string()).alignment(Alignment::Left));
         }
     } else {
         // No stats
-        away_lines.push(Line::from(""));
-        middle_lines.push(Line::from("No stats yet").style(Style::default().fg(Color::DarkGray)));
-        home_lines.push(Line::from(""));
+        away_lines.push(Line::default());
+        middle_lines.push(
+            Line::from("No stats yet")
+                .style(Style::default().fg(Color::DarkGray))
+                .alignment(Alignment::Center),
+        );
+        home_lines.push(Line::default());
     }
 
     // Split area into top scroll indicator, content and bottom scroll indicator
@@ -198,9 +203,9 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     // Slice to visible window
     let end = (offset + content_height).min(away_lines.len());
 
-    let visible_away: Vec<Line> = away_lines[offset..end].iter().cloned().collect();
-    let visible_home: Vec<Line> = home_lines[offset..end].iter().cloned().collect();
-    let visible_period: Vec<Line> = middle_lines[offset..end].iter().cloned().collect();
+    let visible_away: Vec<Line> = away_lines[offset..end].to_vec();
+    let visible_home: Vec<Line> = home_lines[offset..end].to_vec();
+    let visible_period: Vec<Line> = middle_lines[offset..end].to_vec();
 
     frame.render_widget(
         Line::from(if can_scroll_up { "▲" } else { "" }).alignment(Alignment::Center),
@@ -219,24 +224,53 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(Paragraph::new(visible_home), chunks[2]);
 }
 
-// Helper to create the areas for left-center-right
-fn split_info_left_middle_right(area: Rect, middle_length: u16) -> Rc<[Rect]> {
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(1),
-            Constraint::Length(middle_length),
-            Constraint::Fill(1),
-        ])
-        .split(area)
-}
+fn compute_middle_bar<'a>(
+    away_value: &'a StatValue,
+    home_value: &'a StatValue,
+) -> Line<'static> {
+    let mut away_length = 0;
+    let mut home_length = 0;
+    let (away_zero, home_zero) = (away_value.is_zero(), home_value.is_zero());
+    if away_zero && home_zero {
+        away_length = (MIDDLE_LENGTH - 3) / 2;
+        home_length = (MIDDLE_LENGTH - 3) / 2;
+    }
+    else if away_zero {
+        home_length  = MIDDLE_LENGTH - 2;
+    }
+    else if home_zero {
+        away_length = MIDDLE_LENGTH - 2;
+    }
+    else {
+        let total = (MIDDLE_LENGTH - 2) as f64;
+        let away = match away_value {
+            StatValue::Int(v) => *v as f64,
+            StatValue::Float(v) => *v,
+            _ => 0.0,
+        };
+        let home = match home_value {
+            StatValue::Int(v) => *v as f64,
+            StatValue::Float(v) => *v,
+            _ => 0.0,
+        };
+        let sum = away + home;
+        away_length = ((away / sum) * total).round().max(1.0) as u16;
+        home_length = MIDDLE_LENGTH - 3 - away_length;
+    }
+    let gap = std::iter::once(Span::raw(if away_zero ^ home_zero {""} else {" "}));
+    let away_spans: Vec<_> = 
+        std::iter::repeat(Span::styled("─", Style::default().fg(Color::Rgb(220, 50, 47))))
+            .take(away_length as usize)
+            .collect();
+    let home_spans: Vec<_> = 
+        std::iter::repeat(Span::styled("─", Style::default().fg(Color::Rgb(38, 139, 210))))
+            .take(home_length as usize)
+            .collect();
+    let spans: Vec<_> = away_spans
+        .into_iter()
+        .chain(gap)
+        .chain(home_spans.into_iter())
+        .collect();
 
-fn get_stat(
-    stats_map: &HashMap<GameStatsCategory, &TeamGameStats>,
-    category: GameStatsCategory,
-) -> (String, String) {
-    stats_map
-        .get(&category)
-        .map(|stat| (stat.away_value.to_string(), stat.home_value.to_string()))
-        .unwrap_or_else(|| ("--".to_string(), "--".to_string()))
+    Line::from(spans).alignment(Alignment::Center)
 }
