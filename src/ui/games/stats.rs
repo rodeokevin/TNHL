@@ -1,8 +1,8 @@
 use crate::App;
 use crate::models::game_story::{GameStatsCategory, StatValue};
+use crate::ui::games::{games::split_info_left_middle_right, scoring::MIDDLE_LENGTH};
 use crate::ui::render::BORDER_FOCUSED_COLOR;
 use std::collections::HashMap;
-use crate::ui::games::{games::split_info_left_middle_right, scoring::MIDDLE_LENGTH};
 use std::vec;
 
 use ratatui::{
@@ -12,6 +12,9 @@ use ratatui::{
     text::{Line, Span},
     widgets::Paragraph,
 };
+
+const AWAY_BAR_COLOR: Color = Color::Rgb(220, 50, 47); // Red
+const HOME_BAR_COLOR: Color = Color::Rgb(38, 139, 210); // Blue
 
 pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     let game_story = app
@@ -81,7 +84,10 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
                 Line::from(format!("{}%", power_play_pctg.away_value.to_string()))
                     .alignment(Alignment::Right),
             );
-            middle_lines.push(compute_middle_bar(&power_play_pctg.away_value, &power_play_pctg.home_value));
+            middle_lines.push(compute_middle_bar(
+                &power_play_pctg.away_value,
+                &power_play_pctg.home_value,
+            ));
             home_lines.push(
                 Line::from(format!("{}%", power_play_pctg.home_value.to_string()))
                     .alignment(Alignment::Left),
@@ -137,7 +143,10 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
             home_lines.push(Line::default());
             away_lines
                 .push(Line::from(blocked_shots.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(compute_middle_bar(&blocked_shots.away_value, &blocked_shots.home_value));
+            middle_lines.push(compute_middle_bar(
+                &blocked_shots.away_value,
+                &blocked_shots.home_value,
+            ));
             home_lines
                 .push(Line::from(blocked_shots.home_value.to_string()).alignment(Alignment::Left));
         }
@@ -152,7 +161,10 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
             home_lines.push(Line::default());
             away_lines
                 .push(Line::from(giveaways.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(compute_middle_bar(&giveaways.away_value, &giveaways.home_value));
+            middle_lines.push(compute_middle_bar(
+                &giveaways.away_value,
+                &giveaways.home_value,
+            ));
             home_lines
                 .push(Line::from(giveaways.home_value.to_string()).alignment(Alignment::Left));
         }
@@ -168,7 +180,10 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
             away_lines
                 .push(Line::from(takeaways.away_value.to_string()).alignment(Alignment::Right));
 
-            middle_lines.push(compute_middle_bar(&takeaways.away_value, &takeaways.home_value));
+            middle_lines.push(compute_middle_bar(
+                &takeaways.away_value,
+                &takeaways.home_value,
+            ));
             home_lines
                 .push(Line::from(takeaways.home_value.to_string()).alignment(Alignment::Left));
         }
@@ -224,24 +239,18 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(Paragraph::new(visible_home), chunks[2]);
 }
 
-fn compute_middle_bar<'a>(
-    away_value: &'a StatValue,
-    home_value: &'a StatValue,
-) -> Line<'static> {
+fn compute_middle_bar<'a>(away_value: &'a StatValue, home_value: &'a StatValue) -> Line<'static> {
     let mut away_length = 0;
     let mut home_length = 0;
     let (away_zero, home_zero) = (away_value.is_zero(), home_value.is_zero());
     if away_zero && home_zero {
         away_length = (MIDDLE_LENGTH - 3) / 2;
         home_length = (MIDDLE_LENGTH - 3) / 2;
-    }
-    else if away_zero {
-        home_length  = MIDDLE_LENGTH - 2;
-    }
-    else if home_zero {
+    } else if away_zero {
+        home_length = MIDDLE_LENGTH - 2;
+    } else if home_zero {
         away_length = MIDDLE_LENGTH - 2;
-    }
-    else {
+    } else {
         let total = (MIDDLE_LENGTH - 2) as f64;
         let away = match away_value {
             StatValue::Int(v) => *v as f64,
@@ -257,15 +266,19 @@ fn compute_middle_bar<'a>(
         away_length = ((away / sum) * total).round().max(1.0) as u16;
         home_length = MIDDLE_LENGTH - 3 - away_length;
     }
-    let gap = std::iter::once(Span::raw(if away_zero ^ home_zero {""} else {" "}));
-    let away_spans: Vec<_> = 
-        std::iter::repeat(Span::styled("─", Style::default().fg(Color::Rgb(220, 50, 47))))
-            .take(away_length as usize)
-            .collect();
-    let home_spans: Vec<_> = 
-        std::iter::repeat(Span::styled("─", Style::default().fg(Color::Rgb(38, 139, 210))))
-            .take(home_length as usize)
-            .collect();
+    let gap = std::iter::once(Span::raw(if away_zero ^ home_zero { "" } else { " " }));
+    let away_spans: Vec<_> = std::iter::repeat(Span::styled(
+        "─",
+        Style::default().fg(AWAY_BAR_COLOR),
+    ))
+    .take(away_length as usize)
+    .collect();
+    let home_spans: Vec<_> = std::iter::repeat(Span::styled(
+        "─",
+        Style::default().fg(HOME_BAR_COLOR),
+    ))
+    .take(home_length as usize)
+    .collect();
     let spans: Vec<_> = away_spans
         .into_iter()
         .chain(gap)

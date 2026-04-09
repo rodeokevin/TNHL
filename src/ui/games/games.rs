@@ -24,7 +24,6 @@ use ratatui::{
 use tui_big_text::{BigText, PixelSize};
 
 const MIDDLE_LENGTH: u16 = 10;
-const MATCHUP_TAB_WIDTH: usize = 12;
 
 pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
@@ -70,21 +69,42 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(Modifier::UNDERLINED);
 
     // Compute the displayed tabs
-    let available_width = tab_content_chunks[0].width as usize;
-    let max_tabs = (available_width / MATCHUP_TAB_WIDTH)
-        .saturating_sub(1)
-        .max(1);
+    let available_width = (tab_content_chunks[0].width - 2) as usize;
     let selected = app.state.games.selected_game_index;
-    let page = selected / max_tabs;
 
-    let start = page * max_tabs;
-    let end = (start + max_tabs).min(num_matchups);
+    const ARROW_WIDTH: usize = 3;
+    const MATCHUP_TAB_WIDTH: usize = 12;
+
+    let mut has_left = false;
+    let mut has_right = false;
+    let (start, end) = loop {
+        let arrow_width_total =
+            (if has_left { ARROW_WIDTH } else { 0 }) + (if has_right { ARROW_WIDTH } else { 0 });
+
+        let usable_width = available_width.saturating_sub(arrow_width_total);
+        let max_tabs = (usable_width / MATCHUP_TAB_WIDTH).max(1);
+
+        let page = selected / max_tabs;
+        let start = page * max_tabs;
+        let end = (start + max_tabs).min(num_matchups);
+
+        let new_has_left = start > 0;
+        let new_has_right = end < num_matchups;
+
+        if new_has_left == has_left && new_has_right == has_right {
+            break (start, end);
+        }
+
+        has_left = new_has_left;
+        has_right = new_has_right;
+    };
+
     let mut visible_matchups: Vec<Line> = matchups[start..end].to_vec();
-    if end < num_matchups {
+    if has_right {
         visible_matchups.push(Line::from(">").style(Style::default().fg(Color::Gray)));
     }
-    if start > 0 {
-        visible_matchups.insert(0, Line::from("<").style(Color::Gray));
+    if has_left {
+        visible_matchups.insert(0, Line::from("<").style(Style::default().fg(Color::Gray)));
     }
 
     if num_matchups == 0 && app.state.games.games_data.is_some() {
@@ -95,22 +115,21 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                     .title(app.state.date_selector.format_date_border_title()),
             )
             .highlight_style(Style::default().add_modifier(Modifier::BOLD));
+
         frame.render_widget(tabs, tab_content_chunks[0]);
     } else {
-        let add = if app.state.games.selected_game_index > max_tabs - 1 {
-            1
-        } else {
-            0
-        };
-        let local_selected = selected % max_tabs;
+        let local_selected = selected - start;
+        let offset = if has_left { 1 } else { 0 };
+
         let tabs = Tabs::new(visible_matchups)
-            .select(local_selected + add)
+            .select(local_selected + offset)
             .block(
                 Block::bordered()
                     .border_style(border_style)
                     .title(app.state.date_selector.format_date_border_title()),
             )
             .highlight_style(selected_color);
+
         frame.render_widget(tabs, tab_content_chunks[0]);
     }
 
