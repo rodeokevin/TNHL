@@ -8,15 +8,21 @@ use crate::sources::GamesResponse;
 
 pub enum GamesCommand {
     SetDate(String),
+    SetInterval(Duration),
 }
 
 pub struct GamesSource {
     rx: Receiver<GamesCommand>,
     current_date: String,
+    fetch_interval: Duration,
 }
 impl GamesSource {
     pub fn new(rx: Receiver<GamesCommand>, current_date: String) -> Self {
-        Self { rx, current_date }
+        Self {
+            rx,
+            current_date,
+            fetch_interval: Duration::from_secs(10),
+        }
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
@@ -49,7 +55,7 @@ impl GamesSource {
 #[async_trait::async_trait]
 impl Source for GamesSource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
-        let mut interval = tokio::time::interval(Duration::from_secs(10));
+        let mut interval = tokio::time::interval(self.fetch_interval);
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
@@ -62,6 +68,15 @@ impl Source for GamesSource {
                             self.current_date = date;
                             self.fetch(&tx).await;
                             interval.reset();
+                        },
+                        GamesCommand::SetInterval(new_interval) => {
+                            if new_interval != self.fetch_interval {
+                                log::info!("Setting games interval to {:?}", new_interval);
+                                self.fetch_interval = new_interval;
+
+                                interval = tokio::time::interval(self.fetch_interval);
+                                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                            }
                         }
                     }
                 },

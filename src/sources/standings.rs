@@ -8,15 +8,21 @@ use crate::sources::StandingsResponse;
 
 pub enum StandingsCommand {
     SetDate(String),
+    SetInterval(Duration),
 }
 
 pub struct StandingsSource {
     rx: Receiver<StandingsCommand>,
     current_date: String,
+    fetch_interval: Duration,
 }
 impl StandingsSource {
     pub fn new(rx: Receiver<StandingsCommand>, current_date: String) -> Self {
-        Self { rx, current_date }
+        Self {
+            rx,
+            current_date,
+            fetch_interval: Duration::from_secs(30),
+        }
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
@@ -49,7 +55,7 @@ impl StandingsSource {
 #[async_trait::async_trait]
 impl Source for StandingsSource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
-        let mut interval = tokio::time::interval(Duration::from_secs(30));
+        let mut interval = tokio::time::interval(self.fetch_interval);
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
@@ -61,6 +67,15 @@ impl Source for StandingsSource {
                             self.current_date = date;
                             self.fetch(&tx).await;
                             interval.reset();
+                        }
+                        StandingsCommand::SetInterval(new_interval) => {
+                            if new_interval != self.fetch_interval {
+                                log::info!("Setting standings interval to {:?}", new_interval);
+                                self.fetch_interval = new_interval;
+
+                                interval = tokio::time::interval(self.fetch_interval);
+                                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                            }
                         }
                     }
                 },

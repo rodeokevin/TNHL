@@ -7,11 +7,13 @@ use crate::models::games::game_story::GameStoryReponse;
 
 pub enum GameStoryCommand {
     SetGameIds(Vec<u32>),
+    SetInterval(Duration),
 }
 
 pub struct GameStorySource {
     rx: Receiver<GameStoryCommand>,
     game_ids: Vec<u32>,
+    fetch_interval: Duration,
 }
 
 impl GameStorySource {
@@ -19,6 +21,7 @@ impl GameStorySource {
         Self {
             rx,
             game_ids: Vec::new(),
+            fetch_interval: Duration::from_secs(30),
         }
     }
 
@@ -63,7 +66,7 @@ impl GameStorySource {
 #[async_trait::async_trait]
 impl Source for GameStorySource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
-        let mut interval = tokio::time::interval(Duration::from_secs(30));
+        let mut interval = tokio::time::interval(self.fetch_interval);
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
@@ -79,9 +82,19 @@ impl Source for GameStorySource {
                             current.sort();
                             // Only fetch if game ids changed since this command is called on every GamesUpdate event
                             if ids != current {
+                                log::info!("Fetching game story because game ids changed");
                                 self.game_ids = ids;
                                 self.fetch(&tx).await;
                                 interval.reset();
+                            }
+                        },
+                        GameStoryCommand::SetInterval(new_interval) => {
+                            if new_interval != self.fetch_interval {
+                                log::info!("Setting game story interval to {:?}", new_interval);
+                                self.fetch_interval = new_interval;
+
+                                interval = tokio::time::interval(self.fetch_interval);
+                                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
                             }
                         }
                     }

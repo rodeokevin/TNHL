@@ -1,15 +1,14 @@
 use std::fmt::Debug;
+use std::time::Duration;
 
 use crate::input::{Action, map_key};
+use crate::models::games::games::{GameState, GamesResponse};
 use crate::sources::{
     AppEvent, boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
     standings::StandingsCommand,
 };
 use crate::state::{
-    date_state::DateState,
-    games_state::GamesState,
-    games_state::{BoxscorePosition, BoxscoreTeam},
-    help::HelpState,
+    date_state::DateState, games_state::BoxscorePosition, games_state::GamesState, help::HelpState,
     standings_state::StandingsState,
 };
 use chrono::ParseError;
@@ -132,29 +131,30 @@ impl AppState {
                 game_ids,
                 parsed_games,
             } => {
+                log::info!("Setting fetch interval for sources");
+                self.set_fetch_interval(self.is_games_live(&parsed_games));
                 log::info!("Updating games data");
                 self.games.games_data = Some(parsed_games);
                 log::info!("Sending game ids to other sources");
                 self.boxscore_tx
                     .try_send(BoxscoreCommand::SetGameIds(game_ids.clone()))
                     .ok();
-
                 self.game_story_tx
-                    .try_send(GameStoryCommand::SetGameIds(game_ids.clone()))
+                    .try_send(GameStoryCommand::SetGameIds(game_ids))
                     .ok();
             }
             AppEvent::BoxscoreUpdate {
                 game_id,
                 parsed_boxscore,
             } => {
-                log::info!("Updating boxscore data");
+                log::info!("Updating boxscore data for game {}", game_id);
                 self.games.boxscore_data.insert(game_id, parsed_boxscore);
             }
             AppEvent::GameStoryUpdate {
                 game_id,
                 parsed_game_story,
             } => {
-                log::info!("Updating game story data");
+                log::info!("Updating game story data for game {}", game_id);
                 self.games
                     .game_story_data
                     .insert(game_id, parsed_game_story);
@@ -349,5 +349,37 @@ impl AppState {
     fn reset_app_state(&mut self) {
         self.games.reset_state();
         self.standings.reset_state();
+    }
+
+    fn set_fetch_interval(&self, live: bool) {
+        let info_interval = if live {
+            Duration::from_secs(30)
+        } else {
+            Duration::from_secs(300)
+        };
+        let games_interval = if live {
+            Duration::from_secs(10)
+        } else {
+            Duration::from_secs(60)
+        };
+        self.boxscore_tx
+            .try_send(BoxscoreCommand::SetInterval(info_interval))
+            .ok();
+        self.game_story_tx
+            .try_send(GameStoryCommand::SetInterval(info_interval))
+            .ok();
+        self.games_tx
+            .try_send(GamesCommand::SetInterval(games_interval))
+            .ok();
+        self.standings_tx
+            .try_send(StandingsCommand::SetInterval(info_interval))
+            .ok();
+    }
+
+    fn is_games_live(&self, parsed_games: &GamesResponse) -> bool {
+        parsed_games
+            .games
+            .iter()
+            .any(|g| matches!(g.game_state, GameState::LIVE | GameState::CRIT))
     }
 }

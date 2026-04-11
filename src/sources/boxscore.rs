@@ -7,11 +7,13 @@ use crate::models::games::boxscore::BoxscoreResponse;
 
 pub enum BoxscoreCommand {
     SetGameIds(Vec<u32>),
+    SetInterval(Duration),
 }
 
 pub struct BoxscoreSource {
     rx: Receiver<BoxscoreCommand>,
     game_ids: Vec<u32>,
+    fetch_interval: Duration,
 }
 
 impl BoxscoreSource {
@@ -19,6 +21,7 @@ impl BoxscoreSource {
         Self {
             rx,
             game_ids: Vec::new(),
+            fetch_interval: Duration::from_secs(30),
         }
     }
 
@@ -62,7 +65,7 @@ impl BoxscoreSource {
 #[async_trait::async_trait]
 impl Source for BoxscoreSource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
-        let mut interval = tokio::time::interval(Duration::from_secs(30));
+        let mut interval = tokio::time::interval(self.fetch_interval);
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
@@ -77,9 +80,19 @@ impl Source for BoxscoreSource {
                             current.sort();
                             // Only fetch if game ids changed since this command is called on every GamesUpdate event
                             if ids != current {
+                                log::info!("Fetching boxscore because game ids changed");
                                 self.game_ids = ids;
                                 self.fetch(&tx).await;
                                 interval.reset();
+                            }
+                        },
+                        BoxscoreCommand::SetInterval(new_interval) => {
+                            if new_interval != self.fetch_interval {
+                                log::info!("Setting boxscore interval to {:?}", new_interval);
+                                self.fetch_interval = new_interval;
+
+                                interval = tokio::time::interval(self.fetch_interval);
+                                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
                             }
                         }
                     }

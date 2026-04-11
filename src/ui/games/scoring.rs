@@ -112,7 +112,7 @@ pub fn render_scoring(
                 home_lines.push(Line::from(home_spans));
                 middle_lines.push(Line::default());
 
-                away_lines.push(get_assists_line(&goal.assists, Alignment::Left));
+                home_lines.push(get_assists_line(&goal.assists, Alignment::Left));
                 away_lines.push(Line::default());
                 middle_lines.push(Line::default());
             }
