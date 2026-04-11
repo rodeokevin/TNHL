@@ -55,7 +55,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         .map(|t| Line::from(*t))
         .collect::<Vec<_>>();
 
-    let selected_standings = match app.state.standings.focus {
+    let selected_standings_index = match app.state.standings.selected_standings {
         StandingsFocus::WildCard => 0,
         StandingsFocus::Division => 1,
         StandingsFocus::Conference => 2,
@@ -65,7 +65,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     let focused = app.state.focus == PaneFocus::Content;
     let border_style = if focused {
         Style::default()
-            .fg(Color::Rgb(247, 194, 0))
+            .fg(BORDER_FOCUSED_COLOR)
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::DarkGray)
@@ -73,7 +73,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let highlight_style = if focused {
         Style::default()
-            .fg(Color::Rgb(247, 194, 0))
+            .fg(BORDER_FOCUSED_COLOR)
             .add_modifier(Modifier::BOLD)
             .add_modifier(Modifier::UNDERLINED)
     } else {
@@ -83,7 +83,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     };
 
     let tabs = Tabs::new(titles)
-        .select(selected_standings)
+        .select(selected_standings_index)
         .block(
             Block::bordered()
                 .border_style(border_style)
@@ -94,12 +94,11 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(tabs, tab_content_chunks[0]);
 
     if let Some(data) = &app.state.standings.standings_data {
-        match app.state.standings.focus {
+        match app.state.standings.selected_standings {
             StandingsFocus::WildCard => {
                 render_wildcard_standings(
                     frame,
-                    &mut app.state.standings.eastern_wildcard_table_state,
-                    &mut app.state.standings.western_wildcard_table_state,
+                    &mut app.state.standings.table_state,
                     &app.state.standings.selected_wildcard,
                     tab_content_chunks[1],
                     data,
@@ -109,10 +108,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
             StandingsFocus::Division => {
                 render_division_standings(
                     frame,
-                    &mut app.state.standings.atlantic_table_state,
-                    &mut app.state.standings.metropolitan_table_state,
-                    &mut app.state.standings.central_table_state,
-                    &mut app.state.standings.pacific_table_state,
+                    &mut app.state.standings.table_state,
                     &app.state.standings.selected_division,
                     tab_content_chunks[1],
                     data,
@@ -122,8 +118,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
             StandingsFocus::Conference => {
                 render_conference_standings(
                     frame,
-                    &mut app.state.standings.eastern_table_state,
-                    &mut app.state.standings.western_table_state,
+                    &mut app.state.standings.table_state,
                     &app.state.standings.selected_conference,
                     tab_content_chunks[1],
                     data,
@@ -133,7 +128,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
             StandingsFocus::League => {
                 render_league_standings(
                     frame,
-                    &mut app.state.standings.league_table_state,
+                    &mut app.state.standings.table_state,
                     tab_content_chunks[1],
                     data,
                     border_style,
@@ -159,16 +154,15 @@ fn render_league_standings(
 
 fn render_conference_standings(
     frame: &mut Frame,
-    eastern_table_state: &mut TableState,
-    western_table_state: &mut TableState,
+    table_state: &mut TableState,
     selected_conference: &ConferenceFocus,
     area: Rect,
     teams: &StandingsResponse,
     border_style: Style,
 ) {
-    let (table_state, abbrev, title) = match selected_conference {
-        ConferenceFocus::Eastern => (eastern_table_state, "E", " Eastern Conference Standings "),
-        ConferenceFocus::Western => (western_table_state, "W", " Western Conference Standings "),
+    let (abbrev, title) = match selected_conference {
+        ConferenceFocus::Eastern => ("E", " Eastern Conference Standings "),
+        ConferenceFocus::Western => ("W", " Western Conference Standings "),
     };
 
     render_standings_table(
@@ -185,24 +179,17 @@ fn render_conference_standings(
 
 fn render_division_standings(
     frame: &mut Frame,
-    atlantic_table_state: &mut TableState,
-    metropolitan_table_state: &mut TableState,
-    central_table_state: &mut TableState,
-    pacific_table_state: &mut TableState,
+    table_state: &mut TableState,
     selected_division: &DivisionFocus,
     area: Rect,
     teams: &StandingsResponse,
     border_style: Style,
 ) {
-    let (table_state, abbrev, title) = match selected_division {
-        DivisionFocus::Atlantic => (atlantic_table_state, "A", " Atlantic Division Standings "),
-        DivisionFocus::Metropolitan => (
-            metropolitan_table_state,
-            "M",
-            " Metropolitan Division Standings ",
-        ),
-        DivisionFocus::Central => (central_table_state, "C", " Central Division Standings "),
-        DivisionFocus::Pacific => (pacific_table_state, "P", " Pacific Division Standings "),
+    let (abbrev, title) = match selected_division {
+        DivisionFocus::Atlantic => ("A", " Atlantic Division Standings "),
+        DivisionFocus::Metropolitan => ("M", " Metropolitan Division Standings "),
+        DivisionFocus::Central => ("C", " Central Division Standings "),
+        DivisionFocus::Pacific => ("P", " Pacific Division Standings "),
     };
 
     render_standings_table(
@@ -219,34 +206,30 @@ fn render_division_standings(
 
 fn render_wildcard_standings(
     frame: &mut Frame,
-    eastern_wildcard_table_state: &mut TableState,
-    western_wildcard_table_state: &mut TableState,
+    table_state: &mut TableState,
     selected_wildcard: &ConferenceFocus,
     area: Rect,
     teams: &StandingsResponse,
     border_style: Style,
 ) {
-    let (table_state, div1_abbr, div1_full, div2_abbr, div2_full, conf, title) =
-        match selected_wildcard {
-            ConferenceFocus::Eastern => (
-                eastern_wildcard_table_state,
-                "A",
-                "Atlantic",
-                "M",
-                "Metropolitan",
-                "E",
-                " Eastern Wildcard Standings ",
-            ),
-            ConferenceFocus::Western => (
-                western_wildcard_table_state,
-                "C",
-                "Central",
-                "P",
-                "Pacific",
-                "W",
-                " Western Wildcard Standings ",
-            ),
-        };
+    let (div1_abbr, div1_full, div2_abbr, div2_full, conf, title) = match selected_wildcard {
+        ConferenceFocus::Eastern => (
+            "A",
+            "Atlantic",
+            "M",
+            "Metropolitan",
+            "E",
+            " Eastern Wildcard Standings ",
+        ),
+        ConferenceFocus::Western => (
+            "C",
+            "Central",
+            "P",
+            "Pacific",
+            "W",
+            " Western Wildcard Standings ",
+        ),
+    };
     let division_conference_rows_style = Style::default()
         .fg(BORDER_FOCUSED_COLOR)
         .add_modifier(Modifier::UNDERLINED);
@@ -296,14 +279,14 @@ fn create_table(rows: Vec<Row<'_>>, title: String, border_style: Style) -> Table
         .highlight_symbol(">> ")
 }
 
-// Helper to create the standings header from the const value
+/// Helper to create the standings header from the const value
 fn standings_header<'a>() -> Row<'a> {
     Row::new(STANDINGS_COLUMNS)
         .style(Style::new().bold())
         .bottom_margin(1)
 }
 
-// Helper functions to map the standings JSON into table rows given a filter for which teams and how to sort them
+/// Helper functions to map the standings data into table rows given a filter for which teams and how to sort them
 fn map_rows<F, S>(
     data: &StandingsResponse,
     filter: F,
@@ -360,7 +343,6 @@ where
         .collect()
 }
 
-// Helper to render standings
 fn render_standings_table(
     frame: &mut Frame,
     table_state: &mut TableState,

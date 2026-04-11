@@ -49,7 +49,7 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
     let focused = app.state.focus == PaneFocus::Menu;
     let border_style = if focused {
         Style::default()
-            .fg(Color::Rgb(247, 194, 0))
+            .fg(BORDER_FOCUSED_COLOR)
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::DarkGray)

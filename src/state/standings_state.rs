@@ -5,7 +5,7 @@ use crate::models::standings::StandingsResponse;
 const LEAGUE_NUM_TEAMS: usize = 32;
 const CONFERENCE_NUM_TEAMS: usize = 16;
 const DIVISION_NUM_TEAMS: usize = 8;
-const WILDCARD_NUM_TEAMS: usize = 16 + 3; // + 3 for the division/conference rows
+const WILDCARD_NUM_TEAMS: usize = 16 + 3; // + 3 for the division/conference name rows
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum StandingsFocus {
@@ -83,23 +83,12 @@ impl DivisionFocus {
 
 pub struct StandingsState {
     pub standings_data: Option<StandingsResponse>,
-    pub focus: StandingsFocus,
+    pub table_state: TableState, // TableState for the active table
 
+    pub selected_standings: StandingsFocus,
     pub selected_conference: ConferenceFocus,
-    pub eastern_table_state: TableState,
-    pub western_table_state: TableState,
-
     pub selected_division: DivisionFocus,
-    pub atlantic_table_state: TableState,
-    pub metropolitan_table_state: TableState,
-    pub central_table_state: TableState,
-    pub pacific_table_state: TableState,
-
     pub selected_wildcard: ConferenceFocus,
-    pub eastern_wildcard_table_state: TableState,
-    pub western_wildcard_table_state: TableState,
-
-    pub league_table_state: TableState,
 }
 
 impl Default for StandingsState {
@@ -112,79 +101,49 @@ impl Default for StandingsState {
 
         Self {
             standings_data: None,
+            table_state: table(),
 
-            focus: StandingsFocus::default(),
-
+            selected_standings: StandingsFocus::default(),
             selected_conference: ConferenceFocus::default(),
-            eastern_table_state: table(),
-            western_table_state: table(),
-
             selected_division: DivisionFocus::default(),
-            atlantic_table_state: table(),
-            metropolitan_table_state: table(),
-            central_table_state: table(),
-            pacific_table_state: table(),
-
             selected_wildcard: ConferenceFocus::default(),
-            eastern_wildcard_table_state: table(),
-            western_wildcard_table_state: table(),
-
-            league_table_state: table(),
         }
     }
 }
 
 impl StandingsState {
-    pub fn current_table_state_mut(&mut self) -> (&mut TableState, usize) {
-        match self.focus {
-            StandingsFocus::League => (&mut self.league_table_state, LEAGUE_NUM_TEAMS),
-            StandingsFocus::Conference => match self.selected_conference {
-                ConferenceFocus::Eastern => (&mut self.eastern_table_state, CONFERENCE_NUM_TEAMS),
-                ConferenceFocus::Western => (&mut self.western_table_state, CONFERENCE_NUM_TEAMS),
-            },
-            StandingsFocus::Division => match self.selected_division {
-                DivisionFocus::Atlantic => (&mut self.atlantic_table_state, DIVISION_NUM_TEAMS),
-                DivisionFocus::Metropolitan => {
-                    (&mut self.metropolitan_table_state, DIVISION_NUM_TEAMS)
-                }
-                DivisionFocus::Central => (&mut self.central_table_state, DIVISION_NUM_TEAMS),
-                DivisionFocus::Pacific => (&mut self.pacific_table_state, DIVISION_NUM_TEAMS),
-            },
-            StandingsFocus::WildCard => match self.selected_wildcard {
-                ConferenceFocus::Eastern => {
-                    (&mut self.eastern_wildcard_table_state, WILDCARD_NUM_TEAMS)
-                }
-                ConferenceFocus::Western => {
-                    (&mut self.western_wildcard_table_state, WILDCARD_NUM_TEAMS)
-                }
-            },
+    /// Return the length of the active standings table
+    pub fn current_table_len(&mut self) -> usize {
+        match self.selected_standings {
+            StandingsFocus::League => LEAGUE_NUM_TEAMS,
+            StandingsFocus::Conference => CONFERENCE_NUM_TEAMS,
+            StandingsFocus::Division => DIVISION_NUM_TEAMS,
+            StandingsFocus::WildCard => WILDCARD_NUM_TEAMS,
         }
     }
 
     pub fn move_selection(&mut self, delta: i32) {
-        let (table, len) = self.current_table_state_mut();
-        let current = table.selected().unwrap_or(0);
+        let len = self.current_table_len();
+        let current = self.table_state.selected().unwrap_or(0);
         let new = current as i32 + delta;
         let next = if new < 0 || new >= len as i32 {
             current
         } else {
             new as usize
         };
-        table.select(Some(next));
+        self.table_state.select(Some(next));
     }
-
     // Next/PrevStandings
     pub fn shift_standings_type(&mut self, next: bool) {
-        self.focus = if next {
-            self.focus.next()
+        self.selected_standings = if next {
+            self.selected_standings.next()
         } else {
-            self.focus.prev()
+            self.selected_standings.prev()
         };
     }
-
-    // Cycle between a standings display (change conference, division or wildcard depending on standings type)
+    /// Cycle within a selected standings (e.g. change division in division standings)
     pub fn cycle_display(&mut self, next: bool) {
-        match self.focus {
+        match self.selected_standings {
             StandingsFocus::Conference => {
                 self.selected_conference = self.selected_conference.toggle()
             }
@@ -199,24 +158,17 @@ impl StandingsState {
             StandingsFocus::League => {}
         }
     }
-
+    /// Reset standings to default state
     pub fn reset_state(&mut self) {
-        self.focus = StandingsFocus::default();
+        self.reset_table_state();
 
+        self.selected_standings = StandingsFocus::default();
         self.selected_conference = ConferenceFocus::default();
-        self.eastern_table_state.select(Some(0));
-        self.western_table_state.select(Some(0));
-
         self.selected_division = DivisionFocus::default();
-        self.atlantic_table_state.select(Some(0));
-        self.metropolitan_table_state.select(Some(0));
-        self.central_table_state.select(Some(0));
-        self.pacific_table_state.select(Some(0));
-
         self.selected_wildcard = ConferenceFocus::default();
-        self.eastern_wildcard_table_state.select(Some(0));
-        self.western_wildcard_table_state.select(Some(0));
-
-        self.league_table_state.select(Some(0));
+    }
+    /// Reset selected row in table
+    pub fn reset_table_state(&mut self) {
+        self.table_state.select(Some(0));
     }
 }

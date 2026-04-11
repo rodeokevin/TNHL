@@ -264,10 +264,22 @@ impl AppState {
 
             Action::StandingsUp => self.standings.move_selection(-1),
             Action::StandingsDown => self.standings.move_selection(1),
-            Action::StandingsLeft => self.standings.shift_standings_type(false),
-            Action::StandingsRight => self.standings.shift_standings_type(true),
-            Action::PrevStandingsDisplay => self.standings.cycle_display(false),
-            Action::NextStandingsDisplay => self.standings.cycle_display(true),
+            Action::StandingsLeft => {
+                self.standings.shift_standings_type(false);
+                self.standings.reset_table_state();
+            }
+            Action::StandingsRight => {
+                self.standings.shift_standings_type(true);
+                self.standings.reset_table_state();
+            }
+            Action::PrevStandingsDisplay => {
+                self.standings.cycle_display(false);
+                self.standings.reset_table_state();
+            }
+            Action::NextStandingsDisplay => {
+                self.standings.cycle_display(true);
+                self.standings.reset_table_state();
+            }
 
             Action::EnterDatePicker => {
                 self.previous_focus = self.focus;
@@ -315,12 +327,20 @@ impl AppState {
     pub async fn handle_date_change(&mut self) {
         let date = self.date_state.date.to_string();
 
-        if let Err(e) = self.games_tx.send(GamesCommand::SetDate(date.clone())).await {
+        if let Err(e) = self
+            .games_tx
+            .send(GamesCommand::SetDate(date.clone()))
+            .await
+        {
             log::error!("Games channel closed: {:?}", e);
             return;
         }
 
-        if let Err(e) = self.standings_tx.send(StandingsCommand::SetDate(date.clone())).await {
+        if let Err(e) = self
+            .standings_tx
+            .send(StandingsCommand::SetDate(date.clone()))
+            .await
+        {
             log::error!("Standings channel closed: {:?}", e);
             return;
         }

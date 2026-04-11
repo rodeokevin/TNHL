@@ -31,11 +31,17 @@ pub enum Action {
     BoxscoreGoalies,
     BoxscoreToggleTeam,
 
+    /// Move up a row in standings table
     StandingsUp,
+    /// Move down a row in standings table
     StandingsDown,
+    /// Select previous (if possible) standings type
     StandingsLeft,
+    /// Select next (if possible) standings type
     StandingsRight,
+    /// Select previous (if possible) within a standings type
     PrevStandingsDisplay,
+    /// Select next (if possible) standings type
     NextStandingsDisplay,
 
     DateLeft,
