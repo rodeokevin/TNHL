@@ -1,5 +1,5 @@
 use crate::App;
-use crate::models::games::game_story::{GameStatsCategory, StatValue};
+use crate::models::games::game_story::{GameStatsCategory, StatValue, TeamGameStats};
 use crate::ui::{
     games::{games::split_info_left_middle_right, scoring::MIDDLE_LENGTH},
     render::BORDER_FOCUSED_COLOR,
@@ -42,57 +42,39 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
             .collect();
 
         // Shots on goal
-        if let Some(sog) = stats_map.get(&GameStatsCategory::Sog) {
-            middle_lines.push(
-                Line::from("Shots on Goal")
-                    .style(Style::default().fg(BORDER_FOCUSED_COLOR))
-                    .alignment(Alignment::Center),
+        if let Some(&sog) = stats_map.get(&GameStatsCategory::Sog) {
+            add_stat_lines(
+                &mut away_lines,
+                &mut middle_lines,
+                &mut home_lines,
+                "Shots on Goal".to_string(),
+                sog,
+                sog.away_value.to_string(),
+                sog.home_value.to_string(),
             );
-            away_lines.push(Line::default());
-            home_lines.push(Line::default());
-            away_lines.push(Line::from(sog.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(compute_middle_bar(&sog.away_value, &sog.home_value));
-            home_lines.push(Line::from(sog.home_value.to_string()).alignment(Alignment::Left));
         }
         // Face-off %
         if let Some(&faceoff) = stats_map.get(&GameStatsCategory::FaceoffWinningPctg) {
-            middle_lines.push(
-                Line::from("Face-off %")
-                    .style(Style::default().fg(BORDER_FOCUSED_COLOR))
-                    .alignment(Alignment::Center),
-            );
-            away_lines.push(Line::default());
-            home_lines.push(Line::default());
-            away_lines.push(
-                Line::from(format!("{}%", faceoff.away_value.to_string()))
-                    .alignment(Alignment::Right),
-            );
-            middle_lines.push(compute_middle_bar(&faceoff.away_value, &faceoff.home_value));
-            home_lines.push(
-                Line::from(format!("{}%", faceoff.home_value.to_string()))
-                    .alignment(Alignment::Left),
+            add_stat_lines(
+                &mut away_lines,
+                &mut middle_lines,
+                &mut home_lines,
+                "Face-off %".to_string(),
+                faceoff,
+                format!("{}%", faceoff.away_value.to_string()),
+                format!("{}%", faceoff.home_value.to_string()),
             );
         }
         // Power Play %
         if let Some(&power_play_pctg) = stats_map.get(&GameStatsCategory::PowerPlayPctg) {
-            middle_lines.push(
-                Line::from("Power Play %")
-                    .style(Style::default().fg(BORDER_FOCUSED_COLOR))
-                    .alignment(Alignment::Center),
-            );
-            away_lines.push(Line::default());
-            home_lines.push(Line::default());
-            away_lines.push(
-                Line::from(format!("{}%", power_play_pctg.away_value.to_string()))
-                    .alignment(Alignment::Right),
-            );
-            middle_lines.push(compute_middle_bar(
-                &power_play_pctg.away_value,
-                &power_play_pctg.home_value,
-            ));
-            home_lines.push(
-                Line::from(format!("{}%", power_play_pctg.home_value.to_string()))
-                    .alignment(Alignment::Left),
+            add_stat_lines(
+                &mut away_lines,
+                &mut middle_lines,
+                &mut home_lines,
+                "Power Play %".to_string(),
+                power_play_pctg,
+                format!("{}%", power_play_pctg.away_value.to_string()),
+                format!("{}%", power_play_pctg.home_value.to_string()),
             );
             if let Some(&power_play_rate) = stats_map.get(&GameStatsCategory::PowerPlay) {
                 away_lines.push(
@@ -108,92 +90,71 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
                 );
             }
         }
-        // Penalty minues
+        // Penalty minutes
         if let Some(&pims) = stats_map.get(&GameStatsCategory::Pim) {
-            middle_lines.push(
-                Line::from("Penalty Minutes")
-                    .style(Style::default().fg(BORDER_FOCUSED_COLOR))
-                    .alignment(Alignment::Center),
+            add_stat_lines(
+                &mut away_lines,
+                &mut middle_lines,
+                &mut home_lines,
+                "Power Play %".to_string(),
+                pims,
+                pims.away_value.to_string(),
+                pims.home_value.to_string(),
             );
-            away_lines.push(Line::default());
-            home_lines.push(Line::default());
-            away_lines.push(Line::from(pims.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(compute_middle_bar(&pims.away_value, &pims.home_value));
-            home_lines.push(Line::from(pims.home_value.to_string()).alignment(Alignment::Left));
         }
         // Hits
         if let Some(&hits) = stats_map.get(&GameStatsCategory::Hits) {
-            middle_lines.push(
-                Line::from("Hits")
-                    .style(Style::default().fg(BORDER_FOCUSED_COLOR))
-                    .alignment(Alignment::Center),
+            add_stat_lines(
+                &mut away_lines,
+                &mut middle_lines,
+                &mut home_lines,
+                "Hits".to_string(),
+                hits,
+                hits.away_value.to_string(),
+                hits.home_value.to_string(),
             );
-            away_lines.push(Line::default());
-            home_lines.push(Line::default());
-            away_lines.push(Line::from(hits.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(compute_middle_bar(&hits.away_value, &hits.home_value));
-            home_lines.push(Line::from(hits.home_value.to_string()).alignment(Alignment::Left));
         }
         // Blocked Shots
         if let Some(&blocked_shots) = stats_map.get(&GameStatsCategory::BlockedShots) {
-            middle_lines.push(
-                Line::from("Blocked Shots")
-                    .style(Style::default().fg(BORDER_FOCUSED_COLOR))
-                    .alignment(Alignment::Center),
+            add_stat_lines(
+                &mut away_lines,
+                &mut middle_lines,
+                &mut home_lines,
+                "Blocked Shots".to_string(),
+                blocked_shots,
+                blocked_shots.away_value.to_string(),
+                blocked_shots.home_value.to_string(),
             );
-            away_lines.push(Line::default());
-            home_lines.push(Line::default());
-            away_lines
-                .push(Line::from(blocked_shots.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(compute_middle_bar(
-                &blocked_shots.away_value,
-                &blocked_shots.home_value,
-            ));
-            home_lines
-                .push(Line::from(blocked_shots.home_value.to_string()).alignment(Alignment::Left));
         }
         // Giveaways
         if let Some(&giveaways) = stats_map.get(&GameStatsCategory::Giveaways) {
-            middle_lines.push(
-                Line::from("Giveaways")
-                    .style(Style::default().fg(BORDER_FOCUSED_COLOR))
-                    .alignment(Alignment::Center),
+            add_stat_lines(
+                &mut away_lines,
+                &mut middle_lines,
+                &mut home_lines,
+                "Giveaways".to_string(),
+                giveaways,
+                giveaways.away_value.to_string(),
+                giveaways.home_value.to_string(),
             );
-            away_lines.push(Line::default());
-            home_lines.push(Line::default());
-            away_lines
-                .push(Line::from(giveaways.away_value.to_string()).alignment(Alignment::Right));
-            middle_lines.push(compute_middle_bar(
-                &giveaways.away_value,
-                &giveaways.home_value,
-            ));
-            home_lines
-                .push(Line::from(giveaways.home_value.to_string()).alignment(Alignment::Left));
         }
         // Takeaways
         if let Some(&takeaways) = stats_map.get(&GameStatsCategory::Takeaways) {
-            middle_lines.push(
-                Line::from("Takeaways")
-                    .style(Style::default().fg(BORDER_FOCUSED_COLOR))
-                    .alignment(Alignment::Center),
+            add_stat_lines(
+                &mut away_lines,
+                &mut middle_lines,
+                &mut home_lines,
+                "Takeaways".to_string(),
+                takeaways,
+                takeaways.away_value.to_string(),
+                takeaways.home_value.to_string(),
             );
-            away_lines.push(Line::default());
-            home_lines.push(Line::default());
-            away_lines
-                .push(Line::from(takeaways.away_value.to_string()).alignment(Alignment::Right));
-
-            middle_lines.push(compute_middle_bar(
-                &takeaways.away_value,
-                &takeaways.home_value,
-            ));
-            home_lines
-                .push(Line::from(takeaways.home_value.to_string()).alignment(Alignment::Left));
         }
     } else {
         // No stats
         away_lines.push(Line::default());
         middle_lines.push(
-            Line::from("No stats yet")
+            Line::from("No stats yet :(")
                 .style(Style::default().fg(Color::DarkGray))
                 .alignment(Alignment::Center),
         );
@@ -239,6 +200,29 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(Paragraph::new(visible_away), chunks[0]);
     frame.render_widget(Paragraph::new(visible_period), chunks[1]);
     frame.render_widget(Paragraph::new(visible_home), chunks[2]);
+}
+
+// Add the lines for one stat
+fn add_stat_lines(
+    away_lines: &mut Vec<Line<'_>>,
+    middle_lines: &mut Vec<Line<'_>>,
+    home_lines: &mut Vec<Line<'_>>,
+    title: String,
+    stat: &TeamGameStats,
+    away_value: String,
+    home_value: String,
+) {
+    away_lines.push(Line::default());
+    middle_lines.push(
+        Line::from(title)
+            .style(Style::default().fg(BORDER_FOCUSED_COLOR))
+            .alignment(Alignment::Center),
+    );
+    home_lines.push(Line::default());
+
+    away_lines.push(Line::from(away_value).alignment(Alignment::Right));
+    middle_lines.push(compute_middle_bar(&stat.away_value, &stat.home_value));
+    home_lines.push(Line::from(home_value).alignment(Alignment::Left));
 }
 
 fn compute_middle_bar<'a>(away_value: &'a StatValue, home_value: &'a StatValue) -> Line<'static> {

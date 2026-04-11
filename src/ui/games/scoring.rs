@@ -1,10 +1,11 @@
 use crate::models::games::{
     game_story::{GameStoryReponse, ShootoutAttemptResult},
-    games::{GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType},
+    games::{
+        AssistInfo, GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType,
+    },
 };
 use crate::ui::render::BORDER_FOCUSED_COLOR;
-use std::rc::Rc;
-use std::vec;
+use std::{rc::Rc, vec};
 
 use ratatui::{
     Frame,
@@ -89,43 +90,10 @@ pub fn render_scoring(
                 home_lines.push(Line::default());
                 middle_lines.push(Line::default());
 
-                if !goal.assists.is_empty() {
-                    let assists_text = goal
-                        .assists
-                        .iter()
-                        .map(|assist| {
-                            format!(
-                                "{} ({})",
-                                assist.name,
-                                assist.assists_to_date.unwrap_or_default()
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ");
-
-                    away_lines.push(
-                        Line::styled(
-                            format!("[{}]", assists_text),
-                            Style::default().fg(Color::DarkGray),
-                        )
-                        .alignment(Alignment::Right),
-                    );
-                } else {
-                    away_lines.push(
-                        Line::styled("[Unassisted]", Style::default().fg(Color::DarkGray))
-                            .alignment(Alignment::Right),
-                    );
-                }
+                // Add a line for assists (or display unassisted)
+                away_lines.push(get_assists_line(&goal.assists, Alignment::Right));
                 home_lines.push(Line::default());
                 middle_lines.push(Line::default());
-
-                if let Some(next_goal) = goals.get(i + 1) {
-                    if next_goal.period_descriptor.number == goal.period_descriptor.number {
-                        home_lines.push(Line::default());
-                        away_lines.push(Line::default());
-                        middle_lines.push(Line::default());
-                    }
-                }
             } else if goal.team_abbrev == *home_team_abbrev {
                 let mut home_spans = vec![Span::raw(format!(
                     "{} {}{}",
@@ -144,41 +112,16 @@ pub fn render_scoring(
                 home_lines.push(Line::from(home_spans));
                 middle_lines.push(Line::default());
 
-                if !goal.assists.is_empty() {
-                    let assists_text = goal
-                        .assists
-                        .iter()
-                        .map(|assist| {
-                            format!(
-                                "{} ({})",
-                                assist.name,
-                                assist.assists_to_date.unwrap_or_default()
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ");
-
-                    home_lines.push(
-                        Line::styled(
-                            format!("[{}]", assists_text),
-                            Style::default().fg(Color::DarkGray),
-                        )
-                        .alignment(Alignment::Left),
-                    );
-                } else {
-                    home_lines.push(
-                        Line::styled("[Unassisted]", Style::default().fg(Color::DarkGray))
-                            .alignment(Alignment::Left),
-                    );
-                }
+                away_lines.push(get_assists_line(&goal.assists, Alignment::Left));
                 away_lines.push(Line::default());
                 middle_lines.push(Line::default());
-                if let Some(next_goal) = goals.get(i + 1) {
-                    if next_goal.period_descriptor.number == goal.period_descriptor.number {
-                        home_lines.push(Line::default());
-                        away_lines.push(Line::default());
-                        middle_lines.push(Line::default());
-                    }
+            }
+            // Add spacing if next goal is in the same period
+            if let Some(next_goal) = goals.get(i + 1) {
+                if next_goal.period_descriptor.number == goal.period_descriptor.number {
+                    home_lines.push(Line::default());
+                    away_lines.push(Line::default());
+                    middle_lines.push(Line::default());
                 }
             }
         }
@@ -284,7 +227,34 @@ pub fn render_scoring(
     frame.render_widget(Paragraph::new(visible_home), chunks[2]);
 }
 
-pub fn get_period_title(period: &PeriodDescriptor) -> String {
+fn get_assists_line(assists: &Vec<AssistInfo>, alignment: Alignment) -> Line<'static> {
+    if !assists.is_empty() {
+        let assists_text = get_assists_text(assists);
+        Line::styled(
+            format!("[{}]", assists_text),
+            Style::default().fg(Color::DarkGray),
+        )
+        .alignment(alignment)
+    } else {
+        Line::styled("[Unassisted]", Style::default().fg(Color::DarkGray)).alignment(alignment)
+    }
+}
+
+fn get_assists_text(assists: &Vec<AssistInfo>) -> String {
+    assists
+        .iter()
+        .map(|assist| {
+            format!(
+                "{} ({})",
+                assist.name,
+                assist.assists_to_date.unwrap_or_default()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn get_period_title(period: &PeriodDescriptor) -> String {
     match period.period_type {
         PeriodType::REG => match period.number {
             1 => "1st Period".to_string(),

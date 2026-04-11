@@ -24,6 +24,7 @@ use ratatui::{
 use tui_big_text::{BigText, PixelSize};
 
 const MIDDLE_LENGTH: u16 = 10;
+const BIG_SCORE_COLOR: Color = Color::Green;
 
 pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
@@ -316,9 +317,9 @@ pub fn render_sweeping_status(
     area: Rect,
 ) {
     match game.game_state {
-        GameState::LIVE | GameState::CRIT => {
-            let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
+        GameState::LIVE | GameState::CRIT if game.clock.is_some() => {
             if let Some(clock) = &game.clock {
+                let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
                 if clock.running {
                     let spans: Vec<_> = (0..width)
                         .map(|i| {
@@ -340,8 +341,6 @@ pub fn render_sweeping_status(
 
                     frame.render_widget(Line::from(spans).alignment(Alignment::Center), chunks[1]);
                 }
-            } else {
-                frame.render_widget(Line::default(), area);
             }
         }
         _ => frame.render_widget(Line::default(), area),
@@ -379,10 +378,7 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
         Line::from(left_spans).alignment(Alignment::Right),
         chunks[0],
     );
-    frame.render_widget(
-        Line::from("    vs    ").alignment(Alignment::Center),
-        chunks[1],
-    );
+    frame.render_widget(Line::from("vs").alignment(Alignment::Center), chunks[1]);
 
     let mut right_spans = vec![];
     right_spans.push(Span::raw(&game.home_team.name.default));
@@ -400,7 +396,7 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
                 })
                 .collect();
             if !parts.is_empty() {
-                let label = format!(" [{}] ", parts.join(", "));
+                let label = format!(" [{}]", parts.join(", "));
                 right_spans.push(Span::styled(label, Style::default().fg(Color::Red)));
             }
         }
@@ -414,49 +410,45 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
 pub fn render_big_score(game: &GameData, frame: &mut Frame, area: Rect) {
     let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
 
-    let away_score = BigText::builder()
-        .pixel_size(PixelSize::Sextant)
-        .style(Style::default().fg(Color::Green))
-        .lines(vec![
-            format!("{}", game.away_team.score.unwrap_or(0)).into(),
-        ])
-        .right_aligned()
-        .build();
+    let away_score = build_big_text(
+        game.away_team.score.unwrap_or(0).to_string(),
+        Alignment::Right,
+    );
     frame.render_widget(away_score, chunks[0]);
-
-    let dash = BigText::builder()
-        .pixel_size(PixelSize::Sextant)
-        .style(Style::default().fg(Color::Green))
-        .lines(vec!["-".into()])
-        .centered()
-        .build();
+    let dash = build_big_text("-".to_string(), Alignment::Center);
     frame.render_widget(dash, chunks[1]);
-
-    let home_score = BigText::builder()
-        .pixel_size(PixelSize::Sextant)
-        .style(Style::default().fg(Color::Green))
-        .lines(vec![
-            format!("{}", game.home_team.score.unwrap_or(0)).into(),
-        ])
-        .left_aligned()
-        .build();
+    let home_score = build_big_text(
+        game.home_team.score.unwrap_or(0).to_string(),
+        Alignment::Left,
+    );
     frame.render_widget(home_score, chunks[2]);
+}
+
+fn build_big_text(text: String, alignment: Alignment) -> BigText<'static> {
+    BigText::builder()
+        .pixel_size(PixelSize::Sextant)
+        .style(Style::default().fg(BIG_SCORE_COLOR))
+        .lines(vec![Line::from(text)])
+        .alignment(alignment)
+        .build()
 }
 
 pub fn render_shots_on_goal(game: &GameData, frame: &mut Frame, area: Rect) {
     let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
     frame.render_widget(
-        Line::from(format!("SOG: {}", game.away_team.sog.unwrap_or(0)))
-            .style(Style::default().fg(Color::DarkGray))
-            .alignment(Alignment::Right),
+        create_line_from_sog(game.away_team.sog.unwrap_or(0), Alignment::Right),
         chunks[0],
     );
     frame.render_widget(
-        Line::from(format!("SOG: {}", game.home_team.sog.unwrap_or(0)))
-            .style(Style::default().fg(Color::DarkGray))
-            .alignment(Alignment::Left),
+        create_line_from_sog(game.home_team.sog.unwrap_or(0), Alignment::Left),
         chunks[2],
     );
+}
+
+fn create_line_from_sog(sog: u16, alignment: Alignment) -> Line<'static> {
+    Line::from(format!("SOG: {}", sog))
+        .style(Style::default().fg(Color::DarkGray))
+        .alignment(alignment)
 }
 
 pub fn get_period_title(period: &PeriodDescriptor) -> String {
