@@ -209,28 +209,28 @@ impl AppState {
                 }
             }
             Action::PrevGame => {
-                self.games.boxscore_selected_position = BoxscorePosition::default();
-                self.games.boxscore_selected_team = BoxscoreTeam::default();
+                let prev = self.games.selected_game_index;
                 self.games.shift_game_index(false);
+                if self.games.selected_game_index != prev {
+                    self.games.reset_game_state();
+                }
             }
             Action::NextGame => {
-                self.games.boxscore_selected_position = BoxscorePosition::default();
-                self.games.boxscore_selected_team = BoxscoreTeam::default();
                 let prev = self.games.selected_game_index;
                 self.games.shift_game_index(true);
                 if self.games.selected_game_index != prev {
-                    self.games.reset_state();
+                    self.games.reset_game_state();
                 }
             }
             Action::PrevGamesDisplay => {
                 self.games.cycle_display(false);
                 self.games.reset_scoring_scroll();
-                self.games.boxscore_table_state.select(Some(0));
+                self.games.reset_boxscore_state();
             }
             Action::NextGamesDisplay => {
                 self.games.cycle_display(true);
                 self.games.reset_scoring_scroll();
-                self.games.boxscore_table_state.select(Some(0));
+                self.games.reset_boxscore_state();
             }
             Action::GamesScrollUp => {
                 self.games.scroll_offset = self.games.scroll_offset.saturating_sub(1);
@@ -319,16 +319,13 @@ impl AppState {
     // Helper functions for handling actions
     fn try_update_date_from_input(&mut self) -> Result<(), ParseError> {
         let valid_date = self.date_state.validate_input(self.timezone)?;
-
         self.date_state.set_date_from_valid_input(valid_date);
         Ok(())
     }
     /// Update data from sources after date change
     pub fn handle_date_change(&mut self) {
         let date = self.date_state.date.to_string();
-        let games_res = self
-            .games_tx
-            .try_send(GamesCommand::SetDate(date.clone()));
+        let games_res = self.games_tx.try_send(GamesCommand::SetDate(date.clone()));
         let standings_res = self
             .standings_tx
             .try_send(StandingsCommand::SetDate(date.clone()));
@@ -341,7 +338,6 @@ impl AppState {
             self.games.game_story_data.clear();
             self.games.reset_state();
         }
-
         if let Err(e) = &standings_res {
             log::error!("Failed to send StandingsCommand::SetDate: {:?}", e);
         } else {

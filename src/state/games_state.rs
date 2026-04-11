@@ -85,10 +85,14 @@ impl GamesState {
     }
     /// Reset all state in games to default
     pub fn reset_state(&mut self) {
+        self.reset_game_state();
+        self.selected_game_index = 0;
+    }
+    /// Reset state when changing games
+    pub fn reset_game_state(&mut self) {
         self.focus = GamesFocus::default();
         self.boxscore_selected_position = BoxscorePosition::default();
         self.boxscore_selected_team = BoxscoreTeam::default();
-        self.selected_game_index = 0;
         self.boxscore_table_state.select(Some(0));
         self.reset_scoring_scroll();
     }
@@ -145,6 +149,11 @@ impl GamesState {
             .as_ref()
             .and_then(|g| g.games.get(self.selected_game_index))
             .map(|g| g.id)
+    }
+    pub fn reset_boxscore_state(&mut self) {
+        self.boxscore_selected_position = BoxscorePosition::default();
+        self.boxscore_table_state.select(Some(0));
+        self.boxscore_selected_team = BoxscoreTeam::default();
     }
 }
 

@@ -33,8 +33,8 @@ const BOXSCORE_DEFENSE_COLUMNS: [&str; 15] = [
     "GV",
     "TK",
 ];
-const BOXSCORE_GOALIES_COLUMNS: [&str; 10] = [
-    "#", "Goalies", "SA", "SV", "GA", "EV", "PP", "SH", "SV%", "TOI",
+const BOXSCORE_GOALIES_COLUMNS: [&str; 11] = [
+    "#", "Goalies", "SA", "SV", "GA", "EV", "PP", "SH", "SV%", "PIM", "TOI",
 ];
 
 const BOXSCORE_FORWARDS_COLUMN_WIDTHS: [Constraint; 17] = [
@@ -75,7 +75,7 @@ const BOXSCORE_DEFENSE_COLUMN_WIDTHS: [Constraint; 15] = [
     Constraint::Length(4),
 ];
 
-const BOXSCORE_GOALIES_COLUMN_WIDTHS: [Constraint; 10] = [
+const BOXSCORE_GOALIES_COLUMN_WIDTHS: [Constraint; 11] = [
     Constraint::Length(3),
     Constraint::Min(20),
     Constraint::Length(4),
@@ -85,6 +85,7 @@ const BOXSCORE_GOALIES_COLUMN_WIDTHS: [Constraint; 10] = [
     Constraint::Length(5),
     Constraint::Length(5),
     Constraint::Length(5),
+    Constraint::Length(4),
     Constraint::Length(6),
 ];
 
@@ -216,6 +217,7 @@ fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
                 p.save_pctg
                     .map(|f| format!("{:.4}", f))
                     .unwrap_or_else(|| "--".to_string()),
+                p.pim.as_ref().map_or("--".to_string(), |t| t.to_string()),
                 p.toi.as_ref().map_or("--".to_string(), |t| t.clone()),
             ])
         })
