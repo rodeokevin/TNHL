@@ -8,7 +8,7 @@ const HEADER: &[&str; 2] = &["Command", "Key"];
 const GENERAL_DOCS: &[&[&str; 2]; 3] = &[
     &["Exit help", "Esc"],
     &["Toggle focused pane", "Tab"],
-    &["Quit", "q/ctrl + c"],
+    &["Quit TNHL", "q/Ctrl + c"],
 ];
 const GAMES_DOCS: &[&[&str; 2]; 11] = &[
     &["Games", " "],
@@ -33,7 +33,7 @@ const STANDINGS_DOCS: &[&[&str; 2]; 8] = &[
     &["Previous division/conference", "<"],
     &["Select date", ":"],
 ];
-const TEAM_DOCS: &[&[&str; 2]; 2] = &[&["TEAMS", " "], &["To be implemented", ""]];
+const TEAM_DOCS: &[&[&str; 2]; 2] = &[&["Teams", " "], &["To be implemented", ""]];
 const PLAYERS_DOCS: &[&[&str; 2]; 2] = &[&["Players", " "], &["To be implemented", ""]];
 const STATSTICS_DOCS: &[&[&str; 2]; 2] = &[&["Statistics", " "], &["To be implemented", ""]];
 

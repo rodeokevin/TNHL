@@ -324,30 +324,30 @@ impl AppState {
         Ok(())
     }
     /// Update data from sources after date change
-    pub async fn handle_date_change(&mut self) {
+    pub fn handle_date_change(&mut self) {
         let date = self.date_state.date.to_string();
-
-        if let Err(e) = self
+        let games_res = self
             .games_tx
-            .send(GamesCommand::SetDate(date.clone()))
-            .await
-        {
-            log::error!("Games channel closed: {:?}", e);
-            return;
-        }
-
-        if let Err(e) = self
+            .try_send(GamesCommand::SetDate(date.clone()));
+        let standings_res = self
             .standings_tx
-            .send(StandingsCommand::SetDate(date.clone()))
-            .await
-        {
-            log::error!("Standings channel closed: {:?}", e);
-            return;
+            .try_send(StandingsCommand::SetDate(date.clone()));
+
+        if let Err(e) = &games_res {
+            log::error!("Failed to send GamesCommand::SetDate: {:?}", e);
+        } else {
+            // Clear current data and reset all state in games since new data is incoming
+            self.games.boxscore_data.clear();
+            self.games.game_story_data.clear();
+            self.games.reset_state();
         }
 
-        self.games.boxscore_data.clear();
-        self.games.game_story_data.clear();
-        self.reset_app_state();
+        if let Err(e) = &standings_res {
+            log::error!("Failed to send StandingsCommand::SetDate: {:?}", e);
+        } else {
+            // Reset standings state since new data is incoming
+            self.standings.reset_state();
+        }
     }
 
     fn reset_app_state(&mut self) {
