@@ -1,16 +1,18 @@
 use std::fmt::Debug;
 
 use crate::input::{Action, map_key};
-use crate::sources::game_story::GameStoryCommand;
 use crate::sources::{
-    AppEvent, boxscore::BoxscoreCommand, games::GamesCommand, standings::StandingsCommand,
+    AppEvent, boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
+    standings::StandingsCommand,
 };
-use crate::state::games_state::{BoxscorePosition, BoxscoreTeam};
 use crate::state::{
-    date_input::DateInput, date_selector::DateSelector, games_state::GamesState, help::HelpState,
+    date_state::DateState,
+    games_state::GamesState,
+    games_state::{BoxscorePosition, BoxscoreTeam},
+    help::HelpState,
     standings_state::StandingsState,
 };
-use chrono::{NaiveDate, ParseError};
+use chrono::ParseError;
 use chrono_tz::Tz;
 use tokio::sync::mpsc::Sender;
 
@@ -68,8 +70,7 @@ impl MenuFocus {
 }
 
 pub struct AppState {
-    pub date_input: DateInput,
-    pub date_selector: DateSelector,
+    pub date_state: DateState,
     pub timezone: Tz,
 
     pub games_tx: Sender<GamesCommand>,
@@ -102,8 +103,7 @@ impl AppState {
             boxscore_tx,
             game_story_tx,
 
-            date_input: DateInput::default(),
-            date_selector: DateSelector::default(),
+            date_state: DateState::default(),
             timezone: Tz::default(),
 
             selected_menu: MenuFocus::default(),
@@ -191,21 +191,21 @@ impl AppState {
                 self.display_menu = !self.display_menu;
             }
             Action::InputChar(c) => {
-                self.date_input.is_valid = true; // reset status
-                self.date_input.text.push(c);
+                self.date_state.is_valid = true; // reset status
+                self.date_state.text.push(c);
             }
             Action::MenuUp => {
                 let prev = self.selected_menu;
                 self.selected_menu = self.selected_menu.prev();
                 if prev != self.selected_menu {
-                    self.reset_selections();
+                    self.reset_app_state();
                 }
             }
             Action::MenuDown => {
                 let prev = self.selected_menu;
                 self.selected_menu = self.selected_menu.next();
                 if prev != self.selected_menu {
-                    self.reset_selections();
+                    self.reset_app_state();
                 }
             }
             Action::PrevGame => {
@@ -216,7 +216,11 @@ impl AppState {
             Action::NextGame => {
                 self.games.boxscore_selected_position = BoxscorePosition::default();
                 self.games.boxscore_selected_team = BoxscoreTeam::default();
+                let prev = self.games.selected_game_index;
                 self.games.shift_game_index(true);
+                if self.games.selected_game_index != prev {
+                    self.games.reset_state();
+                }
             }
             Action::PrevGamesDisplay => {
                 self.games.cycle_display(false);
@@ -268,15 +272,15 @@ impl AppState {
             Action::EnterDatePicker => {
                 self.previous_focus = self.focus;
                 self.focus = PaneFocus::DatePicker;
-                self.date_input.text.clear();
+                self.date_state.text.clear();
             }
-            Action::DateLeft => self.move_date_selector_by_arrow(false),
-            Action::DateRight => self.move_date_selector_by_arrow(true),
+            Action::DateLeft => self.date_state.move_date_selector_by_arrow(false),
+            Action::DateRight => self.date_state.move_date_selector_by_arrow(true),
             Action::DateBackspace => {
-                self.date_input.text.pop();
+                self.date_state.text.pop();
             }
             Action::ExitDatePicker => {
-                self.date_input.text.clear();
+                self.date_state.text.clear();
                 self.focus = self.previous_focus;
             }
             Action::UpdateDate => {
@@ -300,39 +304,34 @@ impl AppState {
         }
     }
 
-    // Helpers functions for handlind actions
-    fn move_date_selector_by_arrow(&mut self, right_arrow: bool) {
-        let date = self.date_selector.set_date_with_arrows(right_arrow);
-        self.date_input.text.clear();
-        self.date_input.text.push_str(&date.to_string());
-    }
-    fn set_date_from_valid_input(&mut self, date: NaiveDate) {
-        self.date_selector.set_date_from_valid_input(date);
-    }
+    // Helper functions for handling actions
     fn try_update_date_from_input(&mut self) -> Result<(), ParseError> {
-        let valid_date = self.date_input.validate_input(self.timezone)?;
+        let valid_date = self.date_state.validate_input(self.timezone)?;
 
-        self.set_date_from_valid_input(valid_date);
+        self.date_state.set_date_from_valid_input(valid_date);
         Ok(())
     }
-    fn handle_date_change(&mut self) {
-        let date = self.date_selector.date.to_string();
-        let games_ok = self
-            .games_tx
-            .try_send(GamesCommand::SetDate(date.clone()))
-            .is_ok();
-        let standings_ok = self
-            .standings_tx
-            .try_send(StandingsCommand::SetDate(date))
-            .is_ok();
-        if games_ok || standings_ok {
-            self.reset_selections();
+    /// Update data from sources after date change
+    pub async fn handle_date_change(&mut self) {
+        let date = self.date_state.date.to_string();
+
+        if let Err(e) = self.games_tx.send(GamesCommand::SetDate(date.clone())).await {
+            log::error!("Games channel closed: {:?}", e);
+            return;
         }
+
+        if let Err(e) = self.standings_tx.send(StandingsCommand::SetDate(date.clone())).await {
+            log::error!("Standings channel closed: {:?}", e);
+            return;
+        }
+
         self.games.boxscore_data.clear();
+        self.games.game_story_data.clear();
+        self.reset_app_state();
     }
 
-    fn reset_selections(&mut self) {
-        self.games.reset_selection_state();
-        self.standings.reset_selection_state();
+    fn reset_app_state(&mut self) {
+        self.games.reset_state();
+        self.standings.reset_state();
     }
 }

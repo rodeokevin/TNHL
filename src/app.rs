@@ -1,6 +1,6 @@
 use crate::{
     sources::{
-        AppEvent, boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
+        boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
         standings::StandingsCommand,
     },
     state::{app_settings::AppSettings, app_state::AppState},
@@ -46,7 +46,7 @@ impl App {
         let today = Utc::now()
             .with_timezone(&self.settings.timezone)
             .date_naive();
-        self.state.date_selector.date = today;
+        self.state.date_state.date = today;
     }
 
     /// Set the timezone in the state to the settings' timezone

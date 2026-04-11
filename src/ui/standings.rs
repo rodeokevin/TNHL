@@ -87,7 +87,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         .block(
             Block::bordered()
                 .border_style(border_style)
-                .title(app.state.date_selector.format_date_border_title()),
+                .title(app.state.date_state.format_date_border_title()),
         )
         .highlight_style(highlight_style);
 

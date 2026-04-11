@@ -1,6 +1,6 @@
-use crate::models::game_story::{GameStoryReponse, ShootoutAttemptResult};
 use crate::models::games::{
-    GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType,
+    game_story::{GameStoryReponse, ShootoutAttemptResult},
+    games::{GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType},
 };
 use crate::ui::render::BORDER_FOCUSED_COLOR;
 use std::rc::Rc;

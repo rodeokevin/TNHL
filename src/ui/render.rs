@@ -78,9 +78,9 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
 
 fn render_date_picker(f: &mut Frame, app: &mut App, rect: Rect) {
     let chunk = LayoutAreas::create_date_picker(rect);
-    f.render_stateful_widget(DateSelectorWidget {}, chunk, &mut app.state.date_input);
+    f.render_stateful_widget(DateSelectorWidget {}, chunk, &mut app.state.date_state);
 
-    let (cx, cy) = popup_cursor_position(chunk, app.state.date_input.text.len() as u16);
+    let (cx, cy) = popup_cursor_position(chunk, app.state.date_state.text.len() as u16);
     f.set_cursor_position((cx, cy));
 }
 

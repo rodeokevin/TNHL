@@ -1,7 +1,9 @@
 use crate::App;
-use crate::models::game_story::{GameStatsCategory, StatValue};
-use crate::ui::games::{games::split_info_left_middle_right, scoring::MIDDLE_LENGTH};
-use crate::ui::render::BORDER_FOCUSED_COLOR;
+use crate::models::games::game_story::{GameStatsCategory, StatValue};
+use crate::ui::{
+    games::{games::split_info_left_middle_right, scoring::MIDDLE_LENGTH},
+    render::BORDER_FOCUSED_COLOR,
+};
 use std::collections::HashMap;
 use std::vec;
 
@@ -251,7 +253,7 @@ fn compute_middle_bar<'a>(away_value: &'a StatValue, home_value: &'a StatValue) 
     } else if home_zero {
         away_length = MIDDLE_LENGTH - 2;
     } else {
-        let total = (MIDDLE_LENGTH - 2) as f64;
+        let total = (MIDDLE_LENGTH - 3) as f64;
         let away = match away_value {
             StatValue::Int(v) => *v as f64,
             StatValue::Float(v) => *v,
@@ -267,18 +269,14 @@ fn compute_middle_bar<'a>(away_value: &'a StatValue, home_value: &'a StatValue) 
         home_length = MIDDLE_LENGTH - 3 - away_length;
     }
     let gap = std::iter::once(Span::raw(if away_zero ^ home_zero { "" } else { " " }));
-    let away_spans: Vec<_> = std::iter::repeat(Span::styled(
-        "─",
-        Style::default().fg(AWAY_BAR_COLOR),
-    ))
-    .take(away_length as usize)
-    .collect();
-    let home_spans: Vec<_> = std::iter::repeat(Span::styled(
-        "─",
-        Style::default().fg(HOME_BAR_COLOR),
-    ))
-    .take(home_length as usize)
-    .collect();
+    let away_spans: Vec<_> =
+        std::iter::repeat(Span::styled("─", Style::default().fg(AWAY_BAR_COLOR)))
+            .take(away_length as usize)
+            .collect();
+    let home_spans: Vec<_> =
+        std::iter::repeat(Span::styled("─", Style::default().fg(HOME_BAR_COLOR)))
+            .take(home_length as usize)
+            .collect();
     let spans: Vec<_> = away_spans
         .into_iter()
         .chain(gap)

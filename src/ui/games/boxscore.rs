@@ -1,5 +1,5 @@
 use crate::app::App;
-use crate::models::boxscore::{
+use crate::models::games::boxscore::{
     BoxscoreResponse, Defenseman, Forward, Goalie, PlayerData, Position,
 };
 use crate::state::app_state::PaneFocus;

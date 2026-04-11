@@ -1,4 +1,3 @@
-// use crate::components::standings::Team;
 use crate::config::ConfigFile;
 use chrono_tz::Tz;
 
@@ -16,7 +15,7 @@ impl AppSettings {
     pub fn load_from_file() -> Self {
         ConfigFile::load_from_file()
             .unwrap_or_else(|err| {
-                log::error!("could not load config file: {err}");
+                log::error!("Could not load config file: {err}");
                 ConfigFile::default()
             })
             .into()

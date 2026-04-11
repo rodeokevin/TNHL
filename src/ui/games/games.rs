@@ -1,10 +1,10 @@
 use crate::app::App;
-use crate::models::games::{GameData, GameState, PeriodDescriptor, PeriodType, SituationDesc};
-use crate::state::app_state::PaneFocus;
-use crate::state::games_state::GamesFocus;
-use crate::ui::games::{boxscore, stats};
+use crate::models::games::games::{
+    GameData, GameState, PeriodDescriptor, PeriodType, SituationDesc,
+};
+use crate::state::{app_state::PaneFocus, games_state::GamesFocus};
 use crate::ui::{
-    games::scoring,
+    games::{boxscore, scoring, stats},
     render::{
         BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR, split_area_horizontal, split_area_vertical,
     },
@@ -112,7 +112,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             .block(
                 Block::bordered()
                     .border_style(border_style)
-                    .title(app.state.date_selector.format_date_border_title()),
+                    .title(app.state.date_state.format_date_border_title()),
             )
             .highlight_style(Style::default().add_modifier(Modifier::BOLD));
 
@@ -126,7 +126,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             .block(
                 Block::bordered()
                     .border_style(border_style)
-                    .title(app.state.date_selector.format_date_border_title()),
+                    .title(app.state.date_state.format_date_border_title()),
             )
             .highlight_style(selected_color);
 

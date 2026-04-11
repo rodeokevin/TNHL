@@ -1,7 +1,7 @@
 use tokio::sync::mpsc::Sender;
 
 use crate::models::{
-    boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse,
+    games::{boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse},
     standings::StandingsResponse,
 };
 

@@ -100,7 +100,10 @@ where
     let (tx, mut rx) = tokio::sync::mpsc::channel::<AppEvent>(32);
 
     // Spawn standings source
-    let standings_source = Box::new(StandingsSource::new(standings_rx));
+    let standings_source = Box::new(StandingsSource::new(
+        standings_rx,
+        app.state.date_state.date.to_string(),
+    ));
     let standings_tx = tx.clone();
     let standings_cancel = cancel.clone();
     tokio::spawn(async move {
@@ -108,7 +111,7 @@ where
     });
 
     // Spawn games source
-    let games_source = GamesSource::new(games_rx);
+    let games_source = GamesSource::new(games_rx, app.state.date_state.date.to_string());
     let games_tx = tx.clone();
     let games_cancel = cancel.clone();
     tokio::spawn(async move {

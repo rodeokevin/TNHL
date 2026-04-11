@@ -3,7 +3,7 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
-use crate::models::game_story::GameStoryReponse;
+use crate::models::games::game_story::GameStoryReponse;
 
 pub enum GameStoryCommand {
     SetGameIds(Vec<u32>),

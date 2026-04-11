@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::fmt;
 
-use crate::models::{games::PlayerName, standings::TeamAbbrev};
+use crate::models::{games::games::PlayerName, standings::TeamAbbrev};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

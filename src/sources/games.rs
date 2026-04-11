@@ -15,11 +15,8 @@ pub struct GamesSource {
     current_date: String,
 }
 impl GamesSource {
-    pub fn new(rx: Receiver<GamesCommand>) -> Self {
-        Self {
-            rx,
-            current_date: "now".to_string(),
-        }
+    pub fn new(rx: Receiver<GamesCommand>, current_date: String) -> Self {
+        Self { rx, current_date }
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {

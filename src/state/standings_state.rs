@@ -200,7 +200,7 @@ impl StandingsState {
         }
     }
 
-    pub fn reset_selection_state(&mut self) {
+    pub fn reset_state(&mut self) {
         self.focus = StandingsFocus::default();
 
         self.selected_conference = ConferenceFocus::default();

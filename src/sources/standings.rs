@@ -15,11 +15,8 @@ pub struct StandingsSource {
     current_date: String,
 }
 impl StandingsSource {
-    pub fn new(rx: Receiver<StandingsCommand>) -> Self {
-        Self {
-            rx,
-            current_date: "now".to_string(),
-        }
+    pub fn new(rx: Receiver<StandingsCommand>, current_date: String) -> Self {
+        Self { rx, current_date }
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {

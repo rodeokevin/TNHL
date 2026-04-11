@@ -1,13 +1,11 @@
-use crate::state::date_input::DateInput;
-use crate::ui::input_popup::InputPopup;
-use crate::ui::render::BORDER_FOCUSED_COLOR;
-use ratatui::prelude::*;
-use ratatui::style::Color;
+use crate::state::date_state::DateState;
+use crate::ui::{input_popup::InputPopup, render::BORDER_FOCUSED_COLOR};
+use ratatui::{prelude::*, style::Color};
 
 pub struct DateSelectorWidget {}
 
 impl StatefulWidget for DateSelectorWidget {
-    type State = DateInput;
+    type State = DateState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let border_color = if state.is_valid {

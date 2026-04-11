@@ -3,7 +3,7 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
-use crate::models::boxscore::BoxscoreResponse;
+use crate::models::games::boxscore::BoxscoreResponse;
 
 pub enum BoxscoreCommand {
     SetGameIds(Vec<u32>),

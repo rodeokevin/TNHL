@@ -1,4 +1,4 @@
-use crate::models::games::PeriodDescriptor;
+use crate::models::games::games::PeriodDescriptor;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

@@ -1,4 +1,4 @@
-use crate::models::{
+use crate::models::games::{
     boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse,
 };
 use ratatui::widgets::TableState;
@@ -69,44 +69,38 @@ pub struct GamesState {
 }
 
 impl GamesState {
+    /// Set the game index to next if forward == true, otherwise previous
+    /// Index only changes if it is valid
     pub fn shift_game_index(&mut self, forward: bool) {
-        let prev = self.selected_game_index;
         if forward {
             let max_index = self.games_data.as_ref().map_or(0, |d| d.games.len());
             self.selected_game_index = next_index(self.selected_game_index, max_index);
         } else {
             self.selected_game_index = prev_index(self.selected_game_index);
         }
-        if self.selected_game_index != prev {
-            self.focus = GamesFocus::default();
-            self.boxscore_selected_position = BoxscorePosition::default();
-            self.boxscore_selected_team = BoxscoreTeam::default();
-            self.boxscore_table_state.select(Some(0));
-            self.reset_scoring_scroll();
-        }
     }
     pub fn reset_scoring_scroll(&mut self) {
         self.scroll_offset = 0;
         self.max_scroll = 0;
     }
-    pub fn reset_selection_state(&mut self) {
+    /// Reset all state in games to default
+    pub fn reset_state(&mut self) {
         self.focus = GamesFocus::default();
         self.boxscore_selected_position = BoxscorePosition::default();
         self.boxscore_selected_team = BoxscoreTeam::default();
         self.selected_game_index = 0;
+        self.boxscore_table_state.select(Some(0));
         self.reset_scoring_scroll();
     }
-
-    // Cycle between games display (Scoring, boxscore, etc.)
-    pub fn cycle_display(&mut self, next: bool) {
-        self.focus = if next {
+    /// Cycle between games display (Scoring, boxscore, stats, etc.)
+    pub fn cycle_display(&mut self, forward: bool) {
+        self.focus = if forward {
             self.focus.next()
         } else {
             self.focus.prev()
         };
     }
-
-    // Move rows in boxscore
+    /// Move rows in boxscore
     pub fn move_boxscore_selection(&mut self, delta: i32) {
         let len = self.get_current_boxscore_len();
         let table = &mut self.boxscore_table_state;
@@ -121,7 +115,7 @@ impl GamesState {
 
         table.select(Some(next));
     }
-
+    /// Get the number of rows of current boxscore
     fn get_current_boxscore_len(&self) -> usize {
         let boxscore = self
             .current_game_id()
@@ -145,7 +139,7 @@ impl GamesState {
             None => 0,
         }
     }
-
+    /// Return the current game id
     pub fn current_game_id(&self) -> Option<u32> {
         self.games_data
             .as_ref()
