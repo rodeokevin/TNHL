@@ -19,13 +19,14 @@ const AWAY_BAR_COLOR: Color = Color::Rgb(220, 50, 47); // Red
 const HOME_BAR_COLOR: Color = Color::Rgb(38, 139, 210); // Blue
 
 pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
-    let game_story = app
+    let game_id = app
         .state
         .games
         .games_data
         .as_ref()
         .and_then(|g| g.games.get(app.state.games.selected_game_index))
-        .and_then(|g| app.state.games.game_story_data.get(&g.id));
+        .map(|g| g.id);
+    let game_story = game_id.and_then(|id| app.state.games.game_story_data.get(&id));
 
     let mut away_lines = vec![];
     let mut middle_lines = vec![];
@@ -150,15 +151,6 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
                 takeaways.home_value.to_string(),
             );
         }
-    } else {
-        // No stats
-        away_lines.push(Line::default());
-        middle_lines.push(
-            Line::from("No stats yet :(")
-                .style(Style::default().fg(Color::DarkGray))
-                .alignment(Alignment::Center),
-        );
-        home_lines.push(Line::default());
     }
 
     // Split area into top scroll indicator, content and bottom scroll indicator

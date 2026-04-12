@@ -1,8 +1,10 @@
 use tokio::sync::mpsc::Sender;
 
-use crate::models::{
-    games::{boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse},
-    standings::StandingsResponse,
+use crate::{
+    models::{
+        games::{boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse},
+        standings::StandingsResponse,
+    },
 };
 
 pub mod boxscore;

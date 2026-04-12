@@ -99,13 +99,14 @@ pub fn render_boxscore(frame: &mut Frame, app: &mut App, area: Rect) {
         Style::default().fg(Color::DarkGray)
     };
     let is_home = matches!(&app.state.games.boxscore_selected_team, BoxscoreTeam::Home);
-    let boxscore = app
+    let game_id = app
         .state
         .games
         .games_data
         .as_ref()
         .and_then(|g| g.games.get(app.state.games.selected_game_index))
-        .and_then(|g| app.state.games.boxscore_data.get(&g.id));
+        .map(|g| g.id);
+    let boxscore = game_id.and_then(|id| app.state.games.boxscore_data.get(&id));
 
     if let Some(boxscore) = boxscore {
         let rows = map_rows(
@@ -133,8 +134,6 @@ pub fn render_boxscore(frame: &mut Frame, app: &mut App, area: Rect) {
             header,
         );
         frame.render_stateful_widget(table, area, &mut app.state.games.boxscore_table_state);
-    } else {
-        // Todo
     }
 }
 

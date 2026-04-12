@@ -1,6 +1,6 @@
 use ratatui::widgets::TableState;
 
-use crate::models::standings::StandingsResponse;
+use crate::{models::standings::StandingsResponse};
 
 const LEAGUE_NUM_TEAMS: usize = 32;
 const CONFERENCE_NUM_TEAMS: usize = 16;
@@ -83,7 +83,9 @@ impl DivisionFocus {
 
 pub struct StandingsState {
     pub standings_data: Option<StandingsResponse>,
-    pub table_state: TableState, // TableState for the active table
+    pub table_state: TableState,
+    /// Number of visible rows in the table, updated during render
+    pub visible_rows: usize,
 
     pub selected_standings: StandingsFocus,
     pub selected_conference: ConferenceFocus,
@@ -102,6 +104,7 @@ impl Default for StandingsState {
         Self {
             standings_data: None,
             table_state: table(),
+            visible_rows: 0,
 
             selected_standings: StandingsFocus::default(),
             selected_conference: ConferenceFocus::default(),
@@ -121,19 +124,41 @@ impl StandingsState {
             StandingsFocus::WildCard => WILDCARD_NUM_TEAMS,
         }
     }
-
+    /// Select a new row in the standings table
     pub fn move_selection(&mut self, delta: i32) {
         let len = self.current_table_len();
         let current = self.table_state.selected().unwrap_or(0);
         let new = current as i32 + delta;
-        let next = if new < 0 || new >= len as i32 {
-            current
-        } else {
-            new as usize
-        };
+        let next = new.clamp(0, (len - 1) as i32) as usize;
         self.table_state.select(Some(next));
     }
-    // Next/PrevStandings
+    pub fn page_up(&mut self) {
+        if self.visible_rows == 0 {
+            return;
+        }
+        // The first visible row becomes the last visible row
+        let offset = self.table_state.offset();
+        let new_offset = offset.saturating_sub(self.visible_rows - 1);
+        *self.table_state.offset_mut() = new_offset;
+        self.table_state.select(Some(new_offset));
+    }
+    pub fn page_down(&mut self) {
+        if self.visible_rows == 0 {
+            return;
+        }
+        // The last visible row becomes the first visible row
+        // But if last visible row is the last row in the table, simply select it without changing the offset
+        let len = self.current_table_len();
+        let offset = self.table_state.offset();
+        let last_visible = if offset + self.visible_rows - 1 >= len - 1 {
+            len - 1
+        } else {
+            *self.table_state.offset_mut() = (offset + self.visible_rows - 1).min(len - 1);
+            (offset + self.visible_rows - 1).min(len - 1)
+        };
+        self.table_state.select(Some(last_visible));
+    }
+    /// Next/PrevStandings
     pub fn shift_standings_type(&mut self, next: bool) {
         self.selected_standings = if next {
             self.selected_standings.next()

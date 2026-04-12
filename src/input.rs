@@ -24,8 +24,13 @@ pub enum Action {
     NextGamesDisplay,
     GamesScrollUp,
     GamesScrollDown,
+    // GamesPageUp,
+    // GamesPageDown,
+
     BoxscoreUp,
     BoxscoreDown,
+    // BoxscorePageUp,
+    // BoxscorePageDown,
     BoxscoreForwards,
     BoxscoreDefensemen,
     BoxscoreGoalies,
@@ -35,6 +40,9 @@ pub enum Action {
     StandingsUp,
     /// Move down a row in standings table
     StandingsDown,
+    /// Move down a row in standings table
+    StandingsPageUp,
+    StandingsPageDown,
     /// Select previous (if possible) standings type
     StandingsLeft,
     /// Select next (if possible) standings type
@@ -131,7 +139,13 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             }
         }
 
-        // In standings content pane
+        // In standings pane
+        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Up | KeyCode::Char('K'), KeyModifiers::SHIFT) => {
+            Action::StandingsPageUp
+        }
+        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Down | KeyCode::Char('J'), KeyModifiers::SHIFT) => {
+            Action::StandingsPageDown
+        }
         (PaneFocus::Content, MenuFocus::Standings, KeyCode::Up | KeyCode::Char('k'), _) => {
             Action::StandingsUp
         }

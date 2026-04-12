@@ -45,9 +45,7 @@ impl StandingsSource {
                     }
                 }
             }
-            Err(err) => {
-                log::info!("Failed to fetch standings: {}", err);
-            }
+            Err(err) => log::info!("Failed to fetch standings: {}", err),
         }
     }
 }

@@ -53,9 +53,7 @@ impl BoxscoreSource {
                             }
                         }
                     }
-                    Err(err) => {
-                        log::info!("Failed to fetch boxscore for game id {}: {}", game_id, err);
-                    }
+                    Err(err) => log::info!("Failed to fetch boxscore for game id {}: {}", game_id, err)
                 }
             }
         }

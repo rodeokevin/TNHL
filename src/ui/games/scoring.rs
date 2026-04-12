@@ -183,7 +183,7 @@ pub fn render_scoring(
             Line::from("\"No goals.\" - Juuse Saros").style(Style::default().fg(Color::DarkGray)),
         );
         home_lines.push(Line::default());
-        home_lines.push(Line::default());
+        away_lines.push(Line::default());
     }
 
     // Split area into top scroll indicator, content and bottom scroll indicator
@@ -208,7 +208,7 @@ pub fn render_scoring(
 
     let visible_away: Vec<Line> = away_lines[offset..end].to_vec();
     let visible_home: Vec<Line> = home_lines[offset..end].to_vec();
-    let visible_period: Vec<Line> = middle_lines[offset..end].to_vec();
+    let visible_middle: Vec<Line> = middle_lines[offset..end].to_vec();
 
     frame.render_widget(
         Line::from(if can_scroll_up { "▲" } else { "" }).alignment(Alignment::Center),
@@ -223,7 +223,7 @@ pub fn render_scoring(
     let chunks = split_info_left_middle_right(vert_chunks[1]);
 
     frame.render_widget(Paragraph::new(visible_away), chunks[0]);
-    frame.render_widget(Paragraph::new(visible_period), chunks[1]);
+    frame.render_widget(Paragraph::new(visible_middle), chunks[1]);
     frame.render_widget(Paragraph::new(visible_home), chunks[2]);
 }
 

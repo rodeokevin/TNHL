@@ -19,7 +19,7 @@ const STANDINGS_COLUMNS: [&str; 18] = [
 
 const STANDINGS_COLUMN_WIDTHS: [Constraint; 18] = [
     Constraint::Length(3),
-    Constraint::Min(23),
+    Constraint::Min(25),
     Constraint::Length(4),
     Constraint::Length(4),
     Constraint::Length(4),
@@ -31,11 +31,11 @@ const STANDINGS_COLUMN_WIDTHS: [Constraint; 18] = [
     Constraint::Length(5),
     Constraint::Length(5),
     Constraint::Length(5),
-    Constraint::Length(11),
-    Constraint::Length(11),
+    Constraint::Length(10),
+    Constraint::Length(10),
     Constraint::Length(6),
-    Constraint::Length(9),
-    Constraint::Length(6),
+    Constraint::Length(8),
+    Constraint::Length(5),
 ];
 
 use crate::models::standings::{StandingsResponse, TeamData};
@@ -50,6 +50,8 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         ])
         .split(area);
 
+    // Pass visible rows to standings state
+    app.state.standings.visible_rows = tab_content_chunks[1].height.saturating_sub(4) as usize;
     let titles = ["Wild Card", "Division", "Conference", "League"]
         .iter()
         .map(|t| Line::from(*t))

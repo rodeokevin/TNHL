@@ -45,9 +45,7 @@ impl GamesSource {
                     }
                 }
             }
-            Err(err) => {
-                log::info!("Failed to fetch games: {}", err);
-            }
+            Err(err) => log::info!("Failed to fetch games: {}", err),
         }
     }
 }

@@ -18,7 +18,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Paragraph, Tabs},
+    widgets::{Block, Tabs},
 };
 
 use tui_big_text::{BigText, PixelSize};
@@ -202,10 +202,6 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 }
             }
         }
-    } else {
-        let no_data_paragraph =
-            Paragraph::new(Line::from("No data :(").alignment(Alignment::Center));
-        frame.render_widget(no_data_paragraph, inner);
     }
 }
 

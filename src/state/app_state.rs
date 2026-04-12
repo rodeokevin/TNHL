@@ -264,6 +264,8 @@ impl AppState {
 
             Action::StandingsUp => self.standings.move_selection(-1),
             Action::StandingsDown => self.standings.move_selection(1),
+            Action::StandingsPageUp => self.standings.page_up(),
+            Action::StandingsPageDown => self.standings.page_down(),
             Action::StandingsLeft => {
                 self.standings.shift_standings_type(false);
                 self.standings.reset_table_state();
