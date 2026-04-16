@@ -4,6 +4,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
 use crate::models::games::game_story::GameStoryReponse;
+use crate::sources::FetchInterval;
 
 pub enum GameStoryCommand {
     SetGameIds(Vec<u32>),
@@ -21,7 +22,7 @@ impl GameStorySource {
         Self {
             rx,
             game_ids: Vec::new(),
-            fetch_interval: Duration::from_secs(30),
+            fetch_interval: FetchInterval::ShortInfoInterval.as_duration(),
         }
     }
 

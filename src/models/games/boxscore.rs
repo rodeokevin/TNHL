@@ -1,3 +1,5 @@
+use crate::models::games::Position;
+use crate::models::games::games::PlayerName;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -105,23 +107,4 @@ pub struct Goalie {
     pub toi: Option<String>,
     pub shots_against: u16,
     pub saves: u16,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct PlayerName {
-    pub default: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub enum Position {
-    #[serde(rename = "L")]
-    LeftWing,
-    #[serde(rename = "R")]
-    RightWing,
-    #[serde(rename = "C")]
-    Center,
-    #[serde(rename = "D")]
-    Defense,
-    #[serde(rename = "G")]
-    Goalie,
 }

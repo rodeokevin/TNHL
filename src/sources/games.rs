@@ -4,7 +4,7 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
-use crate::sources::GamesResponse;
+use crate::sources::{FetchInterval, GamesResponse};
 
 pub enum GamesCommand {
     SetDate(String),
@@ -21,7 +21,7 @@ impl GamesSource {
         Self {
             rx,
             current_date,
-            fetch_interval: Duration::from_secs(10),
+            fetch_interval: FetchInterval::ShortGamesInterval.as_duration(),
         }
     }
 

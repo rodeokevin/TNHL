@@ -4,6 +4,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
 use crate::models::games::boxscore::BoxscoreResponse;
+use crate::sources::FetchInterval;
 
 pub enum BoxscoreCommand {
     SetGameIds(Vec<u32>),
@@ -21,7 +22,7 @@ impl BoxscoreSource {
         Self {
             rx,
             game_ids: Vec::new(),
-            fetch_interval: Duration::from_secs(30),
+            fetch_interval: FetchInterval::ShortInfoInterval.as_duration(),
         }
     }
 
@@ -53,7 +54,9 @@ impl BoxscoreSource {
                             }
                         }
                     }
-                    Err(err) => log::info!("Failed to fetch boxscore for game id {}: {}", game_id, err)
+                    Err(err) => {
+                        log::info!("Failed to fetch boxscore for game id {}: {}", game_id, err)
+                    }
                 }
             }
         }

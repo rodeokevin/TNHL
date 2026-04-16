@@ -7,12 +7,12 @@ use ratatui::{
     widgets::{Block, Clear, List, ListItem, ListState},
 };
 
-use crate::app::App;
 use crate::state::app_state::{MenuFocus, PaneFocus};
 use crate::ui::{
     date_selector::DateSelectorWidget, games::games, help::HelpWidget,
     input_popup::popup_cursor_position, layout::LayoutAreas, standings,
 };
+use crate::{app::App, ui::team_stats};
 
 pub const BORDER_FOCUSED_COLOR: Color = Color::Rgb(247, 194, 0); // Orange-yellowish
 pub const BORDER_UNFOCUSED_COLOR: Color = Color::DarkGray;
@@ -36,7 +36,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                 MenuFocus::Standings => {
                     standings::render_standings(frame, app, content_menu_chunks[1])
                 }
-                MenuFocus::Teams => {}
+                MenuFocus::TeamStats => {
+                    team_stats::render_team_stats(frame, app, content_menu_chunks[1])
+                }
             }
             if app.state.focus == PaneFocus::DatePicker {
                 render_date_picker(frame, app, frame.area());
@@ -58,7 +60,7 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
     let menu_items = vec![
         ListItem::new("Games"),
         ListItem::new("Standings"),
-        ListItem::new("Teams"),
+        ListItem::new("Team Stats"),
     ];
 
     let list = List::new(menu_items)

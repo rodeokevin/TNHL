@@ -1,9 +1,8 @@
 use crate::app::App;
-use crate::models::games::boxscore::{
-    BoxscoreResponse, Defenseman, Forward, Goalie, PlayerData, Position,
-};
+use crate::models::games::boxscore::{BoxscoreResponse, Defenseman, Forward, Goalie, PlayerData};
 use crate::state::app_state::PaneFocus;
 use crate::state::games_state::{BoxscorePosition, BoxscoreTeam};
+use crate::ui::render::BORDER_FOCUSED_COLOR;
 
 use ratatui::{
     Frame,
@@ -38,62 +37,65 @@ const BOXSCORE_GOALIES_COLUMNS: [&str; 11] = [
 ];
 
 const BOXSCORE_FORWARDS_COLUMN_WIDTHS: [Constraint; 17] = [
-    Constraint::Length(3),
-    Constraint::Min(20),
-    Constraint::Length(4),
-    Constraint::Length(3),
-    Constraint::Length(3),
-    Constraint::Length(3),
-    Constraint::Length(4),
-    Constraint::Length(4),
-    Constraint::Length(7),
-    Constraint::Length(6),
-    Constraint::Length(4),
-    Constraint::Length(3),
-    Constraint::Length(5),
-    Constraint::Length(6),
-    Constraint::Length(4),
-    Constraint::Length(4),
-    Constraint::Length(5),
+    Constraint::Length(3), // #
+    Constraint::Min(20),   // Name
+    Constraint::Length(4), // POS
+    Constraint::Length(3), // G
+    Constraint::Length(3), // A
+    Constraint::Length(3), // P
+    Constraint::Length(4), // +/-
+    Constraint::Length(4), // PIM
+    Constraint::Length(7), // TOI
+    Constraint::Length(6), // SHIFT
+    Constraint::Length(4), // PPG
+    Constraint::Length(3), // S
+    Constraint::Length(5), // BLK
+    Constraint::Length(6), // HITS
+    Constraint::Length(4), // GV
+    Constraint::Length(4), // TK
+    Constraint::Length(5), // FO%
 ];
 
 const BOXSCORE_DEFENSE_COLUMN_WIDTHS: [Constraint; 15] = [
-    Constraint::Length(3),
-    Constraint::Min(20),
-    Constraint::Length(3),
-    Constraint::Length(3),
-    Constraint::Length(3),
-    Constraint::Length(4),
-    Constraint::Length(4),
-    Constraint::Length(7),
-    Constraint::Length(6),
-    Constraint::Length(4),
-    Constraint::Length(3),
-    Constraint::Length(5),
-    Constraint::Length(6),
-    Constraint::Length(4),
-    Constraint::Length(4),
+    Constraint::Length(3), // #
+    Constraint::Min(20),   // Name
+    Constraint::Length(3), // G
+    Constraint::Length(3), // A
+    Constraint::Length(3), // P
+    Constraint::Length(4), //+/-
+    Constraint::Length(4), // PIM
+    Constraint::Length(7), // TOI
+    Constraint::Length(6), // SHIFT
+    Constraint::Length(4), // PPG
+    Constraint::Length(3), // S
+    Constraint::Length(5), // BLK
+    Constraint::Length(6), // HITS
+    Constraint::Length(4), // GV
+    Constraint::Length(4), // TK
 ];
 
 const BOXSCORE_GOALIES_COLUMN_WIDTHS: [Constraint; 11] = [
-    Constraint::Length(3),
-    Constraint::Min(20),
-    Constraint::Length(4),
-    Constraint::Length(4),
-    Constraint::Length(4),
-    Constraint::Length(6),
-    Constraint::Length(5),
-    Constraint::Length(5),
-    Constraint::Length(5),
-    Constraint::Length(4),
-    Constraint::Length(6),
+    Constraint::Length(3), // #
+    Constraint::Min(20),   // Name
+    Constraint::Length(4), // SA
+    Constraint::Length(4), // SV
+    Constraint::Length(4), // GA
+    Constraint::Length(6), // EV
+    Constraint::Length(5), // PP
+    Constraint::Length(5), // SH
+    Constraint::Length(5), // SV%
+    Constraint::Length(4), // PIM
+    Constraint::Length(6), // TOI
 ];
 
 pub fn render_boxscore(frame: &mut Frame, app: &mut App, area: Rect) {
+    // Pass visible rows to standings state
+    app.state.games.visible_rows = area.height.saturating_sub(3) as usize;
+
     let focused = app.state.focus == PaneFocus::Content;
     let border_style = if focused {
         Style::default()
-            .fg(Color::Rgb(247, 194, 0))
+            .fg(BORDER_FOCUSED_COLOR)
             .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::DarkGray)
@@ -142,16 +144,10 @@ fn map_forwards_rows(players: &[Forward]) -> Vec<Row<'static>> {
         .iter()
         .map(|p| {
             let name = p.name.default.clone();
-            let pos = match p.position {
-                Position::LeftWing => "LW",
-                Position::RightWing => "RW",
-                Position::Center => "C",
-                _ => "?", // Unexpected
-            };
             Row::new(vec![
                 p.sweater_number.to_string(),
                 name,
-                pos.to_string(),
+                p.position.to_string(),
                 p.goals.to_string(),
                 p.assists.to_string(),
                 p.points.to_string(),
@@ -256,8 +252,7 @@ fn create_table<'a>(
         .block(Block::bordered().title(title).border_style(border_style))
         .header(
             Row::new(header.iter().map(|s| s.to_string()).collect::<Vec<_>>())
-                .style(Style::new().bold())
-                .bottom_margin(1),
+                .style(Style::new().bold().add_modifier(Modifier::UNDERLINED)),
         )
         .column_spacing(1)
         .row_highlight_style(

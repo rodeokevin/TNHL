@@ -1,15 +1,16 @@
 use std::fmt::Debug;
-use std::time::Duration;
 
 use crate::input::{Action, map_key};
 use crate::models::games::games::{GameState, GamesResponse};
+use crate::sources::teams_stats::TeamStatsCommand;
 use crate::sources::{
-    AppEvent, boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
-    standings::StandingsCommand,
+    AppEvent, FetchInterval, boxscore::BoxscoreCommand, game_story::GameStoryCommand,
+    games::GamesCommand, standings::StandingsCommand,
 };
+use crate::state::team_stats_state::TeamStatsState;
 use crate::state::{
     date_state::DateState, games_state::BoxscorePosition, games_state::GamesState, help::HelpState,
-    standings_state::StandingsState,
+    standings_state::StandingsState, team_stats_state,
 };
 use chrono::ParseError;
 use chrono_tz::Tz;
@@ -41,21 +42,21 @@ pub enum MenuFocus {
     #[default]
     Games,
     Standings,
-    Teams,
+    TeamStats,
 }
 
 impl MenuFocus {
     pub fn next(self) -> Self {
         match self {
             MenuFocus::Games => MenuFocus::Standings,
-            MenuFocus::Standings => MenuFocus::Teams,
-            MenuFocus::Teams => MenuFocus::Teams,
+            MenuFocus::Standings => MenuFocus::TeamStats,
+            MenuFocus::TeamStats => MenuFocus::TeamStats,
         }
     }
     pub fn prev(self) -> Self {
         match self {
             MenuFocus::Standings => MenuFocus::Games,
-            MenuFocus::Teams => MenuFocus::Standings,
+            MenuFocus::TeamStats => MenuFocus::Standings,
             MenuFocus::Games => MenuFocus::Games,
         }
     }
@@ -63,7 +64,7 @@ impl MenuFocus {
         match self {
             MenuFocus::Games => 0,
             MenuFocus::Standings => 1,
-            MenuFocus::Teams => 2,
+            MenuFocus::TeamStats => 2,
         }
     }
 }
@@ -76,11 +77,13 @@ pub struct AppState {
     pub standings_tx: Sender<StandingsCommand>,
     pub boxscore_tx: Sender<BoxscoreCommand>,
     pub game_story_tx: Sender<GameStoryCommand>,
+    pub team_stats_tx: Sender<TeamStatsCommand>,
 
     pub selected_menu: MenuFocus,
     pub display_menu: bool,
     pub standings: StandingsState,
     pub games: GamesState,
+    pub team_stats: TeamStatsState,
 
     pub help: HelpState,
 
@@ -95,12 +98,14 @@ impl AppState {
         standings_tx: Sender<StandingsCommand>,
         boxscore_tx: Sender<BoxscoreCommand>,
         game_story_tx: Sender<GameStoryCommand>,
+        team_stats_tx: Sender<TeamStatsCommand>,
     ) -> Self {
         Self {
             games_tx,
             standings_tx,
             boxscore_tx,
             game_story_tx,
+            team_stats_tx,
 
             date_state: DateState::default(),
             timezone: Tz::default(),
@@ -109,6 +114,8 @@ impl AppState {
             display_menu: true,
             standings: StandingsState::default(),
             games: GamesState::default(),
+
+            team_stats: TeamStatsState::default(),
 
             help: HelpState::default(),
 
@@ -158,6 +165,10 @@ impl AppState {
                 self.games
                     .game_story_data
                     .insert(game_id, parsed_game_story);
+            }
+            AppEvent::TeamStatsUpdate(parsed_team_stats) => {
+                log::info!("Updating standings data");
+                self.team_stats.team_stats_data = Some(parsed_team_stats);
             }
             AppEvent::Input(key_event) => {
                 log::info!("Key event detected: {:?}", key_event);
@@ -232,6 +243,8 @@ impl AppState {
                 self.games.reset_scoring_scroll();
                 self.games.reset_boxscore_state();
             }
+            Action::GamesPageUp => self.games.games_page_up(),
+            Action::GamesPageDown => self.games.games_page_down(),
             Action::GamesScrollUp => {
                 self.games.scroll_offset = self.games.scroll_offset.saturating_sub(1);
             }
@@ -242,6 +255,8 @@ impl AppState {
                     .saturating_add(1)
                     .min(self.games.max_scroll);
             }
+            Action::BoxscorePageUp => self.games.boxscore_page_up(),
+            Action::BoxscorePageDown => self.games.boxscore_page_down(),
             Action::BoxscoreUp => self.games.move_boxscore_selection(-1),
             Action::BoxscoreDown => self.games.move_boxscore_selection(1),
             Action::BoxscoreForwards => {
@@ -261,7 +276,7 @@ impl AppState {
                 self.games.boxscore_selected_position = BoxscorePosition::default();
                 self.games.boxscore_selected_team = self.games.boxscore_selected_team.toggle()
             }
-
+            // Standings actions
             Action::StandingsUp => self.standings.move_selection(-1),
             Action::StandingsDown => self.standings.move_selection(1),
             Action::StandingsPageUp => self.standings.page_up(),
@@ -282,6 +297,12 @@ impl AppState {
                 self.standings.cycle_display(true);
                 self.standings.reset_table_state();
             }
+            // Team stats actions
+            Action::TeamStatsUp => self.team_stats.move_selection(-1),
+            Action::TeamStatsDown => self.team_stats.move_selection(1),
+            Action::TeamStatsPageUp => self.team_stats.page_up(),
+            Action::TeamStatsPageDown => self.team_stats.page_down(),
+            Action::ToggleTeamStats => self.team_stats.show_skaters = !self.team_stats.show_skaters,
 
             Action::EnterDatePicker => {
                 self.previous_focus = self.focus;
@@ -351,31 +372,34 @@ impl AppState {
     fn reset_app_state(&mut self) {
         self.games.reset_state();
         self.standings.reset_state();
+        self.team_stats.reset_state();
     }
 
     fn set_fetch_interval(&self, live: bool) {
         let info_interval = if live {
-            Duration::from_secs(30)
+            FetchInterval::ShortInfoInterval
         } else {
-            Duration::from_secs(300)
+            FetchInterval::LongInfoInterval
         };
         let games_interval = if live {
-            Duration::from_secs(10)
+            FetchInterval::ShortGamesInterval
         } else {
-            Duration::from_secs(60)
+            FetchInterval::LongGamesInterval
         };
+        self.games_tx
+            .try_send(GamesCommand::SetInterval(games_interval.as_duration()))
+            .ok();
         self.boxscore_tx
-            .try_send(BoxscoreCommand::SetInterval(info_interval))
+            .try_send(BoxscoreCommand::SetInterval(info_interval.as_duration()))
             .ok();
         self.game_story_tx
-            .try_send(GameStoryCommand::SetInterval(info_interval))
-            .ok();
-        self.games_tx
-            .try_send(GamesCommand::SetInterval(games_interval))
+            .try_send(GameStoryCommand::SetInterval(info_interval.as_duration()))
             .ok();
         self.standings_tx
-            .try_send(StandingsCommand::SetInterval(info_interval))
+            .try_send(StandingsCommand::SetInterval(info_interval.as_duration()))
             .ok();
+        // self.teams_tx
+        //     .try_send(TeamsCommand::SetInterval(info_interval.as_duration()))
     }
 
     fn is_games_live(&self, parsed_games: &GamesResponse) -> bool {

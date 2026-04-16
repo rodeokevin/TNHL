@@ -4,7 +4,7 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
-use crate::sources::StandingsResponse;
+use crate::sources::{FetchInterval, StandingsResponse};
 
 pub enum StandingsCommand {
     SetDate(String),
@@ -21,7 +21,7 @@ impl StandingsSource {
         Self {
             rx,
             current_date,
-            fetch_interval: Duration::from_secs(30),
+            fetch_interval: FetchInterval::ShortInfoInterval.as_duration(),
         }
     }
 

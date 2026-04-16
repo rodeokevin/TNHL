@@ -58,6 +58,8 @@ pub struct GamesState {
     pub boxscore_selected_team: BoxscoreTeam,
     pub boxscore_selected_position: BoxscorePosition,
     pub boxscore_table_state: TableState,
+    /// Updated during render
+    pub visible_rows: usize,
 
     pub games_data: Option<GamesResponse>,
     pub boxscore_data: HashMap<u32, BoxscoreResponse>,
@@ -106,7 +108,7 @@ impl GamesState {
     }
     /// Move rows in boxscore
     pub fn move_boxscore_selection(&mut self, delta: i32) {
-        let len = self.get_current_boxscore_len();
+        let len = self.current_boxscore_len();
         let table = &mut self.boxscore_table_state;
         let current = table.selected().unwrap_or(0);
 
@@ -120,7 +122,7 @@ impl GamesState {
         table.select(Some(next));
     }
     /// Get the number of rows of current boxscore
-    fn get_current_boxscore_len(&self) -> usize {
+    fn current_boxscore_len(&self) -> usize {
         let boxscore = self
             .current_game_id()
             .and_then(|id| self.boxscore_data.get(&id));
@@ -155,6 +157,52 @@ impl GamesState {
         self.boxscore_table_state.select(Some(0));
         self.boxscore_selected_team = BoxscoreTeam::default();
     }
+    /// Page up for scoring or stats page
+    pub fn games_page_up(&mut self) {
+        if self.visible_rows == 0 {
+            return;
+        }
+
+        self.scroll_offset = self.scroll_offset
+            .saturating_sub(self.visible_rows);
+    }
+    /// Page down for scoring or stats page
+    pub fn games_page_down(&mut self) {
+        if self.visible_rows == 0 {
+            return;
+        }
+
+        self.scroll_offset = (self.scroll_offset + self.visible_rows)
+            .min(self.max_scroll);
+    }
+    /// Page up for boxscore
+    pub fn boxscore_page_up(&mut self) {
+        if self.visible_rows == 0 {
+            return;
+        }
+        // The first visible row becomes the last visible row
+        let offset = self.boxscore_table_state.offset();
+        let new_offset = offset.saturating_sub(self.visible_rows - 1);
+        *self.boxscore_table_state.offset_mut() = new_offset;
+        self.boxscore_table_state.select(Some(new_offset));
+    }
+    /// Page down for boxscore
+    pub fn boxscore_page_down(&mut self) {
+        if self.visible_rows == 0 {
+            return;
+        }
+        // The last visible row becomes the first visible row
+        // But if last visible row is the last row in the table, simply select it without changing the offset
+        let len = self.current_boxscore_len();
+        let offset = self.boxscore_table_state.offset();
+        let last_visible = if offset + self.visible_rows - 1 >= len - 1 {
+            len - 1
+        } else {
+            *self.boxscore_table_state.offset_mut() = (offset + self.visible_rows - 1).min(len - 1);
+            (offset + self.visible_rows - 1).min(len - 1)
+        };
+        self.boxscore_table_state.select(Some(last_visible));
+    }
 }
 
 fn next_index(index: usize, max_index: usize) -> usize {
@@ -177,6 +225,7 @@ impl Default for GamesState {
             boxscore_selected_team: BoxscoreTeam::default(),
             boxscore_selected_position: BoxscorePosition::default(),
             boxscore_table_state: table(),
+            visible_rows: 0,
 
             games_data: None,
             boxscore_data: HashMap::new(),

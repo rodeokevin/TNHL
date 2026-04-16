@@ -1,7 +1,7 @@
 use crate::{
     sources::{
         boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
-        standings::StandingsCommand,
+        standings::StandingsCommand, teams_stats::TeamStatsCommand,
     },
     state::{app_settings::AppSettings, app_state::AppState},
 };
@@ -19,9 +19,16 @@ impl App {
         standings_tx: Sender<StandingsCommand>,
         boxscore_tx: Sender<BoxscoreCommand>,
         game_story_tx: Sender<GameStoryCommand>,
+        team_stats_tx: Sender<TeamStatsCommand>,
     ) -> Self {
         let mut app = Self {
-            state: AppState::new(games_tx, standings_tx, boxscore_tx, game_story_tx),
+            state: AppState::new(
+                games_tx,
+                standings_tx,
+                boxscore_tx,
+                game_story_tx,
+                team_stats_tx,
+            ),
             settings: AppSettings::load_from_file(),
         };
         app.configure();

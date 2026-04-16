@@ -1,6 +1,6 @@
 use ratatui::widgets::TableState;
 
-use crate::{models::standings::StandingsResponse};
+use crate::models::standings::StandingsResponse;
 
 const LEAGUE_NUM_TEAMS: usize = 32;
 const CONFERENCE_NUM_TEAMS: usize = 16;
@@ -116,7 +116,7 @@ impl Default for StandingsState {
 
 impl StandingsState {
     /// Return the length of the active standings table
-    pub fn current_table_len(&mut self) -> usize {
+    pub fn current_table_len(&self) -> usize {
         match self.selected_standings {
             StandingsFocus::League => LEAGUE_NUM_TEAMS,
             StandingsFocus::Conference => CONFERENCE_NUM_TEAMS,

@@ -24,13 +24,12 @@ pub enum Action {
     NextGamesDisplay,
     GamesScrollUp,
     GamesScrollDown,
-    // GamesPageUp,
-    // GamesPageDown,
-
+    GamesPageUp,
+    GamesPageDown,
     BoxscoreUp,
     BoxscoreDown,
-    // BoxscorePageUp,
-    // BoxscorePageDown,
+    BoxscorePageUp,
+    BoxscorePageDown,
     BoxscoreForwards,
     BoxscoreDefensemen,
     BoxscoreGoalies,
@@ -40,8 +39,9 @@ pub enum Action {
     StandingsUp,
     /// Move down a row in standings table
     StandingsDown,
-    /// Move down a row in standings table
+    /// Page up in standings table
     StandingsPageUp,
+    /// Page down in standings table
     StandingsPageDown,
     /// Select previous (if possible) standings type
     StandingsLeft,
@@ -51,6 +51,17 @@ pub enum Action {
     PrevStandingsDisplay,
     /// Select next (if possible) standings type
     NextStandingsDisplay,
+
+    /// Move up a row in team stats table
+    TeamStatsUp,
+    /// Move down a row in team stats table
+    TeamStatsDown,
+    /// Page up in team stats table
+    TeamStatsPageUp,
+    /// Page down in team stats table
+    TeamStatsPageDown,
+    /// Toggle between skaters and goalies
+    ToggleTeamStats,
 
     DateLeft,
     DateRight,
@@ -118,6 +129,16 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
                 (_, KeyCode::Char('<'), _) => Action::PrevGamesDisplay,
                 (_, KeyCode::Char('>'), _) => Action::NextGamesDisplay,
                 // Scoring or stats page actions
+                (
+                    GamesFocus::Scoring | GamesFocus::Stats,
+                    KeyCode::Up | KeyCode::Char('K'),
+                    KeyModifiers::SHIFT,
+                ) => Action::GamesPageUp,
+                (
+                    GamesFocus::Scoring | GamesFocus::Stats,
+                    KeyCode::Down | KeyCode::Char('J'),
+                    KeyModifiers::SHIFT,
+                ) => Action::GamesPageDown,
                 (GamesFocus::Scoring | GamesFocus::Stats, KeyCode::Up | KeyCode::Char('k'), _) => {
                     Action::GamesScrollUp
                 }
@@ -127,6 +148,16 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
                     _,
                 ) => Action::GamesScrollDown,
                 // Boxscore actions
+                (
+                    GamesFocus::Boxscore,
+                    KeyCode::Up | KeyCode::Char('K'),
+                    KeyModifiers::SHIFT,
+                ) => Action::BoxscorePageUp,
+                (
+                    GamesFocus::Boxscore,
+                    KeyCode::Down | KeyCode::Char('J'),
+                    KeyModifiers::SHIFT,
+                ) => Action::BoxscorePageDown,
                 (GamesFocus::Boxscore, KeyCode::Up | KeyCode::Char('k'), _) => Action::BoxscoreUp,
                 (GamesFocus::Boxscore, KeyCode::Down | KeyCode::Char('j'), _) => {
                     Action::BoxscoreDown
@@ -140,12 +171,18 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         }
 
         // In standings pane
-        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Up | KeyCode::Char('K'), KeyModifiers::SHIFT) => {
-            Action::StandingsPageUp
-        }
-        (PaneFocus::Content, MenuFocus::Standings, KeyCode::Down | KeyCode::Char('J'), KeyModifiers::SHIFT) => {
-            Action::StandingsPageDown
-        }
+        (
+            PaneFocus::Content,
+            MenuFocus::Standings,
+            KeyCode::Up | KeyCode::Char('K'),
+            KeyModifiers::SHIFT,
+        ) => Action::StandingsPageUp,
+        (
+            PaneFocus::Content,
+            MenuFocus::Standings,
+            KeyCode::Down | KeyCode::Char('J'),
+            KeyModifiers::SHIFT,
+        ) => Action::StandingsPageDown,
         (PaneFocus::Content, MenuFocus::Standings, KeyCode::Up | KeyCode::Char('k'), _) => {
             Action::StandingsUp
         }
@@ -163,6 +200,29 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         }
         (PaneFocus::Content, MenuFocus::Standings, KeyCode::Char('>'), _) => {
             Action::NextStandingsDisplay
+        }
+
+        // In team stats page
+        (
+            PaneFocus::Content,
+            MenuFocus::TeamStats,
+            KeyCode::Up | KeyCode::Char('K'),
+            KeyModifiers::SHIFT,
+        ) => Action::TeamStatsPageUp,
+        (
+            PaneFocus::Content,
+            MenuFocus::TeamStats,
+            KeyCode::Down | KeyCode::Char('J'),
+            KeyModifiers::SHIFT,
+        ) => Action::TeamStatsPageDown,
+        (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Up | KeyCode::Char('k'), _) => {
+            Action::TeamStatsUp
+        }
+        (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Down | KeyCode::Char('j'), _) => {
+            Action::TeamStatsDown
+        }
+        (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Char('>') | KeyCode::Char('<'), _) => {
+            Action::ToggleTeamStats
         }
 
         // In date picker

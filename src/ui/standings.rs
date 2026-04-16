@@ -1,9 +1,9 @@
 use crate::app::App;
+use crate::models::standings::{StandingsResponse, TeamData};
 use crate::state::app_state::PaneFocus;
 use crate::state::standings_state::{ConferenceFocus, DivisionFocus, StandingsFocus};
 use crate::ui::render::BORDER_FOCUSED_COLOR;
 
-use ratatui::widgets::Paragraph;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -12,18 +12,18 @@ use ratatui::{
     widgets::{Block, Row, Table, TableState, Tabs},
 };
 
-const STANDINGS_COLUMNS: [&str; 18] = [
+const STANDINGS_COLUMNS_NAMES: [&str; 18] = [
     "#", "Team", "GP", "W", "L", "OT", "PTS", "P%", "RW", "ROW", "GF", "GA", "DIFF", "HOME",
     "AWAY", "S/O", "L10", "STRK",
 ];
 
 const STANDINGS_COLUMN_WIDTHS: [Constraint; 18] = [
     Constraint::Length(3),
-    Constraint::Min(25),
-    Constraint::Length(4),
-    Constraint::Length(4),
-    Constraint::Length(4),
-    Constraint::Length(4),
+    Constraint::Min(24),
+    Constraint::Length(3),
+    Constraint::Length(3),
+    Constraint::Length(3),
+    Constraint::Length(3),
     Constraint::Length(5),
     Constraint::Length(7),
     Constraint::Length(4),
@@ -31,14 +31,12 @@ const STANDINGS_COLUMN_WIDTHS: [Constraint; 18] = [
     Constraint::Length(5),
     Constraint::Length(5),
     Constraint::Length(5),
-    Constraint::Length(10),
-    Constraint::Length(10),
-    Constraint::Length(6),
-    Constraint::Length(8),
+    Constraint::Length(9),
+    Constraint::Length(9),
+    Constraint::Length(5),
+    Constraint::Length(9),
     Constraint::Length(5),
 ];
-
-use crate::models::standings::{StandingsResponse, TeamData};
 
 pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
@@ -51,7 +49,8 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         .split(area);
 
     // Pass visible rows to standings state
-    app.state.standings.visible_rows = tab_content_chunks[1].height.saturating_sub(4) as usize;
+    app.state.standings.visible_rows = tab_content_chunks[1].height.saturating_sub(3) as usize;
+    
     let titles = ["Wild Card", "Division", "Conference", "League"]
         .iter()
         .map(|t| Line::from(*t))
@@ -137,8 +136,6 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
                 );
             }
         };
-    } else {
-        frame.render_widget(Paragraph::new(Line::from("No data yet")), area);
     }
 }
 
@@ -283,9 +280,8 @@ fn create_table(rows: Vec<Row<'_>>, title: String, border_style: Style) -> Table
 
 /// Helper to create the standings header from the const value
 fn standings_header<'a>() -> Row<'a> {
-    Row::new(STANDINGS_COLUMNS)
-        .style(Style::new().bold())
-        .bottom_margin(1)
+    Row::new(STANDINGS_COLUMNS_NAMES)
+        .style(Style::new().bold().add_modifier(Modifier::UNDERLINED))
 }
 
 /// Helper functions to map the standings data into table rows given a filter for which teams and how to sort them

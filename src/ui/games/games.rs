@@ -32,10 +32,13 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         area,
         [
             Constraint::Length(3), // tabs
-            Constraint::Min(1),    // table
+            Constraint::Min(1),    // game info
         ],
     );
 
+    // Pass visible rows to game state
+    app.state.games.visible_rows = area.height.saturating_sub(3) as usize;
+    
     let matchups: Vec<Line> = app
         .state
         .games
