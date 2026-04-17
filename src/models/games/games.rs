@@ -3,6 +3,8 @@ use chrono_tz::Tz;
 use serde::Deserialize;
 use std::fmt;
 
+use crate::state::team_stats::team_picker::TeamAbbrev;
+
 #[derive(Debug, Deserialize, Default)]
 pub struct GamesResponse {
     pub games: Vec<GameData>,
@@ -24,8 +26,7 @@ pub struct GameData {
     pub game_state: GameState,
     pub away_team: Team,
     pub home_team: Team,
-    #[serde(default)]
-    pub period: usize,
+    pub series_status: Option<SeriesStatus>,
     pub clock: Option<Clock>,
     pub period_descriptor: Option<PeriodDescriptor>, // If the game is not live, there is no PeriodDescriptor
     pub situation: Option<GameSituation>,
@@ -55,6 +56,19 @@ pub enum GameState {
     OFF,
     #[serde(other)]
     Unknown,
+}
+
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SeriesStatus {
+    pub round: usize,
+    pub series_abbrev: String,
+    pub needed_to_win: usize,
+    pub top_seed_team_abbrev: TeamAbbrev,
+    pub top_seed_wins: usize,
+    pub bottom_seed_team_abbrev: TeamAbbrev,
+    pub bottom_seed_wins: usize,
+    pub game_number_of_series: usize,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]

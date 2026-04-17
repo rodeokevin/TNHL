@@ -356,9 +356,10 @@ impl AppState {
             }
             Action::HelpScrollUp => self.help.previous(),
             Action::HelpScrollDown => self.help.next(),
-            Action::HelpPageUp => self.help.page_up(),
-            Action::HelpPageDown => self.help.page_down(),
-            Action::ExitHelp => self.focus = self.previous_focus,
+            Action::ExitHelp => {
+                self.focus = self.previous_focus;
+                self.help.reset();
+            }
 
             Action::None => {}
         }
@@ -416,6 +417,7 @@ impl AppState {
         self.games.reset_state();
         self.standings.reset_state();
         self.team_stats.reset_state();
+        self.help.reset();
     }
 
     fn set_fetch_interval(&self, live: bool) {

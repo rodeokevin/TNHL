@@ -1,6 +1,6 @@
 use crate::app::App;
 use crate::models::games::games::{
-    GameData, GameState, PeriodDescriptor, PeriodType, SituationDesc,
+    GameData, GameState, PeriodDescriptor, PeriodType, SeriesStatus, SituationDesc,
 };
 use crate::state::{app_state::PaneFocus, games_state::GamesFocus};
 use crate::ui::{
@@ -185,23 +185,36 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             render_big_score(game, frame, upper_score_lower[1]);
 
             // Lower info
-            let lower_info_chunks = split_area_vertical(upper_score_lower[2], [Constraint::Min(0)]);
+            let is_playoff = game.series_status.is_some();
+            let lower_info_chunks = split_area_vertical(
+                upper_score_lower[2],
+                [
+                    Constraint::Length(if is_playoff { 1 } else { 0 }), // Playoff information
+                    Constraint::Length(if is_playoff { 1 } else { 0 }), // Playoff status
+                    Constraint::Min(0),
+                ],
+            );
+            if let Some(series) = &game.series_status {
+                render_series_info(series, frame, lower_info_chunks[0]);
+                render_series_status(series, frame, lower_info_chunks[1]);
+            }
+            let game_info_chunk_index = if is_playoff { 2 } else { 0 };
             match &app.state.games.focus {
                 GamesFocus::Scoring => {
                     scoring::render_scoring(
                         game,
                         app.state.games.game_story_data.get(&game.id),
                         frame,
-                        lower_info_chunks[0],
+                        lower_info_chunks[game_info_chunk_index],
                         app.state.games.scroll_offset,
                         &mut app.state.games.max_scroll,
                     );
                 }
                 GamesFocus::Boxscore => {
-                    boxscore::render_boxscore(frame, app, lower_info_chunks[0]);
+                    boxscore::render_boxscore(frame, app, lower_info_chunks[game_info_chunk_index]);
                 }
                 GamesFocus::Stats => {
-                    stats::render_stats(frame, app, lower_info_chunks[0]);
+                    stats::render_stats(frame, app, lower_info_chunks[game_info_chunk_index]);
                 }
             }
         }
@@ -467,6 +480,63 @@ pub fn get_period_title(period: &PeriodDescriptor) -> String {
         PeriodType::SO => "Shootout".to_string(),
         _ => "Unknown Period".to_string(),
     }
+}
+
+fn render_series_info(series: &SeriesStatus, frame: &mut Frame, area: Rect) {
+    frame.render_widget(
+        Line::from(format!(
+            "{} - Game {}",
+            series.series_abbrev, series.game_number_of_series
+        )).style(Style::new().fg(Color::DarkGray)).alignment(Alignment::Center),
+        area,
+    );
+}
+
+fn render_series_status(series: &SeriesStatus, frame: &mut Frame, area: Rect) {
+    // If series is tied
+    let line = if series.top_seed_wins == series.bottom_seed_wins {
+        Line::from(format!("Series tied {0} - {0}", series.top_seed_wins))
+    }
+    // If top seed won the series
+    else if series.top_seed_wins == series.needed_to_win {
+        Line::from(format!(
+            "{} wins {} - {}",
+            series.top_seed_team_abbrev, series.top_seed_wins, series.bottom_seed_wins
+        ))
+    }
+    // If bottom seed won the series
+    else if series.bottom_seed_wins == series.needed_to_win {
+        Line::from(format!(
+            "{} wins {} - {}",
+            series.bottom_seed_team_abbrev, series.bottom_seed_wins, series.top_seed_wins
+        ))
+    }
+    // Series not over
+    else {
+        let (leading_team, leading_team_score, trailing_team_score) =
+            if series.top_seed_wins > series.bottom_seed_wins {
+                (
+                    series.top_seed_team_abbrev,
+                    series.top_seed_wins,
+                    series.bottom_seed_wins,
+                )
+            } else {
+                (
+                    series.bottom_seed_team_abbrev,
+                    series.bottom_seed_wins,
+                    series.top_seed_wins,
+                )
+            };
+        Line::from(format!(
+            "{} leads {} - {}",
+            leading_team, leading_team_score, trailing_team_score
+        ))
+    };
+    frame.render_widget(
+        line.style(Style::new().fg(Color::DarkGray))
+            .alignment(Alignment::Center),
+        area,
+    );
 }
 
 // Helper to create the areas for left-center-right

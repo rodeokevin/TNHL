@@ -78,8 +78,6 @@ pub enum Action {
     EnterHelp,
     HelpScrollUp,
     HelpScrollDown,
-    HelpPageUp,
-    HelpPageDown,
     ExitHelp,
 
     None,
@@ -228,9 +226,12 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Down | KeyCode::Char('j'), _) => {
             Action::TeamStatsDown
         }
-        (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Char('>') | KeyCode::Char('<'), _) => {
-            Action::ToggleTeamStats
-        }
+        (
+            PaneFocus::Content,
+            MenuFocus::TeamStats,
+            KeyCode::Left | KeyCode::Right | KeyCode::Char('h') | KeyCode::Char('l'),
+            _,
+        ) => Action::ToggleTeamStats,
 
         // In date picker
         (PaneFocus::DatePicker, _, KeyCode::Enter, _) => Action::UpdateDate,
@@ -245,10 +246,6 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         (PaneFocus::TeamPicker, _, KeyCode::Esc, _) => Action::ExitTeamPicker,
 
         // In help page
-        (PaneFocus::Help, _, Char('K'), _)
-        | (PaneFocus::Help, _, KeyCode::Up, KeyModifiers::SHIFT) => Action::HelpPageUp,
-        (PaneFocus::Help, _, Char('J'), _)
-        | (PaneFocus::Help, _, KeyCode::Down, KeyModifiers::SHIFT) => Action::HelpPageDown,
         (PaneFocus::Help, _, KeyCode::Up | KeyCode::Char('k'), _) => Action::HelpScrollUp,
         (PaneFocus::Help, _, KeyCode::Down | KeyCode::Char('j'), _) => Action::HelpScrollDown,
         (PaneFocus::Help, _, KeyCode::Esc, _) => Action::ExitHelp,

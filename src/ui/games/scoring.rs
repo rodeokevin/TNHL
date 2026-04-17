@@ -82,8 +82,8 @@ pub fn render_scoring(
                 }
 
                 away_spans.push(Span::raw(format!(
-                    "{} {}{}",
-                    goal.first_name, goal.last_name, goals_to_date
+                    "[{}] {} {}{}",
+                    goal.time_in_period, goal.first_name, goal.last_name, goals_to_date
                 )));
 
                 away_lines.push(Line::from(away_spans).alignment(Alignment::Right));
@@ -96,8 +96,8 @@ pub fn render_scoring(
                 middle_lines.push(Line::default());
             } else if goal.team_abbrev == *home_team_abbrev {
                 let mut home_spans = vec![Span::raw(format!(
-                    "{} {}{}",
-                    goal.first_name, goal.last_name, goals_to_date
+                    "{} {}{} [{}]",
+                    goal.first_name, goal.last_name, goals_to_date, goal.time_in_period
                 ))];
 
                 if !strengths.is_empty() {

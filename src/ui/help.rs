@@ -5,35 +5,46 @@ use ratatui::prelude::*;
 use ratatui::widgets::{Paragraph, Row, Table, TableState};
 
 const HEADER: &[&str; 2] = &["Command", "Key"];
-const GENERAL_DOCS: &[&[&str; 2]; 3] = &[
-    &["Exit help", "Esc"],
-    &["Toggle focused pane", "Tab"],
-    &["Quit TNHL", "q/Ctrl + c"],
+const GENERAL_DOCS: &[&[&str; 2]; 5] = &[
+    &["Exit help", "esc"],
+    &["Move down", "j/↓"],
+    &["Move up", "k/↑"],
+    &["Toggle focused pane", "tab"],
+    &["Quit TNHL", "q/ctrl + c"],
 ];
-const GAMES_DOCS: &[&[&str; 2]; 11] = &[
+const GAMES_DOCS: &[&[&str; 2]; 10] = &[
     &["Games", " "],
     &["Next game", "l/→"],
     &["Previous game", "h/←"],
     &["Scroll down", "j/↓"],
     &["Scroll up", "k/↑"],
+    &["Page down", "shift + j/↓"],
+    &["Page up", "shift + k/↑"],
     &["Next view", "<"],
     &["Previous view", ">"],
     &["Select date", ":"],
-    &["Overview (default)", "o"],
-    &["Box score", "b"],
-    &["Play-by-play", "p"],
 ];
-const STANDINGS_DOCS: &[&[&str; 2]; 8] = &[
+const STANDINGS_DOCS: &[&[&str; 2]; 10] = &[
     &["Standings", " "],
     &["Next standings", "l/→"],
     &["Previous standings", "h/←"],
     &["Move down", "j/↓"],
     &["Move up", "k/↑"],
+    &["Page down", "shift + j/↓"],
+    &["Page up", "shift + k/↑"],
     &["Next division/conference", ">"],
     &["Previous division/conference", "<"],
     &["Select date", ":"],
 ];
-const TEAM_DOCS: &[&[&str; 2]; 2] = &[&["Teams", " "], &["To be implemented", ""]];
+const TEAM_STATS_DOCS: &[&[&str; 2]; 7] = &[
+    &["Team Stats", " "],
+    &["Move down", "j/↓"],
+    &["Move up", "k/↑"],
+    &["Page down", "shift + j/↓"],
+    &["Page up", "shift + k/↑"],
+    &["Toggle skaters/goalies", "←/→"],
+    &["Select team", ":"],
+];
 const PLAYERS_DOCS: &[&[&str; 2]; 2] = &[&["Players", " "], &["To be implemented", ""]];
 const STATSTICS_DOCS: &[&[&str; 2]; 2] = &[&["Statistics", " "], &["To be implemented", ""]];
 
@@ -115,7 +126,7 @@ impl StatefulWidget for HelpWidget {
             "not found".to_string()
         };
         Paragraph::new(format!(
-            "{}\nv {}\n\nconfig:\n{}",
+            "{}\nv. {}\n\nconfig:\n{}",
             BANNER,
             env!("CARGO_PKG_VERSION"),
             config_file
@@ -129,7 +140,7 @@ fn build_docs() -> Vec<&'static [&'static str; 2]> {
     let mut docs = GENERAL_DOCS.to_vec();
     docs.extend_from_slice(GAMES_DOCS);
     docs.extend_from_slice(STANDINGS_DOCS);
-    docs.extend_from_slice(TEAM_DOCS);
+    docs.extend_from_slice(TEAM_STATS_DOCS);
     docs.extend_from_slice(PLAYERS_DOCS);
     docs.extend_from_slice(STATSTICS_DOCS);
 

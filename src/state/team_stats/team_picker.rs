@@ -1,7 +1,8 @@
+use serde::Deserialize;
 use std::str::FromStr;
 use strum_macros::{Display, EnumString};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default, Display, EnumString)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Display, EnumString, Deserialize)]
 #[strum(ascii_case_insensitive)]
 pub enum TeamAbbrev {
     ANA,
