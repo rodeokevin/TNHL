@@ -163,8 +163,7 @@ impl GamesState {
             return;
         }
 
-        self.scroll_offset = self.scroll_offset
-            .saturating_sub(self.visible_rows);
+        self.scroll_offset = self.scroll_offset.saturating_sub(self.visible_rows);
     }
     /// Page down for scoring or stats page
     pub fn games_page_down(&mut self) {
@@ -172,8 +171,7 @@ impl GamesState {
             return;
         }
 
-        self.scroll_offset = (self.scroll_offset + self.visible_rows)
-            .min(self.max_scroll);
+        self.scroll_offset = (self.scroll_offset + self.visible_rows).min(self.max_scroll);
     }
     /// Page up for boxscore
     pub fn boxscore_page_up(&mut self) {

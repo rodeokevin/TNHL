@@ -38,7 +38,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
 
     // Pass visible rows to game state
     app.state.games.visible_rows = area.height.saturating_sub(3) as usize;
-    
+
     let matchups: Vec<Line> = app
         .state
         .games

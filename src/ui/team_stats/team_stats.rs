@@ -86,7 +86,7 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
 
         let title = format!(
             " {} {} ",
-            app.state.team_stats.current_team,
+            app.state.team_stats.team_picker.current_team,
             if show_skaters { "Skaters" } else { "Goalies" }
         );
 

@@ -15,8 +15,9 @@ use crate::{
         game_story::{GameStoryCommand, GameStorySource},
         games::{GamesCommand, GamesSource},
         standings::{StandingsCommand, StandingsSource},
-        teams_stats::{TeamAbbrev, TeamStatsCommand, TeamStatsSource},
+        teams_stats::{TeamStatsCommand, TeamStatsSource},
     },
+    state::team_stats::team_picker::TeamAbbrev,
 };
 
 use simplelog::*;

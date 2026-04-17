@@ -1,4 +1,3 @@
-use strum_macros::Display;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
@@ -6,48 +5,13 @@ use tokio_util::sync::CancellationToken;
 use super::{AppEvent, Source};
 use crate::models::team_stats::TeamStatsResponse;
 use crate::sources::FetchInterval;
+use crate::state::team_stats::team_picker::TeamAbbrev;
 
 pub enum TeamStatsCommand {
     SetTeam(TeamAbbrev),
     SetInterval(Duration),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default, Display)]
-pub enum TeamAbbrev {
-    ANA,
-    BOS,
-    BUF,
-    CAR,
-    CBJ,
-    CGY,
-    CHI,
-    COL,
-    DAL,
-    DET,
-    EMD,
-    FLA,
-    LAK,
-    MIN,
-    #[default]
-    MTL,
-    NJD,
-    NSH,
-    NYI,
-    NYR,
-    OTT,
-    PHI,
-    PIT,
-    SEA,
-    SJS,
-    STL,
-    TBL,
-    TOR,
-    UTA,
-    VAN,
-    VGK,
-    WPG,
-    WSH,
-}
 pub struct TeamStatsSource {
     rx: Receiver<TeamStatsCommand>,
     current_team: TeamAbbrev,

@@ -50,7 +50,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
 
     // Pass visible rows to standings state
     app.state.standings.visible_rows = tab_content_chunks[1].height.saturating_sub(3) as usize;
-    
+
     let titles = ["Wild Card", "Division", "Conference", "League"]
         .iter()
         .map(|t| Line::from(*t))
@@ -280,8 +280,7 @@ fn create_table(rows: Vec<Row<'_>>, title: String, border_style: Style) -> Table
 
 /// Helper to create the standings header from the const value
 fn standings_header<'a>() -> Row<'a> {
-    Row::new(STANDINGS_COLUMNS_NAMES)
-        .style(Style::new().bold().add_modifier(Modifier::UNDERLINED))
+    Row::new(STANDINGS_COLUMNS_NAMES).style(Style::new().bold().add_modifier(Modifier::UNDERLINED))
 }
 
 /// Helper functions to map the standings data into table rows given a filter for which teams and how to sort them

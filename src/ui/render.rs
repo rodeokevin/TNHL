@@ -11,8 +11,9 @@ use crate::state::app_state::{MenuFocus, PaneFocus};
 use crate::ui::{
     date_selector::DateSelectorWidget, games::games, help::HelpWidget,
     input_popup::popup_cursor_position, layout::LayoutAreas, standings,
+    team_stats::team_selector::TeamSelectorWidget,
 };
-use crate::{app::App, ui::team_stats};
+use crate::{app::App, ui::team_stats::team_stats};
 
 pub const BORDER_FOCUSED_COLOR: Color = Color::Rgb(247, 194, 0); // Orange-yellowish
 pub const BORDER_UNFOCUSED_COLOR: Color = Color::DarkGray;
@@ -25,7 +26,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             let content_menu_chunks = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([
-                    Constraint::Percentage(if app.state.display_menu { 15 } else { 0 }), // sidebar
+                    Constraint::Percentage(if app.state.display_menu { 15 } else { 0 }), // menu
                     Constraint::Percentage(if app.state.display_menu { 85 } else { 100 }), // content
                 ])
                 .split(frame.area());
@@ -34,10 +35,13 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             match app.state.selected_menu {
                 MenuFocus::Games => games::render_games(frame, app, content_menu_chunks[1]),
                 MenuFocus::Standings => {
-                    standings::render_standings(frame, app, content_menu_chunks[1])
+                    standings::render_standings(frame, app, content_menu_chunks[1]);
                 }
                 MenuFocus::TeamStats => {
-                    team_stats::render_team_stats(frame, app, content_menu_chunks[1])
+                    team_stats::render_team_stats(frame, app, content_menu_chunks[1]);
+                    if app.state.focus == PaneFocus::TeamPicker {
+                        render_team_picker(frame, app, frame.area());
+                    }
                 }
             }
             if app.state.focus == PaneFocus::DatePicker {
@@ -83,6 +87,18 @@ fn render_date_picker(f: &mut Frame, app: &mut App, rect: Rect) {
     f.render_stateful_widget(DateSelectorWidget {}, chunk, &mut app.state.date_state);
 
     let (cx, cy) = popup_cursor_position(chunk, app.state.date_state.text.len() as u16);
+    f.set_cursor_position((cx, cy));
+}
+
+fn render_team_picker(f: &mut Frame, app: &mut App, rect: Rect) {
+    let chunk = LayoutAreas::create_team_picker(rect);
+    f.render_stateful_widget(
+        TeamSelectorWidget {},
+        chunk,
+        &mut app.state.team_stats.team_picker,
+    );
+
+    let (cx, cy) = popup_cursor_position(chunk, app.state.team_stats.team_picker.text.len() as u16);
     f.set_cursor_position((cx, cy));
 }
 

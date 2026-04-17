@@ -1,14 +1,15 @@
 use ratatui::widgets::TableState;
 
-use crate::{models::team_stats::TeamStatsResponse, sources::teams_stats::TeamAbbrev};
+use crate::models::team_stats::TeamStatsResponse;
+use crate::state::team_stats::team_picker::TeamPickerState;
 
 pub struct TeamStatsState {
     pub team_stats_data: Option<TeamStatsResponse>,
-    pub current_team: TeamAbbrev,
     pub table_state: TableState,
     /// Number of visible rows in the table, updated during render
     pub visible_rows: usize,
     pub show_skaters: bool, // true: skaters (fowards + defense), false: goalies
+    pub team_picker: TeamPickerState,
 }
 
 impl Default for TeamStatsState {
@@ -21,10 +22,10 @@ impl Default for TeamStatsState {
 
         Self {
             team_stats_data: None,
-            current_team: TeamAbbrev::default(),
             table_state: table(),
             visible_rows: 0,
             show_skaters: true,
+            team_picker: TeamPickerState::default(),
         }
     }
 }

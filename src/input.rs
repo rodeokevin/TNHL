@@ -12,8 +12,6 @@ pub enum Action {
 
     SwitchPaneFocus,
     ToggleDisplayMenu,
-    EnterDatePicker,
-    InputChar(char),
 
     MenuUp,
     MenuDown,
@@ -63,11 +61,19 @@ pub enum Action {
     /// Toggle between skaters and goalies
     ToggleTeamStats,
 
+    DatePickerInputChar(char),
+    EnterDatePicker,
     DateLeft,
     DateRight,
     DateBackspace,
-    ExitDatePicker,
     UpdateDate,
+    ExitDatePicker,
+
+    TeamPickerInputChar(char),
+    EnterTeamPicker,
+    TeamBackspace,
+    UpdateTeam,
+    ExitTeamPicker,
 
     EnterHelp,
     HelpScrollUp,
@@ -96,11 +102,13 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
     ) {
         // Ctrl + c quits no matter what
         (_, _, Char('c'), KeyModifiers::CONTROL) => Action::Quit,
-        // q also quits no matter what
-        (_, _, Char('q'), _) => Action::Quit,
 
-        // In DatePicker, capture all input
-        (PaneFocus::DatePicker, _, Char(c), _) => Action::InputChar(c),
+        // In DatePicker or TeamPicker, capture all input
+        (PaneFocus::DatePicker, _, Char(c), _) => Action::DatePickerInputChar(c),
+        (PaneFocus::TeamPicker, _, Char(c), _) => Action::TeamPickerInputChar(c),
+
+        // q quits if we are not in any picker widgets
+        (_, _, Char('q'), _) => Action::Quit,
 
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Tab, _) => Action::SwitchPaneFocus,
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char('m'), _) => {
@@ -112,6 +120,9 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             KeyCode::Right | KeyCode::Left,
             KeyModifiers::SHIFT,
         ) => Action::SwitchPaneFocus,
+        (PaneFocus::Content | PaneFocus::Menu, MenuFocus::TeamStats, KeyCode::Char(':'), _) => {
+            Action::EnterTeamPicker
+        }
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char(':'), _) => Action::EnterDatePicker,
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char('?'), _) => Action::EnterHelp,
 
@@ -148,16 +159,12 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
                     _,
                 ) => Action::GamesScrollDown,
                 // Boxscore actions
-                (
-                    GamesFocus::Boxscore,
-                    KeyCode::Up | KeyCode::Char('K'),
-                    KeyModifiers::SHIFT,
-                ) => Action::BoxscorePageUp,
-                (
-                    GamesFocus::Boxscore,
-                    KeyCode::Down | KeyCode::Char('J'),
-                    KeyModifiers::SHIFT,
-                ) => Action::BoxscorePageDown,
+                (GamesFocus::Boxscore, KeyCode::Up | KeyCode::Char('K'), KeyModifiers::SHIFT) => {
+                    Action::BoxscorePageUp
+                }
+                (GamesFocus::Boxscore, KeyCode::Down | KeyCode::Char('J'), KeyModifiers::SHIFT) => {
+                    Action::BoxscorePageDown
+                }
                 (GamesFocus::Boxscore, KeyCode::Up | KeyCode::Char('k'), _) => Action::BoxscoreUp,
                 (GamesFocus::Boxscore, KeyCode::Down | KeyCode::Char('j'), _) => {
                     Action::BoxscoreDown
@@ -231,6 +238,11 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         (PaneFocus::DatePicker, _, KeyCode::Right, _) => Action::DateRight,
         (PaneFocus::DatePicker, _, KeyCode::Backspace, _) => Action::DateBackspace,
         (PaneFocus::DatePicker, _, KeyCode::Esc, _) => Action::ExitDatePicker,
+
+        // In team picker
+        (PaneFocus::TeamPicker, _, KeyCode::Enter, _) => Action::UpdateTeam,
+        (PaneFocus::TeamPicker, _, KeyCode::Backspace, _) => Action::TeamBackspace,
+        (PaneFocus::TeamPicker, _, KeyCode::Esc, _) => Action::ExitTeamPicker,
 
         // In help page
         (PaneFocus::Help, _, Char('K'), _)

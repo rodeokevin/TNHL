@@ -7,10 +7,10 @@ use crate::sources::{
     AppEvent, FetchInterval, boxscore::BoxscoreCommand, game_story::GameStoryCommand,
     games::GamesCommand, standings::StandingsCommand,
 };
-use crate::state::team_stats_state::TeamStatsState;
+use crate::state::team_stats::team_picker::InputError;
 use crate::state::{
     date_state::DateState, games_state::BoxscorePosition, games_state::GamesState, help::HelpState,
-    standings_state::StandingsState, team_stats_state,
+    standings_state::StandingsState, team_stats::team_stats_state::TeamStatsState,
 };
 use chrono::ParseError;
 use chrono_tz::Tz;
@@ -23,6 +23,8 @@ pub enum PaneFocus {
     Menu,
     Content,
     DatePicker,
+    /// Widget for selecting the team and year for team stats page
+    TeamPicker,
     Help,
 }
 
@@ -201,9 +203,13 @@ impl AppState {
                 }
                 self.display_menu = !self.display_menu;
             }
-            Action::InputChar(c) => {
+            Action::DatePickerInputChar(c) => {
                 self.date_state.is_valid = true; // reset status
                 self.date_state.text.push(c);
+            }
+            Action::TeamPickerInputChar(c) => {
+                self.team_stats.team_picker.is_valid = true; // reset status
+                self.team_stats.team_picker.text.push(c);
             }
             Action::MenuUp => {
                 let prev = self.selected_menu;
@@ -324,7 +330,26 @@ impl AppState {
                     self.focus = self.previous_focus;
                 }
             }
-
+            // Team picker actions
+            Action::EnterTeamPicker => {
+                self.previous_focus = self.focus;
+                self.focus = PaneFocus::TeamPicker;
+                self.team_stats.team_picker.text.clear();
+            }
+            Action::TeamBackspace => {
+                self.team_stats.team_picker.text.pop();
+            }
+            Action::ExitTeamPicker => {
+                self.team_stats.team_picker.text.clear();
+                self.focus = self.previous_focus;
+            }
+            Action::UpdateTeam => {
+                if self.try_update_team_from_input().is_ok() {
+                    self.handle_team_change();
+                    self.focus = self.previous_focus;
+                }
+            }
+            // Help page actions
             Action::EnterHelp => {
                 self.previous_focus = self.focus;
                 self.focus = PaneFocus::Help;
@@ -368,6 +393,24 @@ impl AppState {
             self.standings.reset_state();
         }
     }
+    fn try_update_team_from_input(&mut self) -> Result<(), InputError> {
+        let valid_team = self.team_stats.team_picker.validate_input()?;
+        self.team_stats
+            .team_picker
+            .set_team_from_valid_input(valid_team);
+        Ok(())
+    }
+    /// Update data from team stats sources after team change
+    pub fn handle_team_change(&mut self) {
+        let team = self.team_stats.team_picker.current_team;
+        let res = self.team_stats_tx.try_send(TeamStatsCommand::SetTeam(team));
+
+        if let Err(e) = &res {
+            log::error!("Failed to send TeamStatsCommand::SetTeam: {:?}", e);
+        } else {
+            self.team_stats.reset_state();
+        }
+    }
 
     fn reset_app_state(&mut self) {
         self.games.reset_state();
@@ -398,8 +441,9 @@ impl AppState {
         self.standings_tx
             .try_send(StandingsCommand::SetInterval(info_interval.as_duration()))
             .ok();
-        // self.teams_tx
-        //     .try_send(TeamsCommand::SetInterval(info_interval.as_duration()))
+        self.team_stats_tx
+            .try_send(TeamStatsCommand::SetInterval(info_interval.as_duration()))
+            .ok();
     }
 
     fn is_games_live(&self, parsed_games: &GamesResponse) -> bool {
