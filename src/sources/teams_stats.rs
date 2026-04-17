@@ -22,7 +22,7 @@ impl TeamStatsSource {
         Self {
             rx,
             current_team,
-            fetch_interval: FetchInterval::ShortInfoInterval.as_duration(),
+            fetch_interval: FetchInterval::InfoShortInterval.as_duration(),
         }
     }
 

@@ -5,11 +5,12 @@ use ratatui::prelude::*;
 use ratatui::widgets::{Paragraph, Row, Table, TableState};
 
 const HEADER: &[&str; 2] = &["Command", "Key"];
-const GENERAL_DOCS: &[&[&str; 2]; 5] = &[
+const GENERAL_DOCS: &[&[&str; 2]; 6] = &[
     &["Exit help", "esc"],
     &["Move down", "j/↓"],
     &["Move up", "k/↑"],
     &["Toggle focused pane", "tab"],
+    &["Show/hide menu", "m"],
     &["Quit TNHL", "q/ctrl + c"],
 ];
 const GAMES_DOCS: &[&[&str; 2]; 10] = &[

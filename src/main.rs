@@ -10,18 +10,14 @@ mod ui;
 use crate::{
     app::App,
     sources::{
-        AppEvent, Source,
-        boxscore::{BoxscoreCommand, BoxscoreSource},
-        game_story::{GameStoryCommand, GameStorySource},
-        games::{GamesCommand, GamesSource},
-        standings::{StandingsCommand, StandingsSource},
-        teams_stats::{TeamStatsCommand, TeamStatsSource},
+        AppEvent, Source, boxscore::{BoxscoreCommand, BoxscoreSource}, game_story::{GameStoryCommand, GameStorySource}, games::{GamesCommand, GamesSource}, playoff_bracket::{PlayoffBracketCommand, PlayoffBracketSource}, standings::{StandingsCommand, StandingsSource}, teams_stats::{TeamStatsCommand, TeamStatsSource}
     },
     state::team_stats::team_picker::TeamAbbrev,
 };
 
 use simplelog::*;
 use std::fs::File;
+use chrono::Datelike;
 
 use ratatui::{
     Terminal,
@@ -57,6 +53,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let (boxscore_cmd_tx, boxscore_cmd_rx) = tokio::sync::mpsc::channel(8);
     let (game_story_tx, game_story_rx) = tokio::sync::mpsc::channel(8);
     let (team_stats_tx, team_stats_rx) = tokio::sync::mpsc::channel(8);
+    let (playoff_bracket_tx, playoff_bracket_rx) = tokio::sync::mpsc::channel(8);
 
     let mut app = App::new(
         games_cmd_tx.clone(),
@@ -64,6 +61,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         boxscore_cmd_tx.clone(),
         game_story_tx.clone(),
         team_stats_tx.clone(),
+        playoff_bracket_tx.clone(),
     );
     let cancel = CancellationToken::new();
     let _ = run_app(
@@ -75,6 +73,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         boxscore_cmd_rx,
         game_story_rx,
         team_stats_rx,
+        playoff_bracket_rx,
     )
     .await;
 
@@ -99,6 +98,7 @@ async fn run_app<B: Backend>(
     boxscore_rx: Receiver<BoxscoreCommand>,
     game_story_rx: Receiver<GameStoryCommand>,
     team_stats_rx: Receiver<TeamStatsCommand>,
+    playoff_bracket_rx: Receiver<PlayoffBracketCommand>,
 ) -> io::Result<()>
 where
     io::Error: From<B::Error>,
@@ -151,6 +151,16 @@ where
     tokio::spawn(async move {
         Box::new(team_stats_source)
             .run(team_stats_tx, team_stats_cancel)
+            .await;
+    });
+
+    // Spawn playoff bracket source
+    let playoff_bracket_source = PlayoffBracketSource::new(playoff_bracket_rx, app.state.date_state.date.year() as u16);
+    let playoff_bracket_tx = tx.clone();
+    let playoff_bracket_cancel = cancel.clone();
+    tokio::spawn(async move {
+        Box::new(playoff_bracket_source)
+            .run(playoff_bracket_tx, playoff_bracket_cancel)
             .await;
     });
 

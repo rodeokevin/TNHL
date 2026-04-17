@@ -487,7 +487,9 @@ fn render_series_info(series: &SeriesStatus, frame: &mut Frame, area: Rect) {
         Line::from(format!(
             "{} - Game {}",
             series.series_abbrev, series.game_number_of_series
-        )).style(Style::new().fg(Color::DarkGray)).alignment(Alignment::Center),
+        ))
+        .style(Style::new().fg(Color::DarkGray))
+        .alignment(Alignment::Center),
         area,
     );
 }

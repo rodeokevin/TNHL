@@ -22,7 +22,7 @@ impl BoxscoreSource {
         Self {
             rx,
             game_ids: Vec::new(),
-            fetch_interval: FetchInterval::ShortInfoInterval.as_duration(),
+            fetch_interval: FetchInterval::InfoShortInterval.as_duration(),
         }
     }
 

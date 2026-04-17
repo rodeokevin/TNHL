@@ -21,7 +21,7 @@ impl StandingsSource {
         Self {
             rx,
             current_date,
-            fetch_interval: FetchInterval::ShortInfoInterval.as_duration(),
+            fetch_interval: FetchInterval::InfoShortInterval.as_duration(),
         }
     }
 

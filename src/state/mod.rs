@@ -3,5 +3,6 @@ pub mod app_state;
 pub mod date_state;
 pub mod games_state;
 pub mod help;
+pub mod playoff_bracket;
 pub mod standings_state;
 pub mod team_stats;

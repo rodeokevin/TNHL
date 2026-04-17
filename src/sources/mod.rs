@@ -3,6 +3,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::models::{
     games::{boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse},
+    playoff_bracket::PlayoffBracketResponse,
     standings::StandingsResponse,
     team_stats::TeamStatsResponse,
 };
@@ -10,23 +11,28 @@ use crate::models::{
 pub mod boxscore;
 pub mod game_story;
 pub mod games;
+pub mod playoff_bracket;
 pub mod standings;
 pub mod teams_stats;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum FetchInterval {
-    ShortGamesInterval,
-    LongGamesInterval,
-    ShortInfoInterval,
-    LongInfoInterval,
+    GamesShortInterval,
+    GamesLongInterval,
+    InfoShortInterval,
+    InfoLongInterval,
+    PlayoffBracketShortInterval,
+    PlayoffBracketLongInterval,
 }
 impl FetchInterval {
     pub fn as_duration(&self) -> Duration {
         match self {
-            FetchInterval::ShortGamesInterval => Duration::from_secs(10),
-            FetchInterval::LongGamesInterval => Duration::from_secs(60),
-            FetchInterval::ShortInfoInterval => Duration::from_secs(30),
-            FetchInterval::LongInfoInterval => Duration::from_secs(600),
+            FetchInterval::GamesShortInterval => Duration::from_secs(10),
+            FetchInterval::GamesLongInterval => Duration::from_secs(60),
+            FetchInterval::InfoShortInterval => Duration::from_secs(30),
+            FetchInterval::InfoLongInterval => Duration::from_secs(600),
+            FetchInterval::PlayoffBracketShortInterval => Duration::from_secs(60),
+            FetchInterval::PlayoffBracketLongInterval => Duration::from_secs(600),
         }
     }
 }
@@ -48,6 +54,7 @@ pub enum AppEvent {
         game_id: u32,
         parsed_game_story: GameStoryReponse,
     },
+    PlayoffBracketUpdate(PlayoffBracketResponse),
     Input(crossterm::event::KeyEvent),
     /// Periodic tick to refresh UI
     Tick,

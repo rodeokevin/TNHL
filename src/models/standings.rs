@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::models::TeamName;
+
 #[derive(Debug, Deserialize)]
 pub struct StandingsResponse {
     pub standings: Vec<TeamData>,
@@ -40,11 +42,6 @@ pub struct TeamData {
     pub l10_losses: u8,
     pub streak_code: String,
     pub streak_count: u8,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct TeamName {
-    pub default: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

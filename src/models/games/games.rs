@@ -1,3 +1,4 @@
+use crate::models::TeamName;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use serde::Deserialize;
@@ -87,11 +88,6 @@ pub struct Team {
     pub abbrev: String,
     pub score: Option<u8>,
     pub sog: Option<u16>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct TeamName {
-    pub default: String,
 }
 
 #[derive(Deserialize, Debug)]

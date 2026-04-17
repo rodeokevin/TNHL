@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use crate::input::{Action, map_key};
 use crate::models::games::games::{GameState, GamesResponse};
+use crate::sources::playoff_bracket::PlayoffBracketCommand;
 use crate::sources::teams_stats::TeamStatsCommand;
 use crate::sources::{
     AppEvent, FetchInterval, boxscore::BoxscoreCommand, game_story::GameStoryCommand,
@@ -10,7 +11,8 @@ use crate::sources::{
 use crate::state::team_stats::team_picker::InputError;
 use crate::state::{
     date_state::DateState, games_state::BoxscorePosition, games_state::GamesState, help::HelpState,
-    standings_state::StandingsState, team_stats::team_stats_state::TeamStatsState,
+    playoff_bracket::PlayoffBracketState, standings_state::StandingsState,
+    team_stats::team_stats_state::TeamStatsState,
 };
 use chrono::ParseError;
 use chrono_tz::Tz;
@@ -80,12 +82,15 @@ pub struct AppState {
     pub boxscore_tx: Sender<BoxscoreCommand>,
     pub game_story_tx: Sender<GameStoryCommand>,
     pub team_stats_tx: Sender<TeamStatsCommand>,
+    pub playoff_bracket_tx: Sender<PlayoffBracketCommand>,
 
     pub selected_menu: MenuFocus,
     pub display_menu: bool,
+
     pub standings: StandingsState,
     pub games: GamesState,
     pub team_stats: TeamStatsState,
+    pub playoff_bracket: PlayoffBracketState,
 
     pub help: HelpState,
 
@@ -101,6 +106,7 @@ impl AppState {
         boxscore_tx: Sender<BoxscoreCommand>,
         game_story_tx: Sender<GameStoryCommand>,
         team_stats_tx: Sender<TeamStatsCommand>,
+        playoff_bracket_tx: Sender<PlayoffBracketCommand>,
     ) -> Self {
         Self {
             games_tx,
@@ -108,16 +114,18 @@ impl AppState {
             boxscore_tx,
             game_story_tx,
             team_stats_tx,
+            playoff_bracket_tx,
 
             date_state: DateState::default(),
             timezone: Tz::default(),
 
             selected_menu: MenuFocus::default(),
             display_menu: true,
+
             standings: StandingsState::default(),
             games: GamesState::default(),
-
             team_stats: TeamStatsState::default(),
+            playoff_bracket: PlayoffBracketState::default(),
 
             help: HelpState::default(),
 
@@ -171,6 +179,10 @@ impl AppState {
             AppEvent::TeamStatsUpdate(parsed_team_stats) => {
                 log::info!("Updating standings data");
                 self.team_stats.team_stats_data = Some(parsed_team_stats);
+            }
+            AppEvent::PlayoffBracketUpdate(parsed_playoff_bracket) => {
+                log::info!("Updating playoff bracket data");
+                self.playoff_bracket.playoff_bracket_data = Some(parsed_playoff_bracket);
             }
             AppEvent::Input(key_event) => {
                 log::info!("Key event detected: {:?}", key_event);
@@ -421,15 +433,16 @@ impl AppState {
     }
 
     fn set_fetch_interval(&self, live: bool) {
-        let info_interval = if live {
-            FetchInterval::ShortInfoInterval
+        let (info_interval, games_interval) = if live {
+            (
+                FetchInterval::InfoShortInterval,
+                FetchInterval::GamesShortInterval,
+            )
         } else {
-            FetchInterval::LongInfoInterval
-        };
-        let games_interval = if live {
-            FetchInterval::ShortGamesInterval
-        } else {
-            FetchInterval::LongGamesInterval
+            (
+                FetchInterval::InfoLongInterval,
+                FetchInterval::GamesLongInterval,
+            )
         };
         self.games_tx
             .try_send(GamesCommand::SetInterval(games_interval.as_duration()))

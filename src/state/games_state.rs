@@ -70,6 +70,32 @@ pub struct GamesState {
     pub max_scroll: usize,
 }
 
+impl Default for GamesState {
+    fn default() -> Self {
+        fn table() -> TableState {
+            let mut t = TableState::default();
+            t.select(Some(0));
+            t
+        }
+
+        Self {
+            focus: GamesFocus::default(),
+            boxscore_selected_team: BoxscoreTeam::default(),
+            boxscore_selected_position: BoxscorePosition::default(),
+            boxscore_table_state: table(),
+            visible_rows: 0,
+
+            games_data: None,
+            boxscore_data: HashMap::new(),
+            game_story_data: HashMap::new(),
+            selected_game_index: 0,
+            sweeping_status_offset: 0,
+            scroll_offset: 0,
+            max_scroll: 0,
+        }
+    }
+}
+
 impl GamesState {
     /// Set the game index to next if forward == true, otherwise previous
     /// Index only changes if it is valid
@@ -208,30 +234,4 @@ fn next_index(index: usize, max_index: usize) -> usize {
 }
 fn prev_index(index: usize) -> usize {
     index.saturating_sub(1)
-}
-
-impl Default for GamesState {
-    fn default() -> Self {
-        fn table() -> TableState {
-            let mut t = TableState::default();
-            t.select(Some(0));
-            t
-        }
-
-        Self {
-            focus: GamesFocus::default(),
-            boxscore_selected_team: BoxscoreTeam::default(),
-            boxscore_selected_position: BoxscorePosition::default(),
-            boxscore_table_state: table(),
-            visible_rows: 0,
-
-            games_data: None,
-            boxscore_data: HashMap::new(),
-            game_story_data: HashMap::new(),
-            selected_game_index: 0,
-            sweeping_status_offset: 0,
-            scroll_offset: 0,
-            max_scroll: 0,
-        }
-    }
 }

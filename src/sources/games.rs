@@ -21,7 +21,7 @@ impl GamesSource {
         Self {
             rx,
             current_date,
-            fetch_interval: FetchInterval::ShortGamesInterval.as_duration(),
+            fetch_interval: FetchInterval::GamesShortInterval.as_duration(),
         }
     }
 
