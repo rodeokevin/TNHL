@@ -21,8 +21,6 @@ pub enum FetchInterval {
     GamesLongInterval,
     InfoShortInterval,
     InfoLongInterval,
-    PlayoffBracketShortInterval,
-    PlayoffBracketLongInterval,
 }
 impl FetchInterval {
     pub fn as_duration(&self) -> Duration {
@@ -31,8 +29,6 @@ impl FetchInterval {
             FetchInterval::GamesLongInterval => Duration::from_secs(60),
             FetchInterval::InfoShortInterval => Duration::from_secs(30),
             FetchInterval::InfoLongInterval => Duration::from_secs(600),
-            FetchInterval::PlayoffBracketShortInterval => Duration::from_secs(60),
-            FetchInterval::PlayoffBracketLongInterval => Duration::from_secs(600),
         }
     }
 }

@@ -32,7 +32,7 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
     let outer_block = Block::default()
         .borders(Borders::ALL)
         .border_style(border_style)
-        .title(" Stanley Cup Playoffs ");
+        .title(format!(" {} Stanley Cup Playoffs ", app.state.date_state.year));
 
     let inner = outer_block.inner(area);
     // Pass visible rows/columns and max scroll to playoff_bracket state

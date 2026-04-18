@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicU32;
+
 use serde::Deserialize;
 
 use crate::{models::TeamName, state::team_stats::team_picker::TeamAbbrev};
@@ -37,14 +39,14 @@ pub struct Series {
     pub bottom_seed_wins: u8,
     pub top_seed_team: Option<SeriesTeam>,
     pub bottom_seed_team: Option<SeriesTeam>,
-    pub winning_team_id: Option<u8>,
-    pub losing_team_id: Option<u8>,
+    pub winning_team_id: Option<u32>,
+    pub losing_team_id: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SeriesTeam {
-    pub id: u8,
+    pub id: u32,
     pub abbrev: TeamAbbrev,
     pub name: TeamName,
     pub wins: Option<u8>,

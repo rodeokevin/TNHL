@@ -9,6 +9,7 @@ pub struct InputPopup<'a> {
     pub input_text: &'a str,
     pub border_color: Color,
     pub info: Option<&'a str>,
+    pub bottom_text: Option<&'a str>,
 }
 
 impl Widget for InputPopup<'_> {
@@ -35,12 +36,21 @@ impl Widget for InputPopup<'_> {
             }
         }
 
-        Block::default()
+        let mut block = Block::default()
             .title(self.title)
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(self.border_color))
-            .render(area, buf);
+            .border_style(Style::default().fg(self.border_color));
+
+        if let Some(bottom) = self.bottom_text {
+            block = block.title_bottom(
+                Span::styled(
+                    format!("{}", bottom),
+                    Style::default().fg(Color::DarkGray),
+                )
+            );
+        }
+        block.render(area, buf);
     }
 }
 

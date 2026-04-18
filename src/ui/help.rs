@@ -37,14 +37,28 @@ const STANDINGS_DOCS: &[&[&str; 2]; 10] = &[
     &["Previous division/conference", "<"],
     &["Select date", ":"],
 ];
-const TEAM_STATS_DOCS: &[&[&str; 2]; 7] = &[
+const TEAM_STATS_DOCS: &[&[&str; 2]; 8] = &[
     &["Team Stats", " "],
     &["Move down", "j/↓"],
     &["Move up", "k/↑"],
     &["Page down", "shift + j/↓"],
     &["Page up", "shift + k/↑"],
-    &["Toggle skaters/goalies", "←/→"],
-    &["Select team", ":"],
+    &["Toggle skaters/goalies", "</>"],
+    &["Select year", ":"],
+    &["Select team", "t"],
+];
+const PLAYOFFS_DOCS: &[&[&str; 2]; 11] = &[
+    &["Playoffs", " "],
+    &["Move down", "j/↓"],
+    &["Move up", "k/↑"],
+    &["Move left", "h/←"],
+    &["Move right", "l/→"],
+    &["Page down", "shift + j/↓"],
+    &["Page up", "shift + k/↑"],
+    &["Page left", "shift + h/←"],
+    &["Page right", "shift + l/→"],
+    &["Select series", "enter series letter"],
+    &["Select year", ":"],
 ];
 const PLAYERS_DOCS: &[&[&str; 2]; 2] = &[&["Players", " "], &["To be implemented", ""]];
 const STATSTICS_DOCS: &[&[&str; 2]; 2] = &[&["Statistics", " "], &["To be implemented", ""]];
@@ -142,6 +156,7 @@ fn build_docs() -> Vec<&'static [&'static str; 2]> {
     docs.extend_from_slice(GAMES_DOCS);
     docs.extend_from_slice(STANDINGS_DOCS);
     docs.extend_from_slice(TEAM_STATS_DOCS);
+    docs.extend_from_slice(PLAYOFFS_DOCS);
     docs.extend_from_slice(PLAYERS_DOCS);
     docs.extend_from_slice(STATSTICS_DOCS);
 

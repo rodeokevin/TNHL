@@ -78,6 +78,9 @@ pub enum Action {
     DateRight,
     DateBackspace,
     UpdateDate,
+    UpdateYear,
+    YearLeft,
+    YearRight,
     ExitDatePicker,
 
     TeamPickerInputChar(char),
@@ -123,8 +126,11 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char('m'), _) => {
             Action::ToggleDisplayMenu
         }
-        (PaneFocus::Content | PaneFocus::Menu, MenuFocus::TeamStats, KeyCode::Char(':'), _) => {
+        (PaneFocus::Content | PaneFocus::Menu, MenuFocus::TeamStats, KeyCode::Char('t'), _) => {
             Action::EnterTeamPicker
+        }
+        (PaneFocus::Content | PaneFocus::Menu, MenuFocus::TeamStats, KeyCode::Char(':'), _) => {
+            Action::EnterDatePicker
         }
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char(':'), _) => Action::EnterDatePicker,
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char('?'), _) => Action::EnterHelp,
@@ -234,7 +240,7 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         (
             PaneFocus::Content,
             MenuFocus::TeamStats,
-            KeyCode::Left | KeyCode::Right | KeyCode::Char('h') | KeyCode::Char('l'),
+            KeyCode::Char('>') | KeyCode::Char('<'),
             _,
         ) => Action::ToggleTeamStats,
 
@@ -277,9 +283,14 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         }
 
         // In date picker
-        (PaneFocus::DatePicker, _, KeyCode::Enter, _) => Action::UpdateDate,
-        (PaneFocus::DatePicker, _, KeyCode::Left, _) => Action::DateLeft,
-        (PaneFocus::DatePicker, _, KeyCode::Right, _) => Action::DateRight,
+        (PaneFocus::DatePicker, MenuFocus::Games | MenuFocus::Standings, KeyCode::Enter, _) => Action::UpdateDate,
+        (PaneFocus::DatePicker, MenuFocus::Games | MenuFocus::Standings, KeyCode::Left, _) => Action::DateLeft,
+        (PaneFocus::DatePicker, MenuFocus::Games | MenuFocus::Standings, KeyCode::Right, _) => Action::DateRight,
+        // In year picker
+        (PaneFocus::DatePicker, MenuFocus::Playoffs | MenuFocus::TeamStats, KeyCode::Enter, _) => Action::UpdateYear,
+        (PaneFocus::DatePicker, MenuFocus::Playoffs | MenuFocus::TeamStats, KeyCode::Left, _) => Action::YearLeft,
+        (PaneFocus::DatePicker, MenuFocus::Playoffs | MenuFocus::TeamStats, KeyCode::Right, _) => Action::YearRight,
+        // Actions for both date and year picker
         (PaneFocus::DatePicker, _, KeyCode::Backspace, _) => Action::DateBackspace,
         (PaneFocus::DatePicker, _, KeyCode::Esc, _) => Action::ExitDatePicker,
 

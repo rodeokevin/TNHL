@@ -7,15 +7,15 @@ use super::{AppEvent, Source};
 use crate::sources::PlayoffBracketResponse;
 
 pub enum PlayoffBracketCommand {
-    SetYear(u16),
+    SetYear(i32),
 }
 
 pub struct PlayoffBracketSource {
     rx: Receiver<PlayoffBracketCommand>,
-    current_year: u16,
+    current_year: i32,
 }
 impl PlayoffBracketSource {
-    pub fn new(rx: Receiver<PlayoffBracketCommand>, current_year: u16) -> Self {
+    pub fn new(rx: Receiver<PlayoffBracketCommand>, current_year: i32) -> Self {
         Self { rx, current_year }
     }
 

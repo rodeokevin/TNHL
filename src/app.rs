@@ -6,7 +6,7 @@ use crate::{
     },
     state::{app_settings::AppSettings, app_state::AppState},
 };
-use chrono::Utc;
+use chrono::{Utc, Datelike};
 use tokio::sync::mpsc::Sender;
 
 pub struct App {
@@ -57,6 +57,7 @@ impl App {
             .with_timezone(&self.settings.timezone)
             .date_naive();
         self.state.date_state.date = today;
+        self.state.date_state.year = today.year();
     }
 
     /// Set the timezone in the state to the settings' timezone

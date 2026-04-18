@@ -9,27 +9,32 @@ use crate::state::team_stats::team_picker::TeamAbbrev;
 
 pub enum TeamStatsCommand {
     SetTeam(TeamAbbrev),
+    SetYear(i32),
     SetInterval(Duration),
 }
 
 pub struct TeamStatsSource {
     rx: Receiver<TeamStatsCommand>,
     current_team: TeamAbbrev,
+    current_year: i32,
     fetch_interval: Duration,
 }
 impl TeamStatsSource {
-    pub fn new(rx: Receiver<TeamStatsCommand>, current_team: TeamAbbrev) -> Self {
+    pub fn new(rx: Receiver<TeamStatsCommand>, current_team: TeamAbbrev, current_year: i32) -> Self {
         Self {
             rx,
             current_team,
+            current_year,
             fetch_interval: FetchInterval::InfoShortInterval.as_duration(),
         }
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
         let url = format!(
-            "https://api-web.nhle.com/v1/club-stats/{}/20252026/2",
-            self.current_team.to_string()
+            "https://api-web.nhle.com/v1/club-stats/{}/{}{}/2",
+            self.current_team.to_string(),
+            self.current_year - 1,
+            self.current_year,
         );
 
         match reqwest::get(&url).await {
@@ -72,6 +77,11 @@ impl Source for TeamStatsSource {
                     match cmd {
                         TeamStatsCommand::SetTeam(team) => {
                             self.current_team = team;
+                            self.fetch(&tx).await;
+                            interval.reset();
+                        }
+                        TeamStatsCommand::SetYear(year) => {
+                            self.current_year = year;
                             self.fetch(&tx).await;
                             interval.reset();
                         }

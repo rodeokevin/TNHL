@@ -9,7 +9,7 @@ use ratatui::{
 
 use crate::state::app_state::{MenuFocus, PaneFocus};
 use crate::ui::{
-    date_selector::DateSelectorWidget, games::games, help::HelpWidget,
+    date_selector::DateSelectorWidget, year_selector::YearSelectorWidget, games::games, help::HelpWidget,
     input_popup::popup_cursor_position, layout::LayoutAreas, playoffs, standings,
     team_stats::team_selector::TeamSelectorWidget,
 };
@@ -49,7 +49,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             }
             if app.state.focus == PaneFocus::DatePicker {
                 render_date_picker(frame, app, frame.area());
-            }
+            };
         }
     }
 }
@@ -87,15 +87,17 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_date_picker(f: &mut Frame, app: &mut App, rect: Rect) {
-    let chunk = LayoutAreas::create_date_picker(rect);
-    f.render_stateful_widget(DateSelectorWidget {}, chunk, &mut app.state.date_state);
-
+    let chunk = LayoutAreas::create_picker_rect(rect);
+    match app.state.selected_menu {
+        MenuFocus::Games | MenuFocus::Standings => f.render_stateful_widget(DateSelectorWidget {}, chunk, &mut app.state.date_state),
+        MenuFocus::Playoffs | MenuFocus::TeamStats => f.render_stateful_widget(YearSelectorWidget {}, chunk, &mut app.state.date_state),
+    }
     let (cx, cy) = popup_cursor_position(chunk, app.state.date_state.text.len() as u16);
     f.set_cursor_position((cx, cy));
 }
 
 fn render_team_picker(f: &mut Frame, app: &mut App, rect: Rect) {
-    let chunk = LayoutAreas::create_team_picker(rect);
+    let chunk = LayoutAreas::create_picker_rect(rect);
     f.render_stateful_widget(
         TeamSelectorWidget {},
         chunk,

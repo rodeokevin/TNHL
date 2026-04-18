@@ -19,6 +19,7 @@ impl StatefulWidget for DateSelectorWidget {
             input_text: &state.text,
             border_color,
             info: None,
+            bottom_text: None,
         }
         .render(area, buf);
     }

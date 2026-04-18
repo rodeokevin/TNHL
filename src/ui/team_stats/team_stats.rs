@@ -85,7 +85,9 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
         };
 
         let title = format!(
-            " {} {} ",
+            " ({} - {}) {} {} ",
+            app.state.date_state.year - 1,
+            app.state.date_state.year,
             app.state.team_stats.team_picker.current_team,
             if show_skaters { "Skaters" } else { "Goalies" }
         );
@@ -120,21 +122,33 @@ fn map_skater_rows(players: &[Skater]) -> Vec<Row<'static>> {
                 p.goals.to_string(),
                 p.assists.to_string(),
                 p.points.to_string(),
-                p.plus_minus.to_string(),
+                p.plus_minus
+                    .map(|pm| pm.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.penalty_minutes.to_string(),
-                p.power_play_goals.to_string(),
-                p.shorthanded_goals.to_string(),
+                p.power_play_goals
+                    .map(|g| g.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
+                p.shorthanded_goals
+                    .map(|g| g.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.game_winning_goals.to_string(),
                 p.overtime_goals.to_string(),
-                p.shots.to_string(),
-                format!("{:.1}", p.shooting_pctg * 100.0),
-                format!("{:.1}", p.avg_time_on_ice_per_game / 60.0), // the time is in seconds
-                format!("{:.1}", p.avg_shifts_per_game),
-                if p.faceoff_win_pctg == 0.0 {
-                    "0".to_string()
-                } else {
-                    format!("{:.1}", p.faceoff_win_pctg * 100.0)
-                },
+                p.shots
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
+                p.shooting_pctg
+                    .map(|pct| format!("{:.1}", pct * 100.0))
+                    .unwrap_or_else(|| "--".to_string()),
+                p.avg_time_on_ice_per_game
+                    .map(|s| format!("{:.1}", s / 60.0))
+                    .unwrap_or_else(|| "--".to_string()),
+                p.avg_shifts_per_game
+                    .map(|s| format!("{:.1}", s))
+                    .unwrap_or_else(|| "--".to_string()),
+                p.faceoff_win_pctg
+                    .map(|pct| format!("{:.1}", pct * 100.0))
+                    .unwrap_or_else(|| "--".to_string()),
             ])
         })
         .collect()
@@ -161,9 +175,15 @@ fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
                     .map(|losses| losses.to_string())
                     .unwrap_or_else(|| "--".to_string()),
                 format!("{:.2}", p.goals_against_average),
-                format!("{:.3}", p.save_percentage),
-                p.shots_against.to_string(),
-                p.saves.to_string(),
+                p.save_percentage
+                    .map(|pct| format!("{:.3}", pct))
+                    .unwrap_or_else(|| "--".to_string()),
+                p.shots_against
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
+                p.saves
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.goals_against.to_string(),
                 p.shutouts.to_string(),
                 p.goals.to_string(),

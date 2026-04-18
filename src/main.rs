@@ -21,7 +21,6 @@ use crate::{
     state::team_stats::team_picker::TeamAbbrev,
 };
 
-use chrono::Datelike;
 use simplelog::*;
 use std::fs::File;
 
@@ -61,6 +60,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let (team_stats_tx, team_stats_rx) = tokio::sync::mpsc::channel(8);
     let (playoff_bracket_tx, playoff_bracket_rx) = tokio::sync::mpsc::channel(8);
 
+    // Date is configured in here
     let mut app = App::new(
         games_cmd_tx.clone(),
         standings_cmd_tx.clone(),
@@ -151,7 +151,7 @@ where
     });
 
     // Spawn team stats source
-    let team_stats_source = TeamStatsSource::new(team_stats_rx, TeamAbbrev::default());
+    let team_stats_source = TeamStatsSource::new(team_stats_rx, TeamAbbrev::default(), app.state.date_state.year);
     let team_stats_tx = tx.clone();
     let team_stats_cancel = cancel.clone();
     tokio::spawn(async move {
@@ -162,7 +162,7 @@ where
 
     // Spawn playoff bracket source
     let playoff_bracket_source =
-        PlayoffBracketSource::new(playoff_bracket_rx, app.state.date_state.date.year() as u16);
+        PlayoffBracketSource::new(playoff_bracket_rx, app.state.date_state.year);
     let playoff_bracket_tx = tx.clone();
     let playoff_bracket_cancel = cancel.clone();
     tokio::spawn(async move {

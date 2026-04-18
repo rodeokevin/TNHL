@@ -1,4 +1,5 @@
 pub mod date_selector;
+pub mod year_selector;
 pub mod games;
 pub mod help;
 pub mod input_popup;

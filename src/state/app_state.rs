@@ -358,6 +358,7 @@ impl AppState {
             Action::PlayoffBracketPageLeft => self.playoff_bracket.bracket_page_left(),
             Action::PlayoffBracketPageRight => self.playoff_bracket.bracket_page_right(),
 
+            // Date/year picker actions
             Action::EnterDatePicker => {
                 self.previous_focus = self.focus;
                 self.focus = PaneFocus::DatePicker;
@@ -370,11 +371,22 @@ impl AppState {
             }
             Action::ExitDatePicker => {
                 self.date_state.text.clear();
+                self.date_state.date_selection_offset = 0;
+                self.date_state.year_selection_offset = 0;
+                self.date_state.is_valid = true;
                 self.focus = self.previous_focus;
             }
             Action::UpdateDate => {
                 if self.try_update_date_from_input().is_ok() {
                     self.handle_date_change();
+                    self.focus = self.previous_focus;
+                }
+            }
+            Action::YearLeft => self.date_state.move_year_selector_by_arrow(false),
+            Action::YearRight => self.date_state.move_year_selector_by_arrow(true),
+            Action::UpdateYear => {
+                if self.try_update_year_from_input().is_ok() {
+                    self.handle_year_change();
                     self.focus = self.previous_focus;
                 }
             }
@@ -389,6 +401,7 @@ impl AppState {
             }
             Action::ExitTeamPicker => {
                 self.team_stats.team_picker.text.clear();
+                self.team_stats.team_picker.is_valid = true;
                 self.focus = self.previous_focus;
             }
             Action::UpdateTeam => {
@@ -415,7 +428,7 @@ impl AppState {
 
     // Helper functions for handling actions
     fn try_update_date_from_input(&mut self) -> Result<(), ParseError> {
-        let valid_date = self.date_state.validate_input(self.timezone)?;
+        let valid_date = self.date_state.validate_input_date(self.timezone)?;
         self.date_state.set_date_from_valid_input(valid_date);
         Ok(())
     }
@@ -442,6 +455,32 @@ impl AppState {
             self.standings.reset_state();
         }
     }
+    fn try_update_year_from_input(&mut self) -> Result<(), ()> {
+        let valid_year = self.date_state.validate_input_year(self.timezone)?;
+        self.date_state.set_year_from_valid_input(valid_year);
+        Ok(())
+    }
+    /// Update data from sources after year change
+    pub fn handle_year_change(&mut self) {
+        let year = self.date_state.year;
+        let playoffs_res = self.playoff_bracket_tx.try_send(PlayoffBracketCommand::SetYear(year));
+        let team_stats_res = self
+            .team_stats_tx
+            .try_send(TeamStatsCommand::SetYear(year));
+
+        if let Err(e) = &playoffs_res {
+            log::error!("Failed to send PlayoffBracketCommand::SetYear: {:?}", e);
+        } else {
+            self.playoff_bracket.reset_state();
+        }
+        if let Err(e) = &team_stats_res {
+            log::error!("Failed to send TeamStatsCommand::SetYear: {:?}", e);
+        } else {
+            // Reset standings state since new data is incoming
+            self.team_stats.reset_state();
+        }
+    }
+    /// Update the selected team for team stats
     fn try_update_team_from_input(&mut self) -> Result<(), InputError> {
         let valid_team = self.team_stats.team_picker.validate_input()?;
         self.team_stats
@@ -465,7 +504,7 @@ impl AppState {
         self.games.reset_state();
         self.standings.reset_state();
         self.team_stats.reset_state();
-        self.help.reset();
+        self.playoff_bracket.reset_state();
     }
 
     fn set_fetch_interval(&self, live: bool) {
