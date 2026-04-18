@@ -2,13 +2,18 @@ use serde::Deserialize;
 use strum_macros::{Display, EnumString};
 
 pub mod games;
-pub mod playoff_bracket;
+pub mod playoffs;
 pub mod plays;
 pub mod standings;
 pub mod team_stats;
 
 #[derive(Deserialize, Debug)]
 pub struct TeamName {
+    pub default: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct PlaceName {
     pub default: String,
 }
 

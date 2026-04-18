@@ -1,5 +1,4 @@
 pub mod date_selector;
-pub mod year_selector;
 pub mod games;
 pub mod help;
 pub mod input_popup;
@@ -8,3 +7,4 @@ pub mod playoffs;
 pub mod render;
 pub mod standings;
 pub mod team_stats;
+pub mod year_selector;

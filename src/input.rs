@@ -51,15 +51,15 @@ pub enum Action {
     NextStandingsDisplay,
 
     /// Scrolling in playoff bracket
-    PlayoffBracketScrollUp,
-    PlayoffBracketScrollDown,
-    PlayoffBracketScrollLeft,
-    PlayoffBracketScrollRight,
+    BracketScrollUp,
+    BracketScrollDown,
+    BracketScrollLeft,
+    BracketScrollRight,
     /// Page scrolling in playoff bracket
-    PlayoffBracketPageUp,
-    PlayoffBracketPageDown,
-    PlayoffBracketPageLeft,
-    PlayoffBracketPageRight,
+    BracketPageUp,
+    BracketPageDown,
+    BracketPageLeft,
+    BracketPageRight,
 
     /// Move up a row in team stats table
     TeamStatsUp,
@@ -237,12 +237,9 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Down | KeyCode::Char('j'), _) => {
             Action::TeamStatsDown
         }
-        (
-            PaneFocus::Content,
-            MenuFocus::TeamStats,
-            KeyCode::Char('>') | KeyCode::Char('<'),
-            _,
-        ) => Action::ToggleTeamStats,
+        (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Char('>') | KeyCode::Char('<'), _) => {
+            Action::ToggleTeamStats
+        }
 
         // In playoffs content page
         (
@@ -250,46 +247,58 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             MenuFocus::Playoffs,
             KeyCode::Up | KeyCode::Char('K'),
             KeyModifiers::SHIFT,
-        ) => Action::PlayoffBracketPageUp,
+        ) => Action::BracketPageUp,
         (
             PaneFocus::Content,
             MenuFocus::Playoffs,
             KeyCode::Down | KeyCode::Char('J'),
             KeyModifiers::SHIFT,
-        ) => Action::PlayoffBracketPageDown,
+        ) => Action::BracketPageDown,
         (
             PaneFocus::Content,
             MenuFocus::Playoffs,
             KeyCode::Right | KeyCode::Char('L'),
             KeyModifiers::SHIFT,
-        ) => Action::PlayoffBracketPageRight,
+        ) => Action::BracketPageRight,
         (
             PaneFocus::Content,
             MenuFocus::Playoffs,
             KeyCode::Left | KeyCode::Char('H'),
             KeyModifiers::SHIFT,
-        ) => Action::PlayoffBracketPageLeft,
+        ) => Action::BracketPageLeft,
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Up | KeyCode::Char('k'), _) => {
-            Action::PlayoffBracketScrollUp
+            Action::BracketScrollUp
         }
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Down | KeyCode::Char('j'), _) => {
-            Action::PlayoffBracketScrollDown
+            Action::BracketScrollDown
         }
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Right | KeyCode::Char('l'), _) => {
-            Action::PlayoffBracketScrollRight
+            Action::BracketScrollRight
         }
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Left | KeyCode::Char('h'), _) => {
-            Action::PlayoffBracketScrollLeft
+            Action::BracketScrollLeft
         }
 
         // In date picker
-        (PaneFocus::DatePicker, MenuFocus::Games | MenuFocus::Standings, KeyCode::Enter, _) => Action::UpdateDate,
-        (PaneFocus::DatePicker, MenuFocus::Games | MenuFocus::Standings, KeyCode::Left, _) => Action::DateLeft,
-        (PaneFocus::DatePicker, MenuFocus::Games | MenuFocus::Standings, KeyCode::Right, _) => Action::DateRight,
+        (PaneFocus::DatePicker, MenuFocus::Games | MenuFocus::Standings, KeyCode::Enter, _) => {
+            Action::UpdateDate
+        }
+        (PaneFocus::DatePicker, MenuFocus::Games | MenuFocus::Standings, KeyCode::Left, _) => {
+            Action::DateLeft
+        }
+        (PaneFocus::DatePicker, MenuFocus::Games | MenuFocus::Standings, KeyCode::Right, _) => {
+            Action::DateRight
+        }
         // In year picker
-        (PaneFocus::DatePicker, MenuFocus::Playoffs | MenuFocus::TeamStats, KeyCode::Enter, _) => Action::UpdateYear,
-        (PaneFocus::DatePicker, MenuFocus::Playoffs | MenuFocus::TeamStats, KeyCode::Left, _) => Action::YearLeft,
-        (PaneFocus::DatePicker, MenuFocus::Playoffs | MenuFocus::TeamStats, KeyCode::Right, _) => Action::YearRight,
+        (PaneFocus::DatePicker, MenuFocus::Playoffs | MenuFocus::TeamStats, KeyCode::Enter, _) => {
+            Action::UpdateYear
+        }
+        (PaneFocus::DatePicker, MenuFocus::Playoffs | MenuFocus::TeamStats, KeyCode::Left, _) => {
+            Action::YearLeft
+        }
+        (PaneFocus::DatePicker, MenuFocus::Playoffs | MenuFocus::TeamStats, KeyCode::Right, _) => {
+            Action::YearRight
+        }
         // Actions for both date and year picker
         (PaneFocus::DatePicker, _, KeyCode::Backspace, _) => Action::DateBackspace,
         (PaneFocus::DatePicker, _, KeyCode::Esc, _) => Action::ExitDatePicker,

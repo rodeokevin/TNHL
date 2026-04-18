@@ -1,7 +1,7 @@
-use crate::models::playoff_bracket::PlayoffBracketResponse;
+use crate::models::playoffs::bracket::BracketResponse;
 
-pub struct PlayoffBracketState {
-    pub playoff_bracket_data: Option<PlayoffBracketResponse>,
+pub struct BracketState {
+    pub playoff_bracket_data: Option<BracketResponse>,
     /// Visible rows and columns updated at render
     pub visible_rows: usize,
     pub visible_columns: usize,
@@ -16,7 +16,7 @@ pub struct PlayoffBracketState {
     pub vertical_max_scroll: usize,
 }
 
-impl Default for PlayoffBracketState {
+impl Default for BracketState {
     fn default() -> Self {
         Self {
             playoff_bracket_data: None,
@@ -32,7 +32,7 @@ impl Default for PlayoffBracketState {
     }
 }
 
-impl PlayoffBracketState {
+impl BracketState {
     pub fn reset_scoring_scroll(&mut self) {
         self.horizontal_scroll_offset = 0;
         self.horizontal_max_scroll = 0;

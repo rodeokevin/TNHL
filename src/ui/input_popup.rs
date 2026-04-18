@@ -43,12 +43,10 @@ impl Widget for InputPopup<'_> {
             .border_style(Style::default().fg(self.border_color));
 
         if let Some(bottom) = self.bottom_text {
-            block = block.title_bottom(
-                Span::styled(
-                    format!("{}", bottom),
-                    Style::default().fg(Color::DarkGray),
-                )
-            );
+            block = block.title_bottom(Span::styled(
+                format!("{}", bottom),
+                Style::default().fg(Color::DarkGray),
+            ));
         }
         block.render(area, buf);
     }

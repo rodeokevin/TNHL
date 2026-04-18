@@ -3,8 +3,8 @@ use tokio::sync::mpsc::Sender;
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
-use super::{AppEvent, Source};
 use crate::sources::{FetchInterval, GamesResponse};
+use crate::{AppEvent, Source};
 
 pub enum GamesCommand {
     SetDate(String),

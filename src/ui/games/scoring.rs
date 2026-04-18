@@ -70,7 +70,7 @@ pub fn render_scoring(
                 _ => {}
             }
 
-            if goal.team_abbrev == *away_team_abbrev {
+            if goal.team_abbrev == *away_team_abbrev.to_string() {
                 let mut away_spans = vec![];
 
                 if !strengths.is_empty() {
@@ -94,7 +94,7 @@ pub fn render_scoring(
                 away_lines.push(get_assists_line(&goal.assists, Alignment::Right));
                 home_lines.push(Line::default());
                 middle_lines.push(Line::default());
-            } else if goal.team_abbrev == *home_team_abbrev {
+            } else if goal.team_abbrev == *home_team_abbrev.to_string() {
                 let mut home_spans = vec![Span::raw(format!(
                     "{} {}{} [{}]",
                     goal.first_name, goal.last_name, goals_to_date, goal.time_in_period
@@ -148,7 +148,7 @@ pub fn render_scoring(
 
                 let attempt_span = Span::styled(attempt_symbol, Style::default().fg(attempt_color));
 
-                if shootout_attempt.team_abbrev.default == *away_team_abbrev {
+                if shootout_attempt.team_abbrev.default == *away_team_abbrev.to_string() {
                     away_lines.push(
                         Line::from(vec![
                             Span::raw(format!(

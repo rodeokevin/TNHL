@@ -1,13 +1,13 @@
 use serde::Deserialize;
 
-use crate::models::{TeamName, TeamAbbrev};
+use crate::models::{TeamAbbrev, TeamName};
 
 #[derive(Debug, Deserialize, Default)]
-pub struct PlayoffBracketResponse {
+pub struct BracketResponse {
     pub series: Vec<Series>,
 }
 
-impl PlayoffBracketResponse {
+impl BracketResponse {
     pub fn from_json(data: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(data)
     }

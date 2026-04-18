@@ -85,7 +85,7 @@ pub enum PeriodType {
 pub struct Team {
     pub id: u32,
     pub name: TeamName,
-    pub abbrev: String,
+    pub abbrev: TeamAbbrev,
     pub score: Option<u8>,
     pub sog: Option<u16>,
 }

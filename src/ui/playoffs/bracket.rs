@@ -7,9 +7,9 @@ use ratatui::{
 };
 
 use crate::app::App;
-use crate::models::playoff_bracket::Series;
+use crate::models::playoffs::bracket::Series;
 use crate::state::app_state::PaneFocus;
-use crate::state::playoff_bracket::PlayoffBracketState;
+use crate::state::playoff_bracket::BracketState;
 use crate::ui::render::{BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR};
 
 const CARD_WIDTH: u16 = 14;
@@ -32,7 +32,10 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
     let outer_block = Block::default()
         .borders(Borders::ALL)
         .border_style(border_style)
-        .title(format!(" {} Stanley Cup Playoffs ", app.state.date_state.year));
+        .title(format!(
+            " {} Stanley Cup Playoffs ",
+            app.state.date_state.year
+        ));
 
     let inner = outer_block.inner(area);
     // Pass visible rows/columns and max scroll to playoff_bracket state
@@ -129,7 +132,6 @@ fn card_virtual_pos(col: usize, row: usize) -> (u16, u16) {
 fn card_mid_y(col: usize, row: usize) -> u16 {
     card_virtual_pos(col, row).1 + CARD_HEIGHT / 2
 }
-
 
 fn render_bracket(frame: &mut Frame, area: Rect, series_list: &[Series], h_off: u16, v_off: u16) {
     // Column labels
@@ -463,7 +465,7 @@ fn draw_char_from_virtual(
     );
 }
 
-fn render_scroll_indicators(frame: &mut Frame, area: Rect, playoff_bracket: &PlayoffBracketState) {
+fn render_scroll_indicators(frame: &mut Frame, area: Rect, playoff_bracket: &BracketState) {
     let mid_x = area.x + area.width / 2;
     let mid_y = area.y + area.height / 2;
     if playoff_bracket.horizontal_scroll_offset > 0 {

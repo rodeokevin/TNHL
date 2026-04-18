@@ -3,7 +3,6 @@ use crate::models::team_stats::{Goalie, Skater};
 use crate::state::app_state::PaneFocus;
 use crate::ui::render::BORDER_FOCUSED_COLOR;
 
-use ratatui::symbols::border;
 use ratatui::{
     Frame,
     layout::{Constraint, Rect},
@@ -77,12 +76,12 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     let show_skaters = app.state.team_stats.show_skaters;
 
     let title = format!(
-            " ({} - {}) {} {} ",
-            app.state.date_state.year - 1,
-            app.state.date_state.year,
-            app.state.team_stats.team_picker.current_team,
-            if show_skaters { "Skaters" } else { "Goalies" }
-        );
+        " ({} - {}) {} {} ",
+        app.state.date_state.year - 1,
+        app.state.date_state.year,
+        app.state.team_stats.team_picker.current_team,
+        if show_skaters { "Skaters" } else { "Goalies" }
+    );
     let block = Block::bordered().title(title).border_style(border_style);
     let inner = block.inner(area);
     frame.render_widget(block, area);

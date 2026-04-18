@@ -9,9 +9,9 @@ use ratatui::{
 
 use crate::state::app_state::{MenuFocus, PaneFocus};
 use crate::ui::{
-    date_selector::DateSelectorWidget, year_selector::YearSelectorWidget, games::games, help::HelpWidget,
+    date_selector::DateSelectorWidget, games::games, help::HelpWidget,
     input_popup::popup_cursor_position, layout::LayoutAreas, playoffs, standings,
-    team_stats::team_selector::TeamSelectorWidget,
+    team_stats::team_selector::TeamSelectorWidget, year_selector::YearSelectorWidget,
 };
 use crate::{app::App, ui::team_stats::team_stats};
 
@@ -44,7 +44,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     }
                 }
                 MenuFocus::Playoffs => {
-                    playoffs::render_playoffs(frame, app, content_menu_chunks[1]);
+                    playoffs::bracket::render_playoffs(frame, app, content_menu_chunks[1]);
                 }
             }
             if app.state.focus == PaneFocus::DatePicker {
@@ -89,8 +89,12 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
 fn render_date_picker(f: &mut Frame, app: &mut App, rect: Rect) {
     let chunk = LayoutAreas::create_picker_rect(rect);
     match app.state.selected_menu {
-        MenuFocus::Games | MenuFocus::Standings => f.render_stateful_widget(DateSelectorWidget {}, chunk, &mut app.state.date_state),
-        MenuFocus::Playoffs | MenuFocus::TeamStats => f.render_stateful_widget(YearSelectorWidget {}, chunk, &mut app.state.date_state),
+        MenuFocus::Games | MenuFocus::Standings => {
+            f.render_stateful_widget(DateSelectorWidget {}, chunk, &mut app.state.date_state)
+        }
+        MenuFocus::Playoffs | MenuFocus::TeamStats => {
+            f.render_stateful_widget(YearSelectorWidget {}, chunk, &mut app.state.date_state)
+        }
     }
     let (cx, cy) = popup_cursor_position(chunk, app.state.date_state.text.len() as u16);
     f.set_cursor_position((cx, cy));

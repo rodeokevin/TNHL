@@ -3,15 +3,13 @@ use tokio::sync::mpsc::Sender;
 
 use crate::models::{
     games::{boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse},
-    playoff_bracket::PlayoffBracketResponse,
+    playoffs::bracket::BracketResponse,
     standings::StandingsResponse,
     team_stats::TeamStatsResponse,
 };
 
-pub mod boxscore;
-pub mod game_story;
 pub mod games;
-pub mod playoff_bracket;
+pub mod playoffs;
 pub mod standings;
 pub mod teams_stats;
 
@@ -50,7 +48,7 @@ pub enum AppEvent {
         game_id: u32,
         parsed_game_story: GameStoryReponse,
     },
-    PlayoffBracketUpdate(PlayoffBracketResponse),
+    BracketUpdate(BracketResponse),
     Input(crossterm::event::KeyEvent),
     /// Periodic tick to refresh UI
     Tick,

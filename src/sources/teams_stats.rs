@@ -3,9 +3,9 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
+use crate::models::TeamAbbrev;
 use crate::models::team_stats::TeamStatsResponse;
 use crate::sources::FetchInterval;
-use crate::models::TeamAbbrev;
 
 pub enum TeamStatsCommand {
     SetTeam(TeamAbbrev),
@@ -20,7 +20,11 @@ pub struct TeamStatsSource {
     fetch_interval: Duration,
 }
 impl TeamStatsSource {
-    pub fn new(rx: Receiver<TeamStatsCommand>, current_team: TeamAbbrev, current_year: i32) -> Self {
+    pub fn new(
+        rx: Receiver<TeamStatsCommand>,
+        current_team: TeamAbbrev,
+        current_year: i32,
+    ) -> Self {
         Self {
             rx,
             current_team,

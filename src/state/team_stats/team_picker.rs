@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use crate::models::TeamAbbrev;
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub enum InputError {

@@ -1,12 +1,13 @@
 use crate::{
     sources::{
-        boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
-        playoff_bracket::PlayoffBracketCommand, standings::StandingsCommand,
+        games::{boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand},
+        playoffs::bracket::BracketCommand,
+        standings::StandingsCommand,
         teams_stats::TeamStatsCommand,
     },
     state::{app_settings::AppSettings, app_state::AppState},
 };
-use chrono::{Utc, Datelike};
+use chrono::{Datelike, Utc};
 use tokio::sync::mpsc::Sender;
 
 pub struct App {
@@ -21,7 +22,7 @@ impl App {
         boxscore_tx: Sender<BoxscoreCommand>,
         game_story_tx: Sender<GameStoryCommand>,
         team_stats_tx: Sender<TeamStatsCommand>,
-        playoff_bracket_tx: Sender<PlayoffBracketCommand>,
+        playoff_bracket_tx: Sender<BracketCommand>,
     ) -> Self {
         let mut app = Self {
             state: AppState::new(

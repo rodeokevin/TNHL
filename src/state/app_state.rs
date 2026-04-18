@@ -2,16 +2,17 @@ use std::fmt::Debug;
 
 use crate::input::{Action, map_key};
 use crate::models::games::games::{GameState, GamesResponse};
-use crate::sources::playoff_bracket::PlayoffBracketCommand;
-use crate::sources::teams_stats::TeamStatsCommand;
 use crate::sources::{
-    AppEvent, FetchInterval, boxscore::BoxscoreCommand, game_story::GameStoryCommand,
-    games::GamesCommand, standings::StandingsCommand,
+    AppEvent, FetchInterval,
+    games::{boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand},
+    playoffs::bracket::BracketCommand,
+    standings::StandingsCommand,
+    teams_stats::TeamStatsCommand,
 };
 use crate::state::team_stats::team_picker::InputError;
 use crate::state::{
     date_state::DateState, games_state::BoxscorePosition, games_state::GamesState, help::HelpState,
-    playoff_bracket::PlayoffBracketState, standings_state::StandingsState,
+    playoff_bracket::BracketState, standings_state::StandingsState,
     team_stats::team_stats_state::TeamStatsState,
 };
 use chrono::ParseError;
@@ -86,7 +87,7 @@ pub struct AppState {
     pub boxscore_tx: Sender<BoxscoreCommand>,
     pub game_story_tx: Sender<GameStoryCommand>,
     pub team_stats_tx: Sender<TeamStatsCommand>,
-    pub playoff_bracket_tx: Sender<PlayoffBracketCommand>,
+    pub playoff_bracket_tx: Sender<BracketCommand>,
 
     pub selected_menu: MenuFocus,
     pub display_menu: bool,
@@ -94,7 +95,7 @@ pub struct AppState {
     pub standings: StandingsState,
     pub games: GamesState,
     pub team_stats: TeamStatsState,
-    pub playoff_bracket: PlayoffBracketState,
+    pub playoff_bracket: BracketState,
 
     pub help: HelpState,
 
@@ -110,7 +111,7 @@ impl AppState {
         boxscore_tx: Sender<BoxscoreCommand>,
         game_story_tx: Sender<GameStoryCommand>,
         team_stats_tx: Sender<TeamStatsCommand>,
-        playoff_bracket_tx: Sender<PlayoffBracketCommand>,
+        playoff_bracket_tx: Sender<BracketCommand>,
     ) -> Self {
         Self {
             games_tx,
@@ -129,7 +130,7 @@ impl AppState {
             standings: StandingsState::default(),
             games: GamesState::default(),
             team_stats: TeamStatsState::default(),
-            playoff_bracket: PlayoffBracketState::default(),
+            playoff_bracket: BracketState::default(),
 
             help: HelpState::default(),
 
@@ -184,7 +185,7 @@ impl AppState {
                 log::info!("Updating standings data");
                 self.team_stats.team_stats_data = Some(parsed_team_stats);
             }
-            AppEvent::PlayoffBracketUpdate(parsed_playoff_bracket) => {
+            AppEvent::BracketUpdate(parsed_playoff_bracket) => {
                 log::info!("Updating playoff bracket data");
                 self.playoff_bracket.playoff_bracket_data = Some(parsed_playoff_bracket);
             }
@@ -327,36 +328,36 @@ impl AppState {
             Action::ToggleTeamStats => self.team_stats.show_skaters = !self.team_stats.show_skaters,
 
             // Playoffs page actions
-            Action::PlayoffBracketScrollUp => {
+            Action::BracketScrollUp => {
                 self.playoff_bracket.vertical_scroll_offset = self
                     .playoff_bracket
                     .vertical_scroll_offset
                     .saturating_sub(1);
             }
-            Action::PlayoffBracketScrollDown => {
+            Action::BracketScrollDown => {
                 self.playoff_bracket.vertical_scroll_offset = self
                     .playoff_bracket
                     .vertical_scroll_offset
                     .saturating_add(1)
                     .min(self.playoff_bracket.vertical_max_scroll);
             }
-            Action::PlayoffBracketScrollLeft => {
+            Action::BracketScrollLeft => {
                 self.playoff_bracket.horizontal_scroll_offset = self
                     .playoff_bracket
                     .horizontal_scroll_offset
                     .saturating_sub(1);
             }
-            Action::PlayoffBracketScrollRight => {
+            Action::BracketScrollRight => {
                 self.playoff_bracket.horizontal_scroll_offset = self
                     .playoff_bracket
                     .horizontal_scroll_offset
                     .saturating_add(1)
                     .min(self.playoff_bracket.horizontal_max_scroll);
             }
-            Action::PlayoffBracketPageUp => self.playoff_bracket.bracket_page_up(),
-            Action::PlayoffBracketPageDown => self.playoff_bracket.bracket_page_down(),
-            Action::PlayoffBracketPageLeft => self.playoff_bracket.bracket_page_left(),
-            Action::PlayoffBracketPageRight => self.playoff_bracket.bracket_page_right(),
+            Action::BracketPageUp => self.playoff_bracket.bracket_page_up(),
+            Action::BracketPageDown => self.playoff_bracket.bracket_page_down(),
+            Action::BracketPageLeft => self.playoff_bracket.bracket_page_left(),
+            Action::BracketPageRight => self.playoff_bracket.bracket_page_right(),
 
             // Date/year picker actions
             Action::EnterDatePicker => {
@@ -463,13 +464,13 @@ impl AppState {
     /// Update data from sources after year change
     pub fn handle_year_change(&mut self) {
         let year = self.date_state.year;
-        let playoffs_res = self.playoff_bracket_tx.try_send(PlayoffBracketCommand::SetYear(year));
-        let team_stats_res = self
-            .team_stats_tx
-            .try_send(TeamStatsCommand::SetYear(year));
+        let playoffs_res = self
+            .playoff_bracket_tx
+            .try_send(BracketCommand::SetYear(year));
+        let team_stats_res = self.team_stats_tx.try_send(TeamStatsCommand::SetYear(year));
 
         if let Err(e) = &playoffs_res {
-            log::error!("Failed to send PlayoffBracketCommand::SetYear: {:?}", e);
+            log::error!("Failed to send BracketCommand::SetYear: {:?}", e);
         } else {
             // Clear old data and reset state
             self.playoff_bracket.playoff_bracket_data = None;

@@ -9,16 +9,18 @@ mod ui;
 
 use crate::{
     app::App,
+    models::TeamAbbrev,
     sources::{
         AppEvent, Source,
-        boxscore::{BoxscoreCommand, BoxscoreSource},
-        game_story::{GameStoryCommand, GameStorySource},
-        games::{GamesCommand, GamesSource},
-        playoff_bracket::{PlayoffBracketCommand, PlayoffBracketSource},
+        games::{
+            boxscore::{BoxscoreCommand, BoxscoreSource},
+            game_story::{GameStoryCommand, GameStorySource},
+            games::{GamesCommand, GamesSource},
+        },
+        playoffs::bracket::{BracketCommand, BracketSource},
         standings::{StandingsCommand, StandingsSource},
         teams_stats::{TeamStatsCommand, TeamStatsSource},
     },
-    models::TeamAbbrev,
 };
 
 use simplelog::*;
@@ -104,7 +106,7 @@ async fn run_app<B: Backend>(
     boxscore_rx: Receiver<BoxscoreCommand>,
     game_story_rx: Receiver<GameStoryCommand>,
     team_stats_rx: Receiver<TeamStatsCommand>,
-    playoff_bracket_rx: Receiver<PlayoffBracketCommand>,
+    playoff_bracket_rx: Receiver<BracketCommand>,
 ) -> io::Result<()>
 where
     io::Error: From<B::Error>,
@@ -151,7 +153,11 @@ where
     });
 
     // Spawn team stats source
-    let team_stats_source = TeamStatsSource::new(team_stats_rx, TeamAbbrev::default(), app.state.date_state.year);
+    let team_stats_source = TeamStatsSource::new(
+        team_stats_rx,
+        TeamAbbrev::default(),
+        app.state.date_state.year,
+    );
     let team_stats_tx = tx.clone();
     let team_stats_cancel = cancel.clone();
     tokio::spawn(async move {
@@ -161,8 +167,7 @@ where
     });
 
     // Spawn playoff bracket source
-    let playoff_bracket_source =
-        PlayoffBracketSource::new(playoff_bracket_rx, app.state.date_state.year);
+    let playoff_bracket_source = BracketSource::new(playoff_bracket_rx, app.state.date_state.year);
     let playoff_bracket_tx = tx.clone();
     let playoff_bracket_cancel = cancel.clone();
     tokio::spawn(async move {
