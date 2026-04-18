@@ -198,23 +198,22 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 render_series_info(series, frame, lower_info_chunks[0]);
                 render_series_status(series, frame, lower_info_chunks[1]);
             }
-            let game_info_chunk_index = if is_playoff { 2 } else { 0 };
             match &app.state.games.focus {
                 GamesFocus::Scoring => {
                     scoring::render_scoring(
                         game,
                         app.state.games.game_story_data.get(&game.id),
                         frame,
-                        lower_info_chunks[game_info_chunk_index],
+                        lower_info_chunks[2],
                         app.state.games.scroll_offset,
                         &mut app.state.games.max_scroll,
                     );
                 }
                 GamesFocus::Boxscore => {
-                    boxscore::render_boxscore(frame, app, lower_info_chunks[game_info_chunk_index]);
+                    boxscore::render_boxscore(frame, app, lower_info_chunks[2]);
                 }
                 GamesFocus::Stats => {
-                    stats::render_stats(frame, app, lower_info_chunks[game_info_chunk_index]);
+                    stats::render_stats(frame, app, lower_info_chunks[2]);
                 }
             }
         }

@@ -50,6 +50,17 @@ pub enum Action {
     /// Select next (if possible) standings type
     NextStandingsDisplay,
 
+    /// Scrolling in playoff bracket
+    PlayoffBracketScrollUp,
+    PlayoffBracketScrollDown,
+    PlayoffBracketScrollLeft,
+    PlayoffBracketScrollRight,
+    /// Page scrolling in playoff bracket
+    PlayoffBracketPageUp,
+    PlayoffBracketPageDown,
+    PlayoffBracketPageLeft,
+    PlayoffBracketPageRight,
+
     /// Move up a row in team stats table
     TeamStatsUp,
     /// Move down a row in team stats table
@@ -112,12 +123,6 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char('m'), _) => {
             Action::ToggleDisplayMenu
         }
-        (
-            PaneFocus::Content | PaneFocus::Menu,
-            _,
-            KeyCode::Right | KeyCode::Left,
-            KeyModifiers::SHIFT,
-        ) => Action::SwitchPaneFocus,
         (PaneFocus::Content | PaneFocus::Menu, MenuFocus::TeamStats, KeyCode::Char(':'), _) => {
             Action::EnterTeamPicker
         }
@@ -175,7 +180,7 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             }
         }
 
-        // In standings pane
+        // In standings content pane
         (
             PaneFocus::Content,
             MenuFocus::Standings,
@@ -207,7 +212,7 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             Action::NextStandingsDisplay
         }
 
-        // In team stats page
+        // In team stats content page
         (
             PaneFocus::Content,
             MenuFocus::TeamStats,
@@ -232,6 +237,44 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             KeyCode::Left | KeyCode::Right | KeyCode::Char('h') | KeyCode::Char('l'),
             _,
         ) => Action::ToggleTeamStats,
+
+        // In playoffs content page
+        (
+            PaneFocus::Content,
+            MenuFocus::Playoffs,
+            KeyCode::Up | KeyCode::Char('K'),
+            KeyModifiers::SHIFT,
+        ) => Action::PlayoffBracketPageUp,
+        (
+            PaneFocus::Content,
+            MenuFocus::Playoffs,
+            KeyCode::Down | KeyCode::Char('J'),
+            KeyModifiers::SHIFT,
+        ) => Action::PlayoffBracketPageDown,
+        (
+            PaneFocus::Content,
+            MenuFocus::Playoffs,
+            KeyCode::Right | KeyCode::Char('L'),
+            KeyModifiers::SHIFT,
+        ) => Action::PlayoffBracketPageRight,
+        (
+            PaneFocus::Content,
+            MenuFocus::Playoffs,
+            KeyCode::Left | KeyCode::Char('H'),
+            KeyModifiers::SHIFT,
+        ) => Action::PlayoffBracketPageLeft,
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Up | KeyCode::Char('k'), _) => {
+            Action::PlayoffBracketScrollUp
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Down | KeyCode::Char('j'), _) => {
+            Action::PlayoffBracketScrollDown
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Right | KeyCode::Char('l'), _) => {
+            Action::PlayoffBracketScrollRight
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Left | KeyCode::Char('h'), _) => {
+            Action::PlayoffBracketScrollLeft
+        }
 
         // In date picker
         (PaneFocus::DatePicker, _, KeyCode::Enter, _) => Action::UpdateDate,

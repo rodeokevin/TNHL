@@ -10,14 +10,20 @@ mod ui;
 use crate::{
     app::App,
     sources::{
-        AppEvent, Source, boxscore::{BoxscoreCommand, BoxscoreSource}, game_story::{GameStoryCommand, GameStorySource}, games::{GamesCommand, GamesSource}, playoff_bracket::{PlayoffBracketCommand, PlayoffBracketSource}, standings::{StandingsCommand, StandingsSource}, teams_stats::{TeamStatsCommand, TeamStatsSource}
+        AppEvent, Source,
+        boxscore::{BoxscoreCommand, BoxscoreSource},
+        game_story::{GameStoryCommand, GameStorySource},
+        games::{GamesCommand, GamesSource},
+        playoff_bracket::{PlayoffBracketCommand, PlayoffBracketSource},
+        standings::{StandingsCommand, StandingsSource},
+        teams_stats::{TeamStatsCommand, TeamStatsSource},
     },
     state::team_stats::team_picker::TeamAbbrev,
 };
 
+use chrono::Datelike;
 use simplelog::*;
 use std::fs::File;
-use chrono::Datelike;
 
 use ratatui::{
     Terminal,
@@ -155,7 +161,8 @@ where
     });
 
     // Spawn playoff bracket source
-    let playoff_bracket_source = PlayoffBracketSource::new(playoff_bracket_rx, app.state.date_state.date.year() as u16);
+    let playoff_bracket_source =
+        PlayoffBracketSource::new(playoff_bracket_rx, app.state.date_state.date.year() as u16);
     let playoff_bracket_tx = tx.clone();
     let playoff_bracket_cancel = cancel.clone();
     tokio::spawn(async move {

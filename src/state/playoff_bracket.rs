@@ -2,16 +2,18 @@ use crate::models::playoff_bracket::PlayoffBracketResponse;
 
 pub struct PlayoffBracketState {
     pub playoff_bracket_data: Option<PlayoffBracketResponse>,
-    pub visible_rows: u8,
-    pub visible_columns: u8,
+    /// Visible rows and columns updated at render
+    pub visible_rows: usize,
+    pub visible_columns: usize,
     // The letter representing the series. If None, the ui displays the bracket
     pub selected_series: Option<String>,
     // Todo: selected series state
-
-    pub horizontal_scroll_offset: u8,
-    pub horizontal_max_scroll: u8,
-    pub vertical_scroll_offset: u8,
-    pub vertical_max_scroll: u8,
+    pub horizontal_scroll_offset: usize,
+    /// Max horizontal scroll updated at render
+    pub horizontal_max_scroll: usize,
+    pub vertical_scroll_offset: usize,
+    /// Max vertical scroll updated at render
+    pub vertical_max_scroll: usize,
 }
 
 impl Default for PlayoffBracketState {

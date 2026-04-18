@@ -58,15 +58,17 @@ pub struct GamesState {
     pub boxscore_selected_team: BoxscoreTeam,
     pub boxscore_selected_position: BoxscorePosition,
     pub boxscore_table_state: TableState,
-    /// Updated during render
+    // Updated during render
     pub visible_rows: usize,
 
     pub games_data: Option<GamesResponse>,
     pub boxscore_data: HashMap<u32, BoxscoreResponse>,
     pub game_story_data: HashMap<u32, GameStoryReponse>,
     pub selected_game_index: usize,
-    pub sweeping_status_offset: usize, // For the dynamic display bar under the time remaining
+    // For the dynamic display bar under the time remaining
+    pub sweeping_status_offset: usize,
     pub scroll_offset: usize,
+    /// Max vertical scroll updated at render
     pub max_scroll: usize,
 }
 

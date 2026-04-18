@@ -1,6 +1,8 @@
 use crate::{
     sources::{
-        boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand, playoff_bracket::PlayoffBracketCommand, standings::StandingsCommand, teams_stats::TeamStatsCommand
+        boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
+        playoff_bracket::PlayoffBracketCommand, standings::StandingsCommand,
+        teams_stats::TeamStatsCommand,
     },
     state::{app_settings::AppSettings, app_state::AppState},
 };
@@ -28,7 +30,7 @@ impl App {
                 boxscore_tx,
                 game_story_tx,
                 team_stats_tx,
-                playoff_bracket_tx
+                playoff_bracket_tx,
             ),
             settings: AppSettings::load_from_file(),
         };

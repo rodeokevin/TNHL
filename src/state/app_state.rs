@@ -47,6 +47,7 @@ pub enum MenuFocus {
     Games,
     Standings,
     TeamStats,
+    Playoffs,
 }
 
 impl MenuFocus {
@@ -54,13 +55,15 @@ impl MenuFocus {
         match self {
             MenuFocus::Games => MenuFocus::Standings,
             MenuFocus::Standings => MenuFocus::TeamStats,
-            MenuFocus::TeamStats => MenuFocus::TeamStats,
+            MenuFocus::TeamStats => MenuFocus::Playoffs,
+            MenuFocus::Playoffs => MenuFocus::Playoffs,
         }
     }
     pub fn prev(self) -> Self {
         match self {
-            MenuFocus::Standings => MenuFocus::Games,
+            MenuFocus::Playoffs => MenuFocus::TeamStats,
             MenuFocus::TeamStats => MenuFocus::Standings,
+            MenuFocus::Standings => MenuFocus::Games,
             MenuFocus::Games => MenuFocus::Games,
         }
     }
@@ -69,6 +72,7 @@ impl MenuFocus {
             MenuFocus::Games => 0,
             MenuFocus::Standings => 1,
             MenuFocus::TeamStats => 2,
+            MenuFocus::Playoffs => 3,
         }
     }
 }
@@ -315,12 +319,44 @@ impl AppState {
                 self.standings.cycle_display(true);
                 self.standings.reset_table_state();
             }
-            // Team stats actions
+            // Team stats page actions
             Action::TeamStatsUp => self.team_stats.move_selection(-1),
             Action::TeamStatsDown => self.team_stats.move_selection(1),
             Action::TeamStatsPageUp => self.team_stats.page_up(),
             Action::TeamStatsPageDown => self.team_stats.page_down(),
             Action::ToggleTeamStats => self.team_stats.show_skaters = !self.team_stats.show_skaters,
+
+            // Playoffs page actions
+            Action::PlayoffBracketScrollUp => {
+                self.playoff_bracket.vertical_scroll_offset = self
+                    .playoff_bracket
+                    .vertical_scroll_offset
+                    .saturating_sub(1);
+            }
+            Action::PlayoffBracketScrollDown => {
+                self.playoff_bracket.vertical_scroll_offset = self
+                    .playoff_bracket
+                    .vertical_scroll_offset
+                    .saturating_add(1)
+                    .min(self.playoff_bracket.vertical_max_scroll);
+            }
+            Action::PlayoffBracketScrollLeft => {
+                self.playoff_bracket.horizontal_scroll_offset = self
+                    .playoff_bracket
+                    .horizontal_scroll_offset
+                    .saturating_sub(1);
+            }
+            Action::PlayoffBracketScrollRight => {
+                self.playoff_bracket.horizontal_scroll_offset = self
+                    .playoff_bracket
+                    .horizontal_scroll_offset
+                    .saturating_add(1)
+                    .min(self.playoff_bracket.horizontal_max_scroll);
+            }
+            Action::PlayoffBracketPageUp => self.playoff_bracket.bracket_page_up(),
+            Action::PlayoffBracketPageDown => self.playoff_bracket.bracket_page_down(),
+            Action::PlayoffBracketPageLeft => self.playoff_bracket.bracket_page_left(),
+            Action::PlayoffBracketPageRight => self.playoff_bracket.bracket_page_right(),
 
             Action::EnterDatePicker => {
                 self.previous_focus = self.focus;
