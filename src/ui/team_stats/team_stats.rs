@@ -3,6 +3,7 @@ use crate::models::team_stats::{Goalie, Skater};
 use crate::state::app_state::PaneFocus;
 use crate::ui::render::BORDER_FOCUSED_COLOR;
 
+use ratatui::symbols::border;
 use ratatui::{
     Frame,
     layout::{Constraint, Rect},
@@ -75,6 +76,17 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let show_skaters = app.state.team_stats.show_skaters;
 
+    let title = format!(
+            " ({} - {}) {} {} ",
+            app.state.date_state.year - 1,
+            app.state.date_state.year,
+            app.state.team_stats.team_picker.current_team,
+            if show_skaters { "Skaters" } else { "Goalies" }
+        );
+    let block = Block::bordered().title(title).border_style(border_style);
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
     if let Some(data) = &app.state.team_stats.team_stats_data {
         let (rows, widths, header): (Vec<Row<'static>>, &[Constraint], &[&str]) = if show_skaters {
             let rows = map_skater_rows(&data.skaters);
@@ -84,16 +96,7 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
             (rows, &BOXSCORE_GOALIES_COLUMN_WIDTHS, &GOALIES_COLUMNS)
         };
 
-        let title = format!(
-            " ({} - {}) {} {} ",
-            app.state.date_state.year - 1,
-            app.state.date_state.year,
-            app.state.team_stats.team_picker.current_team,
-            if show_skaters { "Skaters" } else { "Goalies" }
-        );
-
         let table = Table::new(rows, widths)
-            .block(Block::bordered().title(title).border_style(border_style))
             .header(
                 Row::new(header.iter().map(|s| s.to_string()).collect::<Vec<_>>())
                     .style(Style::new().bold().add_modifier(Modifier::UNDERLINED)),
@@ -106,7 +109,7 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
             )
             .highlight_symbol(">> ");
 
-        frame.render_stateful_widget(table, area, &mut app.state.team_stats.table_state);
+        frame.render_stateful_widget(table, inner, &mut app.state.team_stats.table_state);
     }
 }
 

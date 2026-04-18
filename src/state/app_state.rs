@@ -471,12 +471,15 @@ impl AppState {
         if let Err(e) = &playoffs_res {
             log::error!("Failed to send PlayoffBracketCommand::SetYear: {:?}", e);
         } else {
+            // Clear old data and reset state
+            self.playoff_bracket.playoff_bracket_data = None;
             self.playoff_bracket.reset_state();
         }
         if let Err(e) = &team_stats_res {
             log::error!("Failed to send TeamStatsCommand::SetYear: {:?}", e);
         } else {
-            // Reset standings state since new data is incoming
+            // Clear old data and reset state
+            self.team_stats.team_stats_data = None;
             self.team_stats.reset_state();
         }
     }

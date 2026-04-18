@@ -140,9 +140,10 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     let block = Block::bordered()
         .title(get_block_title(&app.state.games.focus))
         .border_style(border_style);
-    frame.render_widget(block.clone(), tab_content_chunks[1]);
-
     let inner = block.inner(tab_content_chunks[1]);
+    frame.render_widget(block, tab_content_chunks[1]);
+
+    
 
     let upper_score_lower = split_area_vertical(
         inner,
