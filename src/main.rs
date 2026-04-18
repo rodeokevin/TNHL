@@ -18,7 +18,7 @@ use crate::{
         standings::{StandingsCommand, StandingsSource},
         teams_stats::{TeamStatsCommand, TeamStatsSource},
     },
-    state::team_stats::team_picker::TeamAbbrev,
+    models::TeamAbbrev,
 };
 
 use simplelog::*;

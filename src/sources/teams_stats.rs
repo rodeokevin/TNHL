@@ -5,7 +5,7 @@ use tokio_util::sync::CancellationToken;
 use super::{AppEvent, Source};
 use crate::models::team_stats::TeamStatsResponse;
 use crate::sources::FetchInterval;
-use crate::state::team_stats::team_picker::TeamAbbrev;
+use crate::models::TeamAbbrev;
 
 pub enum TeamStatsCommand {
     SetTeam(TeamAbbrev),

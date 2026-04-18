@@ -1,52 +1,5 @@
-use serde::Deserialize;
 use std::str::FromStr;
-use strum_macros::{Display, EnumString};
-
-#[derive(Debug, Clone, Copy, PartialEq, Default, Display, EnumString, Deserialize)]
-#[strum(ascii_case_insensitive)]
-pub enum TeamAbbrev {
-    ANA,
-    ARI,
-    BOS,
-    BUF,
-    CAR,
-    CBJ,
-    CGY,
-    CHI,
-    COL,
-    DAL,
-    DET,
-    EDM,
-    FLA,
-    HFD,
-    LAK,
-    MIN,
-    MNS,
-    #[default]
-    MTL,
-    NJD,
-    NSH,
-    NYI,
-    NYR,
-    OAK,
-    OTT,
-    PHI,
-    PHX,
-    PIT,
-    SEA,
-    SEN,
-    SJS,
-    SMT,
-    STL,
-    TBL,
-    TOR,
-    UTA,
-    VAN,
-    VGK,
-    WIN,
-    WPG,
-    WSH,
-}
+use crate::models::TeamAbbrev;
 
 #[derive(Debug)]
 pub enum InputError {

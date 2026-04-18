@@ -1,8 +1,6 @@
-use std::sync::atomic::AtomicU32;
-
 use serde::Deserialize;
 
-use crate::{models::TeamName, state::team_stats::team_picker::TeamAbbrev};
+use crate::models::{TeamName, TeamAbbrev};
 
 #[derive(Debug, Deserialize, Default)]
 pub struct PlayoffBracketResponse {

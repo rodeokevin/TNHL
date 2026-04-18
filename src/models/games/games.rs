@@ -4,7 +4,7 @@ use chrono_tz::Tz;
 use serde::Deserialize;
 use std::fmt;
 
-use crate::state::team_stats::team_picker::TeamAbbrev;
+use crate::models::TeamAbbrev;
 
 #[derive(Debug, Deserialize, Default)]
 pub struct GamesResponse {
