@@ -1,16 +1,17 @@
+use crate::App;
 use crate::models::games::{
     game_story::{GameStoryReponse, ShootoutAttemptResult},
     games::{
         AssistInfo, GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType,
     },
 };
+use crate::ui::games::games::split_info_left_middle_right;
 use crate::ui::render::BORDER_FOCUSED_COLOR;
-use std::{rc::Rc, vec};
 
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::Paragraph,
 };
@@ -25,7 +26,11 @@ pub fn render_scoring(
     area: Rect,
     scroll_offset: usize,
     max_scroll: &mut usize,
+    visible_rows: &mut usize,
 ) {
+    // Pass visible rows to game state
+    *visible_rows = area.height.saturating_sub(3) as usize;
+
     let away_team_abbrev = &game.away_team.abbrev;
     let home_team_abbrev = &game.home_team.abbrev;
 
@@ -49,7 +54,11 @@ pub fn render_scoring(
                 middle_lines.push(
                     Line::from(get_period_title(&goal.period_descriptor))
                         .alignment(Alignment::Center)
-                        .style(Style::default().fg(BORDER_FOCUSED_COLOR)),
+                        .style(
+                            Style::default()
+                                .fg(BORDER_FOCUSED_COLOR)
+                                .add_modifier(Modifier::BOLD),
+                        ),
                 );
                 current_period = goal.period_descriptor.number;
             }
@@ -77,7 +86,7 @@ pub fn render_scoring(
                     let label = strengths.join(", ");
                     away_spans.push(Span::styled(
                         format!("[{}] ", label),
-                        Style::default().fg(Color::Red),
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                     ));
                 }
 
@@ -104,7 +113,7 @@ pub fn render_scoring(
                     let label = strengths.join(", ");
                     home_spans.push(Span::styled(
                         format!(" [{}]", label),
-                        Style::default().fg(Color::Red),
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                     ));
                 }
 
@@ -133,9 +142,11 @@ pub fn render_scoring(
             // Add shootout lines
             away_lines.push(Line::default());
             middle_lines.push(
-                Line::from("Shootout")
-                    .alignment(Alignment::Center)
-                    .style(Style::default().fg(BORDER_FOCUSED_COLOR)),
+                Line::from("Shootout").alignment(Alignment::Center).style(
+                    Style::default()
+                        .fg(BORDER_FOCUSED_COLOR)
+                        .add_modifier(Modifier::BOLD),
+                ),
             );
             home_lines.push(Line::default());
             for shootout_attempt in &summary.shootout {
@@ -206,9 +217,9 @@ pub fn render_scoring(
     // Slice to visible window
     let end = (offset + content_height).min(away_lines.len());
 
-    let visible_away: Vec<Line> = away_lines[offset..end].to_vec();
-    let visible_home: Vec<Line> = home_lines[offset..end].to_vec();
-    let visible_middle: Vec<Line> = middle_lines[offset..end].to_vec();
+    let visible_away = away_lines[offset..end].to_vec();
+    let visible_home = home_lines[offset..end].to_vec();
+    let visible_middle = middle_lines[offset..end].to_vec();
 
     frame.render_widget(
         Line::from(if can_scroll_up { "▲" } else { "" }).alignment(Alignment::Center),
@@ -220,7 +231,7 @@ pub fn render_scoring(
     );
 
     // Re-split the content area horizontally
-    let chunks = split_info_left_middle_right(vert_chunks[1]);
+    let chunks = split_info_left_middle_right(vert_chunks[1], MIDDLE_LENGTH);
 
     frame.render_widget(Paragraph::new(visible_away), chunks[0]);
     frame.render_widget(Paragraph::new(visible_middle), chunks[1]);
@@ -271,16 +282,4 @@ fn get_period_title(period: &PeriodDescriptor) -> String {
         PeriodType::SO => "Shootout".to_string(),
         _ => "Unknown Period".to_string(),
     }
-}
-
-// Helper to create the areas for left-center-right
-pub fn split_info_left_middle_right(area: Rect) -> Rc<[Rect]> {
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Fill(1),
-            Constraint::Length(MIDDLE_LENGTH),
-            Constraint::Fill(1),
-        ])
-        .split(area)
 }

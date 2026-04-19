@@ -47,5 +47,6 @@ pub struct SeriesTeam {
     pub id: u32,
     pub abbrev: TeamAbbrev,
     pub name: TeamName,
+    pub common_name: TeamName,
     pub wins: Option<u8>,
 }

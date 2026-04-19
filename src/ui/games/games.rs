@@ -23,8 +23,8 @@ use ratatui::{
 
 use tui_big_text::{BigText, PixelSize};
 
-const MIDDLE_LENGTH: u16 = 10;
-const BIG_SCORE_COLOR: Color = Color::Green;
+pub const MIDDLE_LENGTH: u16 = 10;
+pub const BIG_SCORE_COLOR: Color = Color::Green;
 
 pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
@@ -35,9 +35,6 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             Constraint::Min(1),    // game info
         ],
     );
-
-    // Pass visible rows to game state
-    app.state.games.visible_rows = area.height.saturating_sub(3) as usize;
 
     let matchups: Vec<Line> = app
         .state
@@ -53,7 +50,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                         "{} @ {}",
                         game.away_team.abbrev, game.home_team.abbrev
                     ))
-                    .style(color)
+                    .style(color.add_modifier(Modifier::BOLD))
                 })
                 .collect()
         })
@@ -68,9 +65,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         Style::default().fg(BORDER_UNFOCUSED_COLOR)
     };
-    let selected_color = Style::default()
-        .add_modifier(Modifier::BOLD)
-        .add_modifier(Modifier::UNDERLINED);
+    let selected_color = Style::default().add_modifier(Modifier::UNDERLINED);
 
     // Compute the displayed tabs
     let available_width = (tab_content_chunks[0].width - 2) as usize;
@@ -112,13 +107,11 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     }
 
     if num_matchups == 0 && app.state.games.games_data.is_some() {
-        let tabs = Tabs::new(vec!["No games today :("])
-            .block(
-                Block::bordered()
-                    .border_style(border_style)
-                    .title(app.state.date_state.format_date_border_title()),
-            )
-            .highlight_style(Style::default().add_modifier(Modifier::BOLD));
+        let tabs = Tabs::new(vec!["No games today :("]).block(
+            Block::bordered()
+                .border_style(border_style)
+                .title(app.state.date_state.format_date_border_title()),
+        );
 
         frame.render_widget(tabs, tab_content_chunks[0]);
     } else {
@@ -146,7 +139,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     let upper_score_lower = split_area_vertical(
         inner,
         [
-            Constraint::Length(5), // upper info
+            Constraint::Length(5), // upper info (1 for spacing)
             Constraint::Length(4), // score (big text)
             Constraint::Fill(1),   // lower info
         ],
@@ -206,6 +199,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                         lower_info_chunks[2],
                         app.state.games.scroll_offset,
                         &mut app.state.games.max_scroll,
+                        &mut app.state.games.visible_rows,
                     );
                 }
                 GamesFocus::Boxscore => {
@@ -266,7 +260,7 @@ pub fn render_time_remaining(
                                 s.away_team.strength.max(s.home_team.strength),
                                 s.away_team.strength.min(s.home_team.strength)
                             ),
-                            Style::default().fg(Color::Red),
+                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                         )]
                     })
                     .unwrap_or_default();
@@ -277,12 +271,9 @@ pub fn render_time_remaining(
     }
     let line = match game.game_state {
         GameState::FUT | GameState::PRE => Line::from(format!(
-            "{}",
-            game.compute_local_time(timezone)
-                .format("%-I:%M %p")
-                .to_string()
-                + " "
-                + timezone_abbr
+            "{} {}",
+            game.compute_local_time(timezone).format("%-I:%M %p"),
+            timezone_abbr,
         )),
         GameState::LIVE | GameState::CRIT => {
             // in intermission or clock is None
@@ -379,7 +370,10 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
 
             if !parts.is_empty() {
                 let label = format!("[{}] ", parts.join(", "));
-                left_spans.push(Span::styled(label, Style::default().fg(Color::Red)));
+                left_spans.push(Span::styled(
+                    label,
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ));
             }
         }
     }
@@ -407,7 +401,10 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
                 .collect();
             if !parts.is_empty() {
                 let label = format!(" [{}]", parts.join(", "));
-                right_spans.push(Span::styled(label, Style::default().fg(Color::Red)));
+                right_spans.push(Span::styled(
+                    label,
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ));
             }
         }
     }
@@ -417,7 +414,7 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
     );
 }
 
-pub fn render_big_score(game: &GameData, frame: &mut Frame, area: Rect) {
+fn render_big_score(game: &GameData, frame: &mut Frame, area: Rect) {
     let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
 
     let away_score = build_big_text(
@@ -443,7 +440,7 @@ fn build_big_text(text: String, alignment: Alignment) -> BigText<'static> {
         .build()
 }
 
-pub fn render_shots_on_goal(game: &GameData, frame: &mut Frame, area: Rect) {
+fn render_shots_on_goal(game: &GameData, frame: &mut Frame, area: Rect) {
     let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
     frame.render_widget(
         create_line_from_sog(game.away_team.sog.unwrap_or(0), Alignment::Right),

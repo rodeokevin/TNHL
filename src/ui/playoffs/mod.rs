@@ -1,2 +1,2 @@
 pub mod bracket;
-pub mod series_info;
+pub mod series;

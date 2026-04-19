@@ -17,7 +17,10 @@ use crate::{
             game_story::{GameStoryCommand, GameStorySource},
             games::{GamesCommand, GamesSource},
         },
-        playoffs::bracket::{BracketCommand, BracketSource},
+        playoffs::{
+            bracket::{BracketCommand, BracketSource},
+            series::{SeriesCommand, SeriesSource},
+        },
         standings::{StandingsCommand, StandingsSource},
         teams_stats::{TeamStatsCommand, TeamStatsSource},
     },
@@ -60,7 +63,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let (boxscore_cmd_tx, boxscore_cmd_rx) = tokio::sync::mpsc::channel(8);
     let (game_story_tx, game_story_rx) = tokio::sync::mpsc::channel(8);
     let (team_stats_tx, team_stats_rx) = tokio::sync::mpsc::channel(8);
-    let (playoff_bracket_tx, playoff_bracket_rx) = tokio::sync::mpsc::channel(8);
+    let (bracket_tx, bracket_rx) = tokio::sync::mpsc::channel(8);
+    let (series_tx, series_rx) = tokio::sync::mpsc::channel(8);
 
     // Date is configured in here
     let mut app = App::new(
@@ -69,7 +73,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         boxscore_cmd_tx.clone(),
         game_story_tx.clone(),
         team_stats_tx.clone(),
-        playoff_bracket_tx.clone(),
+        bracket_tx.clone(),
+        series_tx.clone(),
     );
     let cancel = CancellationToken::new();
     let _ = run_app(
@@ -81,7 +86,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         boxscore_cmd_rx,
         game_story_rx,
         team_stats_rx,
-        playoff_bracket_rx,
+        bracket_rx,
+        series_rx,
     )
     .await;
 
@@ -106,7 +112,8 @@ async fn run_app<B: Backend>(
     boxscore_rx: Receiver<BoxscoreCommand>,
     game_story_rx: Receiver<GameStoryCommand>,
     team_stats_rx: Receiver<TeamStatsCommand>,
-    playoff_bracket_rx: Receiver<BracketCommand>,
+    bracket_rx: Receiver<BracketCommand>,
+    series_rx: Receiver<SeriesCommand>,
 ) -> io::Result<()>
 where
     io::Error: From<B::Error>,
@@ -167,7 +174,17 @@ where
     });
 
     // Spawn playoff bracket source
-    let playoff_bracket_source = BracketSource::new(playoff_bracket_rx, app.state.date_state.year);
+    let playoff_bracket_source = BracketSource::new(bracket_rx, app.state.date_state.year);
+    let playoff_bracket_tx = tx.clone();
+    let playoff_bracket_cancel = cancel.clone();
+    tokio::spawn(async move {
+        Box::new(playoff_bracket_source)
+            .run(playoff_bracket_tx, playoff_bracket_cancel)
+            .await;
+    });
+
+    // Spawn playoffs series source
+    let playoff_bracket_source = SeriesSource::new(series_rx, app.state.date_state.year, None);
     let playoff_bracket_tx = tx.clone();
     let playoff_bracket_cancel = cancel.clone();
     tokio::spawn(async move {

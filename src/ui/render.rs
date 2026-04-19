@@ -7,7 +7,10 @@ use ratatui::{
     widgets::{Block, Clear, List, ListItem, ListState},
 };
 
-use crate::state::app_state::{MenuFocus, PaneFocus};
+use crate::state::{
+    app_state::{MenuFocus, PaneFocus},
+    playoffs_state::PlayoffsFocus,
+};
 use crate::ui::{
     date_selector::DateSelectorWidget, games::games, help::HelpWidget,
     input_popup::popup_cursor_position, layout::LayoutAreas, playoffs, standings,
@@ -43,9 +46,14 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                         render_team_picker(frame, app, frame.area());
                     }
                 }
-                MenuFocus::Playoffs => {
-                    playoffs::bracket::render_playoffs(frame, app, content_menu_chunks[1]);
-                }
+                MenuFocus::Playoffs => match app.state.playoffs.focus {
+                    PlayoffsFocus::Bracket => {
+                        playoffs::bracket::render_playoffs(frame, app, content_menu_chunks[1])
+                    }
+                    PlayoffsFocus::Series => {
+                        playoffs::series::render_series(frame, app, content_menu_chunks[1])
+                    }
+                },
             }
             if app.state.focus == PaneFocus::DatePicker {
                 render_date_picker(frame, app, frame.area());

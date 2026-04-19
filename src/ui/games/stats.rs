@@ -7,6 +7,7 @@ use crate::ui::{
 use std::collections::HashMap;
 use std::vec;
 
+use ratatui::style::Modifier;
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -15,10 +16,13 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-const AWAY_BAR_COLOR: Color = Color::Rgb(220, 50, 47); // Red
-const HOME_BAR_COLOR: Color = Color::Rgb(38, 139, 210); // Blue
+pub const AWAY_BAR_COLOR: Color = Color::Rgb(220, 50, 47); // Red
+pub const HOME_BAR_COLOR: Color = Color::Rgb(38, 139, 210); // Blue
 
 pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
+    // Pass visible rows to game state
+    app.state.games.visible_rows = area.height.saturating_sub(3) as usize;
+
     let game_id = app
         .state
         .games
@@ -207,7 +211,11 @@ fn add_stat_lines(
     away_lines.push(Line::default());
     middle_lines.push(
         Line::from(title)
-            .style(Style::default().fg(BORDER_FOCUSED_COLOR))
+            .style(
+                Style::default()
+                    .fg(BORDER_FOCUSED_COLOR)
+                    .add_modifier(Modifier::BOLD),
+            )
             .alignment(Alignment::Center),
     );
     home_lines.push(Line::default());

@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use crate::input::{Action, map_key};
 use crate::models::games::games::{GameState, GamesResponse};
+use crate::sources::playoffs::series::SeriesCommand;
 use crate::sources::{
     AppEvent, FetchInterval,
     games::{boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand},
@@ -9,10 +10,11 @@ use crate::sources::{
     standings::StandingsCommand,
     teams_stats::TeamStatsCommand,
 };
+use crate::state::playoffs_state::PlayoffsFocus;
 use crate::state::team_stats::team_picker::InputError;
 use crate::state::{
     date_state::DateState, games_state::BoxscorePosition, games_state::GamesState, help::HelpState,
-    playoff_bracket::BracketState, standings_state::StandingsState,
+    playoffs_state::PlayoffsState, standings_state::StandingsState,
     team_stats::team_stats_state::TeamStatsState,
 };
 use chrono::ParseError;
@@ -87,7 +89,8 @@ pub struct AppState {
     pub boxscore_tx: Sender<BoxscoreCommand>,
     pub game_story_tx: Sender<GameStoryCommand>,
     pub team_stats_tx: Sender<TeamStatsCommand>,
-    pub playoff_bracket_tx: Sender<BracketCommand>,
+    pub bracket_tx: Sender<BracketCommand>,
+    pub series_tx: Sender<SeriesCommand>,
 
     pub selected_menu: MenuFocus,
     pub display_menu: bool,
@@ -95,7 +98,7 @@ pub struct AppState {
     pub standings: StandingsState,
     pub games: GamesState,
     pub team_stats: TeamStatsState,
-    pub playoff_bracket: BracketState,
+    pub playoffs: PlayoffsState,
 
     pub help: HelpState,
 
@@ -111,7 +114,8 @@ impl AppState {
         boxscore_tx: Sender<BoxscoreCommand>,
         game_story_tx: Sender<GameStoryCommand>,
         team_stats_tx: Sender<TeamStatsCommand>,
-        playoff_bracket_tx: Sender<BracketCommand>,
+        bracket_tx: Sender<BracketCommand>,
+        series_tx: Sender<SeriesCommand>,
     ) -> Self {
         Self {
             games_tx,
@@ -119,7 +123,8 @@ impl AppState {
             boxscore_tx,
             game_story_tx,
             team_stats_tx,
-            playoff_bracket_tx,
+            bracket_tx,
+            series_tx,
 
             date_state: DateState::default(),
             timezone: Tz::default(),
@@ -130,7 +135,7 @@ impl AppState {
             standings: StandingsState::default(),
             games: GamesState::default(),
             team_stats: TeamStatsState::default(),
-            playoff_bracket: BracketState::default(),
+            playoffs: PlayoffsState::default(),
 
             help: HelpState::default(),
 
@@ -185,9 +190,13 @@ impl AppState {
                 log::info!("Updating standings data");
                 self.team_stats.team_stats_data = Some(parsed_team_stats);
             }
-            AppEvent::BracketUpdate(parsed_playoff_bracket) => {
+            AppEvent::BracketUpdate(parsed_bracket) => {
                 log::info!("Updating playoff bracket data");
-                self.playoff_bracket.playoff_bracket_data = Some(parsed_playoff_bracket);
+                self.playoffs.bracket_data = Some(parsed_bracket);
+            }
+            AppEvent::SeriesUpdate(parsed_series) => {
+                log::info!("Updating series data");
+                self.playoffs.series_data = Some(parsed_series);
             }
             AppEvent::Input(key_event) => {
                 log::info!("Key event detected: {:?}", key_event);
@@ -328,36 +337,51 @@ impl AppState {
             Action::ToggleTeamStats => self.team_stats.show_skaters = !self.team_stats.show_skaters,
 
             // Playoffs page actions
-            Action::BracketScrollUp => {
-                self.playoff_bracket.vertical_scroll_offset = self
-                    .playoff_bracket
-                    .vertical_scroll_offset
-                    .saturating_sub(1);
+            Action::PlayoffsScrollUp => {
+                // Todo: move this into PlayoffsState
+                self.playoffs.vertical_scroll_offset =
+                    self.playoffs.vertical_scroll_offset.saturating_sub(1);
             }
-            Action::BracketScrollDown => {
-                self.playoff_bracket.vertical_scroll_offset = self
-                    .playoff_bracket
+            Action::PlayoffsScrollDown => {
+                // Todo: move this into PlayoffsState
+                self.playoffs.vertical_scroll_offset = self
+                    .playoffs
                     .vertical_scroll_offset
                     .saturating_add(1)
-                    .min(self.playoff_bracket.vertical_max_scroll);
+                    .min(self.playoffs.vertical_max_scroll);
             }
-            Action::BracketScrollLeft => {
-                self.playoff_bracket.horizontal_scroll_offset = self
-                    .playoff_bracket
-                    .horizontal_scroll_offset
-                    .saturating_sub(1);
+            Action::PlayoffsScrollLeft => {
+                // Todo: move this into PlayoffsState
+                if self.playoffs.focus == PlayoffsFocus::Bracket {
+                    self.playoffs.horizontal_scroll_offset =
+                        self.playoffs.horizontal_scroll_offset.saturating_sub(1);
+                }
             }
-            Action::BracketScrollRight => {
-                self.playoff_bracket.horizontal_scroll_offset = self
-                    .playoff_bracket
-                    .horizontal_scroll_offset
-                    .saturating_add(1)
-                    .min(self.playoff_bracket.horizontal_max_scroll);
+            Action::PlayoffsScrollRight => {
+                // Todo: move this into PlayoffsState
+                if self.playoffs.focus == PlayoffsFocus::Bracket {
+                    self.playoffs.horizontal_scroll_offset = self
+                        .playoffs
+                        .horizontal_scroll_offset
+                        .saturating_add(1)
+                        .min(self.playoffs.horizontal_max_scroll);
+                }
             }
-            Action::BracketPageUp => self.playoff_bracket.bracket_page_up(),
-            Action::BracketPageDown => self.playoff_bracket.bracket_page_down(),
-            Action::BracketPageLeft => self.playoff_bracket.bracket_page_left(),
-            Action::BracketPageRight => self.playoff_bracket.bracket_page_right(),
+            Action::PlayoffsPageUp => self.playoffs.page_up(),
+            Action::PlayoffsPageDown => self.playoffs.page_down(),
+            Action::PlayoffsPageLeft => self.playoffs.page_left(),
+            Action::PlayoffsPageRight => self.playoffs.page_right(),
+            Action::SelectSeries(letter) => {
+                if self.playoffs.try_select_series(letter) {
+                    self.handle_series_selection();
+                    self.playoffs.focus = PlayoffsFocus::Series;
+                }
+            }
+            Action::ExitSeries => {
+                self.playoffs.reset_scoring_scroll();
+                self.playoffs.series_data = None;
+                self.playoffs.focus = PlayoffsFocus::Bracket;
+            }
 
             // Date/year picker actions
             Action::EnterDatePicker => {
@@ -464,17 +488,20 @@ impl AppState {
     /// Update data from sources after year change
     pub fn handle_year_change(&mut self) {
         let year = self.date_state.year;
-        let playoffs_res = self
-            .playoff_bracket_tx
-            .try_send(BracketCommand::SetYear(year));
+        let bracket_res = self.bracket_tx.try_send(BracketCommand::SetYear(year));
+        let series_res = self.series_tx.try_send(SeriesCommand::SetYear(year));
         let team_stats_res = self.team_stats_tx.try_send(TeamStatsCommand::SetYear(year));
 
-        if let Err(e) = &playoffs_res {
+        if let Err(e) = &bracket_res {
             log::error!("Failed to send BracketCommand::SetYear: {:?}", e);
         } else {
             // Clear old data and reset state
-            self.playoff_bracket.playoff_bracket_data = None;
-            self.playoff_bracket.reset_state();
+            self.playoffs.bracket_data = None;
+            self.playoffs.series_data = None;
+            self.playoffs.reset_state();
+        }
+        if let Err(e) = &series_res {
+            log::error!("Failed to send SeriesCommand::SetYear: {:?}", e);
         }
         if let Err(e) = &team_stats_res {
             log::error!("Failed to send TeamStatsCommand::SetYear: {:?}", e);
@@ -503,12 +530,23 @@ impl AppState {
             self.team_stats.reset_state();
         }
     }
+    /// Update series data
+    pub fn handle_series_selection(&mut self) {
+        let series = self.playoffs.selected_series;
+        let res = self.series_tx.try_send(SeriesCommand::SetSeries(series));
+
+        if let Err(e) = &res {
+            log::error!("Failed to send TeamStatsCommand::SetTeam: {:?}", e);
+        } else {
+            self.playoffs.reset_scoring_scroll();
+        }
+    }
 
     fn reset_app_state(&mut self) {
         self.games.reset_state();
         self.standings.reset_state();
         self.team_stats.reset_state();
-        self.playoff_bracket.reset_state();
+        self.playoffs.reset_state();
     }
 
     fn set_fetch_interval(&self, live: bool) {

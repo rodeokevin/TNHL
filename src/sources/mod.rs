@@ -3,7 +3,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::models::{
     games::{boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse},
-    playoffs::bracket::BracketResponse,
+    playoffs::{bracket::BracketResponse, series::SeriesResponse},
     standings::StandingsResponse,
     team_stats::TeamStatsResponse,
 };
@@ -17,6 +17,8 @@ pub mod teams_stats;
 pub enum FetchInterval {
     GamesShortInterval,
     GamesLongInterval,
+    SeriesShortInterval,
+    SeriesLongInterval,
     InfoShortInterval,
     InfoLongInterval,
 }
@@ -25,6 +27,8 @@ impl FetchInterval {
         match self {
             FetchInterval::GamesShortInterval => Duration::from_secs(10),
             FetchInterval::GamesLongInterval => Duration::from_secs(60),
+            FetchInterval::SeriesShortInterval => Duration::from_secs(10),
+            FetchInterval::SeriesLongInterval => Duration::from_secs(60),
             FetchInterval::InfoShortInterval => Duration::from_secs(30),
             FetchInterval::InfoLongInterval => Duration::from_secs(600),
         }
@@ -49,6 +53,7 @@ pub enum AppEvent {
         parsed_game_story: GameStoryReponse,
     },
     BracketUpdate(BracketResponse),
+    SeriesUpdate(SeriesResponse),
     Input(crossterm::event::KeyEvent),
     /// Periodic tick to refresh UI
     Tick,

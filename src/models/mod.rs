@@ -72,6 +72,7 @@ pub enum TeamAbbrev {
     SMT,
     STL,
     TAN, // Toronto Hockey Club/Toronto Arenas (defunct)
+    TBD, // To be determined (used in playoff series)
     TBL,
     TOR,
     TSP, // Toronto St. Patricks (defunct)

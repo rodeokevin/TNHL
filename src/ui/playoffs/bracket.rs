@@ -6,13 +6,12 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 
-use crate::app::App;
 use crate::models::playoffs::bracket::Series;
 use crate::state::app_state::PaneFocus;
-use crate::state::playoff_bracket::BracketState;
 use crate::ui::render::{BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR};
+use crate::{app::App, state::playoffs_state::PlayoffsState};
 
-const CARD_WIDTH: u16 = 14;
+const CARD_WIDTH: u16 = 18;
 const CARD_HEIGHT: u16 = 5;
 // Horizontal gap length between rounds
 const ROUND_HOR_GAP: u16 = 6;
@@ -29,29 +28,18 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         Style::default().fg(BORDER_UNFOCUSED_COLOR)
     };
-    let outer_block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(border_style)
-        .title(format!(
-            " {} Stanley Cup Playoffs ",
-            app.state.date_state.year
-        ));
+    let outer_block = Block::bordered().border_style(border_style).title(format!(
+        " {} Stanley Cup Playoffs ",
+        app.state.date_state.year
+    ));
 
     let inner = outer_block.inner(area);
-    // Pass visible rows/columns and max scroll to playoff_bracket state
-    app.state.playoff_bracket.visible_columns = inner.width as usize;
-    app.state.playoff_bracket.visible_rows = inner.height as usize;
-
-    app.state.playoff_bracket.horizontal_max_scroll =
-        canvas_width().saturating_sub(inner.width) as usize;
-    app.state.playoff_bracket.vertical_max_scroll =
-        canvas_height().saturating_sub(inner.height) as usize;
 
     frame.render_widget(outer_block, area);
 
-    if let Some(playoff_bracket) = &app.state.playoff_bracket.playoff_bracket_data {
-        let h_off = app.state.playoff_bracket.horizontal_scroll_offset as u16;
-        let v_off = app.state.playoff_bracket.vertical_scroll_offset as u16;
+    if let Some(playoff_bracket) = &app.state.playoffs.bracket_data {
+        let h_off = app.state.playoffs.horizontal_scroll_offset as u16;
+        let v_off = app.state.playoffs.vertical_scroll_offset as u16;
 
         let bracket_area = Rect {
             x: inner.x + 1,
@@ -59,8 +47,17 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
             width: inner.width.saturating_sub(2),
             height: inner.height.saturating_sub(2),
         };
+        // Pass visible rows/columns and max scroll to playoff_bracket state
+        app.state.playoffs.visible_columns = bracket_area.width.saturating_sub(1) as usize;
+        app.state.playoffs.visible_rows = bracket_area.height.saturating_sub(1) as usize;
+
+        app.state.playoffs.horizontal_max_scroll =
+            canvas_width().saturating_sub(bracket_area.width) as usize;
+        app.state.playoffs.vertical_max_scroll =
+            canvas_height().saturating_sub(bracket_area.height) as usize;
+
         render_bracket(frame, bracket_area, &playoff_bracket.series, h_off, v_off);
-        render_scroll_indicators(frame, inner, &app.state.playoff_bracket);
+        render_scroll_indicators(frame, inner, &app.state.playoffs);
     };
 }
 
@@ -92,8 +89,8 @@ fn canvas_width() -> u16 {
     7 * CARD_WIDTH + 6 * ROUND_HOR_GAP
 }
 fn canvas_height() -> u16 {
-    1 + 4 * CARD_HEIGHT + 3 * 2
-} // 1 label row + 4 cards + 3×2 gaps
+    1 + 4 * CARD_HEIGHT + 3 * 1 // label row + 4 cards + 3 gaps of 1
+}
 
 fn r1_y(row: usize) -> u16 {
     let gap = 1;
@@ -199,10 +196,9 @@ fn render_series_card(
     h_off: u16,
     v_off: u16,
 ) {
-    // compute the actual coordinates
     let ax = vx as i32 - h_off as i32;
     let ay = vy as i32 - v_off as i32;
-    // Early return if card not visible
+
     if ax + CARD_WIDTH as i32 <= 0
         || ax >= area.width as i32
         || ay + CARD_HEIGHT as i32 <= 0
@@ -216,7 +212,6 @@ fn render_series_card(
     let top = ay;
     let bottom = ay + CARD_HEIGHT as i32;
 
-    // Determine visible borders
     let mut borders = Borders::empty();
     if left >= 0 {
         borders |= Borders::LEFT;
@@ -231,14 +226,12 @@ fn render_series_card(
         borders |= Borders::BOTTOM;
     }
 
-    // Compute clipped rect
     let x = (area.x as i32 + ax).max(area.x as i32) as u16;
     let y = (area.y as i32 + ay).max(area.y as i32) as u16;
 
     let width = (CARD_WIDTH as i32 - (0 - ax).max(0))
         .max(0)
         .min((area.x as i32 + area.width as i32 - x as i32).max(0)) as u16;
-
     let height = (CARD_HEIGHT as i32 - (0 - ay).max(0))
         .max(0)
         .min((area.y as i32 + area.height as i32 - y as i32).max(0)) as u16;
@@ -247,27 +240,35 @@ fn render_series_card(
         return;
     }
 
-    let rect = Rect {
-        x,
-        y,
-        width,
-        height,
-    };
-    frame.render_widget(Block::bordered().borders(borders), rect);
+    frame.render_widget(
+        Block::bordered().borders(borders),
+        Rect {
+            x,
+            y,
+            width,
+            height,
+        },
+    );
 
-    // Inner text
-    let inner_w = rect.width.saturating_sub(2);
-    let inner_h = rect.height.saturating_sub(2);
+    // Compute inner from VIRTUAL position so text doesn't shift when clipped
+    let inner_vx = ax + 1;
+    let inner_vy = ay + 1;
+    let inner_vw = CARD_WIDTH as i32 - 2;
+    let inner_vh = CARD_HEIGHT as i32 - 2;
+
+    let inner_x = (area.x as i32 + inner_vx).max(area.x as i32) as u16;
+    let inner_y = (area.y as i32 + inner_vy).max(area.y as i32) as u16;
+
+    let inner_w = (inner_vw - (0 - inner_vx).max(0))
+        .max(0)
+        .min((area.x as i32 + area.width as i32 - inner_x as i32).max(0)) as u16;
+    let inner_h = (inner_vh - (0 - inner_vy).max(0))
+        .max(0)
+        .min((area.y as i32 + area.height as i32 - inner_y as i32).max(0)) as u16;
+
     if inner_w == 0 || inner_h == 0 {
         return;
     }
-
-    let inner = Rect {
-        x: rect.x + 1,
-        y: rect.y + 1,
-        width: inner_w,
-        height: inner_h,
-    };
 
     let top_won = series
         .winning_team_id
@@ -276,15 +277,15 @@ fn render_series_card(
         .winning_team_id
         .is_some_and(|id| series.bottom_seed_team.as_ref().is_some_and(|t| t.id == id));
 
-    let top_abbrev = series
+    let top_team = series
         .top_seed_team
         .as_ref()
-        .map(|t| t.abbrev.to_string())
+        .map(|t| t.common_name.default.clone())
         .unwrap_or_default();
-    let bottom_abbrev = series
+    let bottom_team = series
         .bottom_seed_team
         .as_ref()
-        .map(|t| t.abbrev.to_string())
+        .map(|t| t.common_name.default.clone())
         .unwrap_or_default();
 
     let bold = Modifier::BOLD;
@@ -307,15 +308,27 @@ fn render_series_card(
             (None, None)
         };
 
-    let lines = vec![
-        build_team_line(&top_abbrev, top_seed_wins, inner_w, top_style),
+    let all_lines = vec![
+        build_team_line(&top_team, top_seed_wins, inner_w, top_style),
         Line::from(series.series_letter.clone())
             .alignment(Alignment::Center)
             .style(Style::default().fg(Color::DarkGray)),
-        build_team_line(&bottom_abbrev, bottom_seed_wins, inner_w, bottom_style),
+        build_team_line(&bottom_team, bottom_seed_wins, inner_w, bottom_style),
     ];
 
-    frame.render_widget(Paragraph::new(lines), inner);
+    // Skip lines that are scrolled off the top so text stays anchored to its virtual position
+    let lines_clipped_top = (0 - inner_vy).max(0) as usize;
+    let visible_lines: Vec<Line> = all_lines.into_iter().skip(lines_clipped_top).collect();
+
+    frame.render_widget(
+        Paragraph::new(visible_lines),
+        Rect {
+            x: inner_x,
+            y: inner_y,
+            width: inner_w,
+            height: inner_h,
+        },
+    );
 }
 
 fn build_team_line<'a>(abbrev: &str, wins: Option<u8>, width: u16, style: Style) -> Line<'a> {
@@ -465,7 +478,7 @@ fn draw_char_from_virtual(
     );
 }
 
-fn render_scroll_indicators(frame: &mut Frame, area: Rect, playoff_bracket: &BracketState) {
+fn render_scroll_indicators(frame: &mut Frame, area: Rect, playoff_bracket: &PlayoffsState) {
     let mid_x = area.x + area.width / 2;
     let mid_y = area.y + area.height / 2;
     if playoff_bracket.horizontal_scroll_offset > 0 {

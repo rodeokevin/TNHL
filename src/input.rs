@@ -1,6 +1,7 @@
 use crate::state::{
     app_state::{AppState, MenuFocus, PaneFocus},
     games_state::GamesFocus,
+    playoffs_state::PlayoffsFocus,
 };
 /// Keyboard input handling
 use crossterm::event::{KeyCode, KeyCode::Char, KeyEvent, KeyEventKind, KeyModifiers};
@@ -50,16 +51,18 @@ pub enum Action {
     /// Select next (if possible) standings type
     NextStandingsDisplay,
 
-    /// Scrolling in playoff bracket
-    BracketScrollUp,
-    BracketScrollDown,
-    BracketScrollLeft,
-    BracketScrollRight,
-    /// Page scrolling in playoff bracket
-    BracketPageUp,
-    BracketPageDown,
-    BracketPageLeft,
-    BracketPageRight,
+    // Scrolling in playoff bracket
+    PlayoffsScrollUp,
+    PlayoffsScrollDown,
+    // Only bracket will have scroll left and right
+    PlayoffsScrollLeft,
+    PlayoffsScrollRight,
+    // Page scrolling in playoffs page
+    PlayoffsPageUp,
+    PlayoffsPageDown,
+    // Only bracket will have page left and right
+    PlayoffsPageLeft,
+    PlayoffsPageRight,
 
     /// Move up a row in team stats table
     TeamStatsUp,
@@ -88,6 +91,9 @@ pub enum Action {
     TeamBackspace,
     UpdateTeam,
     ExitTeamPicker,
+
+    SelectSeries(char),
+    ExitSeries,
 
     EnterHelp,
     HelpScrollUp,
@@ -247,36 +253,52 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             MenuFocus::Playoffs,
             KeyCode::Up | KeyCode::Char('K'),
             KeyModifiers::SHIFT,
-        ) => Action::BracketPageUp,
+        ) => Action::PlayoffsPageUp,
         (
             PaneFocus::Content,
             MenuFocus::Playoffs,
             KeyCode::Down | KeyCode::Char('J'),
             KeyModifiers::SHIFT,
-        ) => Action::BracketPageDown,
+        ) => Action::PlayoffsPageDown,
         (
             PaneFocus::Content,
             MenuFocus::Playoffs,
             KeyCode::Right | KeyCode::Char('L'),
             KeyModifiers::SHIFT,
-        ) => Action::BracketPageRight,
+        ) => Action::PlayoffsPageRight,
         (
             PaneFocus::Content,
             MenuFocus::Playoffs,
             KeyCode::Left | KeyCode::Char('H'),
             KeyModifiers::SHIFT,
-        ) => Action::BracketPageLeft,
+        ) => Action::PlayoffsPageLeft,
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Up | KeyCode::Char('k'), _) => {
-            Action::BracketScrollUp
+            Action::PlayoffsScrollUp
         }
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Down | KeyCode::Char('j'), _) => {
-            Action::BracketScrollDown
+            Action::PlayoffsScrollDown
         }
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Right | KeyCode::Char('l'), _) => {
-            Action::BracketScrollRight
+            Action::PlayoffsScrollRight
         }
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Left | KeyCode::Char('h'), _) => {
-            Action::BracketScrollLeft
+            Action::PlayoffsScrollLeft
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, Char(c), _) => {
+            // Can only choose series from bracket page
+            if matches!(&state.playoffs.focus, PlayoffsFocus::Bracket) {
+                Action::SelectSeries(c)
+            } else {
+                Action::None
+            }
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Esc, _) => {
+            // Go back to bracket page from series page
+            if matches!(&state.playoffs.focus, PlayoffsFocus::Series) {
+                Action::ExitSeries
+            } else {
+                Action::None
+            }
         }
 
         // In date picker

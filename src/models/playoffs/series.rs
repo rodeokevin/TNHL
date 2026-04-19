@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use serde::Deserialize;
 
 use crate::models::games::games::{GameState, PeriodDescriptor, PeriodType, Venue};
@@ -11,7 +12,7 @@ pub struct SeriesResponse {
     pub round_abbrev: String,
     pub round_label: String,
     pub series_letter: String,
-    pub neede_to_win: u8,
+    pub needed_to_win: u8,
     pub length: u8,
     pub bottom_seed_team: SeedTeam,
     pub top_seed_team: SeedTeam,
@@ -31,10 +32,10 @@ pub struct SeedTeam {
     pub name: TeamName,
     pub abbrev: TeamAbbrev,
     pub place_name: PlaceName,
-    pub conference: Conference,
+    pub conference: Option<Conference>,
     pub record: String,
     pub series_wins: u8,
-    pub division_abbrev: String,
+    pub division_abbrev: Option<String>,
     pub seed: u8,
 }
 
@@ -57,9 +58,15 @@ pub struct SeriesGame {
     pub game_state: GameState,
     pub away_team: SeriesTeam,
     pub home_team: SeriesTeam,
-    pub period_descriptor: PeriodDescriptor,
+    pub period_descriptor: Option<PeriodDescriptor>,
     pub series_status: Option<SeriesStatus>,
     pub game_outcome: Option<GameOutcome>,
+}
+
+impl SeriesGame {
+    pub fn compute_local_time(&self, tz: Tz) -> DateTime<Tz> {
+        self.start_time_utc.with_timezone(&tz)
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -83,5 +90,5 @@ pub struct SeriesStatus {
 #[serde(rename_all = "camelCase")]
 pub struct GameOutcome {
     pub last_period_type: PeriodType,
-    pub bottom_seed_wins: usize,
+    pub ot_periods: Option<u8>,
 }
