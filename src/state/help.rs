@@ -1,25 +1,31 @@
 use ratatui::widgets::TableState;
 
 pub struct HelpState {
-    pub state: TableState,
+    pub table_state: TableState,
 }
 
 impl Default for HelpState {
     fn default() -> Self {
-        let mut state = TableState::default();
-        state.select(Some(0));
-        Self { state }
+        let mut table_state = TableState::default();
+        table_state.select(Some(0));
+        Self { table_state }
     }
 }
 
 impl HelpState {
-    pub fn next(&mut self) {
-        self.state.scroll_down_by(1);
+    pub fn row_down(&mut self) {
+        self.table_state.scroll_down_by(1);
     }
-    pub fn previous(&mut self) {
-        self.state.scroll_up_by(1);
+    pub fn row_up(&mut self) {
+        self.table_state.scroll_up_by(1);
     }
     pub fn reset(&mut self) {
-        self.state.select(Some(0));
+        self.table_state.select(Some(0));
+    }
+    pub fn page_up(&mut self) {
+        self.table_state.scroll_up_by(10);
+    }
+    pub fn page_down(&mut self) {
+        self.table_state.scroll_down_by(10);
     }
 }

@@ -96,6 +96,8 @@ pub enum Action {
     EnterHelp,
     HelpScrollUp,
     HelpScrollDown,
+    HelpPageUp,
+    HelpPageDown,
     ExitHelp,
 
     None,
@@ -318,6 +320,12 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         (PaneFocus::TeamPicker, _, KeyCode::Esc, _) => Action::ExitTeamPicker,
 
         // In help page
+        (PaneFocus::Help, _, KeyCode::Up | KeyCode::Char('K'), KeyModifiers::SHIFT) => {
+            Action::HelpPageUp
+        }
+        (PaneFocus::Help, _, KeyCode::Down | KeyCode::Char('J'), KeyModifiers::SHIFT) => {
+            Action::HelpPageDown
+        }
         (PaneFocus::Help, _, KeyCode::Up | KeyCode::Char('k'), _) => Action::HelpScrollUp,
         (PaneFocus::Help, _, KeyCode::Down | KeyCode::Char('j'), _) => Action::HelpScrollDown,
         (PaneFocus::Help, _, KeyCode::Esc, _) => Action::ExitHelp,

@@ -1,6 +1,7 @@
 use crate::models::games::{
     boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse,
 };
+use crate::state::app_state::{table_page_down, table_page_up};
 use ratatui::widgets::TableState;
 use std::collections::HashMap;
 
@@ -135,19 +136,11 @@ impl GamesState {
         };
     }
     /// Move rows in boxscore
-    pub fn move_boxscore_selection(&mut self, delta: i32) {
-        let len = self.current_boxscore_len();
-        let table = &mut self.boxscore_table_state;
-        let current = table.selected().unwrap_or(0);
-
-        let new = current as i32 + delta;
-        let next = if new < 0 || new >= len as i32 {
-            current
-        } else {
-            new as usize
-        };
-
-        table.select(Some(next));
+    pub fn boxscore_row_up(&mut self) {
+        self.boxscore_table_state.scroll_up_by(1);
+    }
+    pub fn boxscore_row_down(&mut self) {
+        self.boxscore_table_state.scroll_down_by(1);
     }
     /// Get the number of rows of current boxscore
     fn current_boxscore_len(&self) -> usize {
@@ -187,47 +180,27 @@ impl GamesState {
     }
     /// Page up for scoring or stats page
     pub fn games_page_up(&mut self) {
-        if self.visible_rows == 0 {
-            return;
+        if self.visible_rows != 0 {
+            self.scroll_offset = self.scroll_offset.saturating_sub(self.visible_rows);
         }
-
-        self.scroll_offset = self.scroll_offset.saturating_sub(self.visible_rows);
     }
     /// Page down for scoring or stats page
     pub fn games_page_down(&mut self) {
-        if self.visible_rows == 0 {
-            return;
+        if self.visible_rows != 0 {
+            self.scroll_offset = (self.scroll_offset + self.visible_rows).min(self.max_scroll);
         }
-
-        self.scroll_offset = (self.scroll_offset + self.visible_rows).min(self.max_scroll);
     }
     /// Page up for boxscore
     pub fn boxscore_page_up(&mut self) {
-        if self.visible_rows == 0 {
-            return;
-        }
-        // The first visible row becomes the last visible row
-        let offset = self.boxscore_table_state.offset();
-        let new_offset = offset.saturating_sub(self.visible_rows - 1);
-        *self.boxscore_table_state.offset_mut() = new_offset;
-        self.boxscore_table_state.select(Some(new_offset));
+        table_page_up(self.visible_rows, &mut self.boxscore_table_state);
     }
     /// Page down for boxscore
     pub fn boxscore_page_down(&mut self) {
-        if self.visible_rows == 0 {
-            return;
-        }
-        // The last visible row becomes the first visible row
-        // But if last visible row is the last row in the table, simply select it without changing the offset
-        let len = self.current_boxscore_len();
-        let offset = self.boxscore_table_state.offset();
-        let last_visible = if offset + self.visible_rows - 1 >= len - 1 {
-            len - 1
-        } else {
-            *self.boxscore_table_state.offset_mut() = (offset + self.visible_rows - 1).min(len - 1);
-            (offset + self.visible_rows - 1).min(len - 1)
-        };
-        self.boxscore_table_state.select(Some(last_visible));
+        table_page_down(
+            self.visible_rows,
+            self.current_boxscore_len(),
+            &mut self.boxscore_table_state,
+        );
     }
 }
 

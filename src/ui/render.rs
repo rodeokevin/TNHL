@@ -127,7 +127,7 @@ fn render_help(frame: &mut Frame, area: Rect, app: &mut App) {
         .border_style(border_style());
     frame.render_widget(block, area);
 
-    frame.render_stateful_widget(HelpWidget {}, area, &mut app.state.help.state);
+    frame.render_stateful_widget(HelpWidget {}, area, &mut app.state.help.table_state);
 }
 
 pub fn split_area_horizontal(area: Rect, constraints: impl Into<Vec<Constraint>>) -> Vec<Rect> {

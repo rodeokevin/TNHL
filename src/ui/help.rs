@@ -5,10 +5,12 @@ use ratatui::prelude::*;
 use ratatui::widgets::{Paragraph, Row, Table, TableState};
 
 const HEADER: &[&str; 2] = &["Command", "Key"];
-const GENERAL_DOCS: &[&[&str; 2]; 6] = &[
+const GENERAL_DOCS: &[&[&str; 2]; 8] = &[
     &["Exit help", "esc"],
     &["Move down", "j/↓"],
     &["Move up", "k/↑"],
+    &["Page down", "shift + j/↓"],
+    &["Page up", "shift + k/↑"],
     &["Select menu", "1/2/3/4"],
     &["Show/hide menu", "m"],
     &["Quit TNHL", "q/ctrl + c"],
@@ -107,6 +109,7 @@ impl StatefulWidget for HelpWidget {
             .style(header_style);
 
         let docs = build_docs();
+
         let rows = docs
             .iter()
             .map(|d| format_row(d))

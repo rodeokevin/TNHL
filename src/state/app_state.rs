@@ -19,6 +19,7 @@ use crate::state::{
 };
 use chrono::ParseError;
 use chrono_tz::Tz;
+use ratatui::widgets::TableState;
 use tokio::sync::mpsc::Sender;
 
 /// Which pane currently has keyboard focus.
@@ -243,8 +244,8 @@ impl AppState {
             }
             Action::BoxscorePageUp => self.games.boxscore_page_up(),
             Action::BoxscorePageDown => self.games.boxscore_page_down(),
-            Action::BoxscoreUp => self.games.move_boxscore_selection(-1),
-            Action::BoxscoreDown => self.games.move_boxscore_selection(1),
+            Action::BoxscoreUp => self.games.boxscore_row_up(),
+            Action::BoxscoreDown => self.games.boxscore_row_down(),
             Action::BoxscoreForwards => {
                 self.games.boxscore_table_state.select(Some(0));
                 self.games.boxscore_selected_position = BoxscorePosition::Forwards
@@ -263,8 +264,8 @@ impl AppState {
                 self.games.boxscore_selected_team = self.games.boxscore_selected_team.toggle()
             }
             // Standings actions
-            Action::StandingsUp => self.standings.move_selection(-1),
-            Action::StandingsDown => self.standings.move_selection(1),
+            Action::StandingsUp => self.standings.row_up(),
+            Action::StandingsDown => self.standings.row_down(),
             Action::StandingsPageUp => self.standings.page_up(),
             Action::StandingsPageDown => self.standings.page_down(),
             Action::StandingsLeft => {
@@ -284,8 +285,8 @@ impl AppState {
                 self.standings.reset_table_state();
             }
             // Team stats page actions
-            Action::TeamStatsUp => self.team_stats.move_selection(-1),
-            Action::TeamStatsDown => self.team_stats.move_selection(1),
+            Action::TeamStatsUp => self.team_stats.row_up(),
+            Action::TeamStatsDown => self.team_stats.row_down(),
             Action::TeamStatsPageUp => self.team_stats.page_up(),
             Action::TeamStatsPageDown => self.team_stats.page_down(),
             Action::ToggleTeamStats => self.team_stats.show_skaters = !self.team_stats.show_skaters,
@@ -394,8 +395,10 @@ impl AppState {
                 self.previous_focus = self.focus;
                 self.focus = PaneFocus::Help;
             }
-            Action::HelpScrollUp => self.help.previous(),
-            Action::HelpScrollDown => self.help.next(),
+            Action::HelpPageUp => self.help.page_up(),
+            Action::HelpPageDown => self.help.page_down(),
+            Action::HelpScrollUp => self.help.row_up(),
+            Action::HelpScrollDown => self.help.row_down(),
             Action::ExitHelp => {
                 self.focus = self.previous_focus;
                 self.help.reset();
@@ -546,5 +549,29 @@ impl AppState {
             .games
             .iter()
             .any(|g| matches!(g.game_state, GameState::LIVE | GameState::CRIT))
+    }
+}
+
+pub fn table_page_up(visible_rows: usize, table_state: &mut TableState) {
+    if visible_rows != 0 {
+        // The first visible row becomes the last visible row
+        let offset = table_state.offset();
+        let new_offset = offset.saturating_sub(visible_rows - 1);
+        *table_state.offset_mut() = new_offset;
+        table_state.select(Some(new_offset));
+    }
+}
+pub fn table_page_down(visible_rows: usize, len: usize, table_state: &mut TableState) {
+    if visible_rows != 0 {
+        // The last visible row becomes the first visible row
+        // But if last visible row is the last row in the table, simply select it without changing the offset
+        let offset = table_state.offset();
+        let last_visible = if offset + visible_rows - 1 >= len - 1 {
+            len - 1
+        } else {
+            *table_state.offset_mut() = (offset + visible_rows - 1).min(len - 1);
+            (offset + visible_rows - 1).min(len - 1)
+        };
+        table_state.select(Some(last_visible));
     }
 }
