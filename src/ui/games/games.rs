@@ -6,7 +6,7 @@ use crate::state::{app_state::PaneFocus, games_state::GamesFocus};
 use crate::ui::{
     games::{boxscore, scoring, stats},
     render::{
-        BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR, split_area_horizontal, split_area_vertical,
+        border_style, split_area_horizontal, split_area_vertical,
     },
 };
 use chrono_tz::Tz;
@@ -57,14 +57,6 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         .unwrap_or_default();
     let num_matchups = matchups.len();
 
-    let focused = app.state.focus == PaneFocus::Content;
-    let border_style = if focused {
-        Style::default()
-            .fg(BORDER_FOCUSED_COLOR)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(BORDER_UNFOCUSED_COLOR)
-    };
     let selected_color = Style::default().add_modifier(Modifier::UNDERLINED);
 
     // Compute the displayed tabs
@@ -109,7 +101,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     if num_matchups == 0 && app.state.games.games_data.is_some() {
         let tabs = Tabs::new(vec!["No games today :("]).block(
             Block::bordered()
-                .border_style(border_style)
+                .border_style(border_style())
                 .title(app.state.date_state.format_date_border_title()),
         );
 
@@ -122,7 +114,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             .select(local_selected + offset)
             .block(
                 Block::bordered()
-                    .border_style(border_style)
+                    .border_style(border_style())
                     .title(app.state.date_state.format_date_border_title()),
             )
             .highlight_style(selected_color);
@@ -132,7 +124,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let block = Block::bordered()
         .title(get_block_title(&app.state.games.focus))
-        .border_style(border_style);
+        .border_style(border_style());
     let inner = block.inner(tab_content_chunks[1]);
     frame.render_widget(block, tab_content_chunks[1]);
 

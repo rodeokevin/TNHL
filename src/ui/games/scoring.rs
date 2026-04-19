@@ -1,19 +1,13 @@
-use crate::App;
 use crate::models::games::{
     game_story::{GameStoryReponse, ShootoutAttemptResult},
     games::{
         AssistInfo, GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType,
     },
 };
-use crate::ui::games::games::split_info_left_middle_right;
-use crate::ui::render::BORDER_FOCUSED_COLOR;
+use crate::ui::{render::border_style, games::games::split_info_left_middle_right};
 
 use ratatui::{
-    Frame,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::Paragraph,
+    Frame, layout::{Alignment, Constraint, Direction, Layout, Rect}, style::{Color, Modifier, Style}, symbols::border, text::{Line, Span}, widgets::Paragraph
 };
 
 // Length of the middle chunk for scoring and stats
@@ -54,11 +48,7 @@ pub fn render_scoring(
                 middle_lines.push(
                     Line::from(get_period_title(&goal.period_descriptor))
                         .alignment(Alignment::Center)
-                        .style(
-                            Style::default()
-                                .fg(BORDER_FOCUSED_COLOR)
-                                .add_modifier(Modifier::BOLD),
-                        ),
+                        .style(border_style()),
                 );
                 current_period = goal.period_descriptor.number;
             }
@@ -142,11 +132,7 @@ pub fn render_scoring(
             // Add shootout lines
             away_lines.push(Line::default());
             middle_lines.push(
-                Line::from("Shootout").alignment(Alignment::Center).style(
-                    Style::default()
-                        .fg(BORDER_FOCUSED_COLOR)
-                        .add_modifier(Modifier::BOLD),
-                ),
+                Line::from("Shootout").alignment(Alignment::Center).style(border_style()),
             );
             home_lines.push(Line::default());
             for shootout_attempt in &summary.shootout {

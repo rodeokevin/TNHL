@@ -1,5 +1,5 @@
 use crate::state::date_state::DateState;
-use crate::ui::{input_popup::InputPopup, render::BORDER_FOCUSED_COLOR};
+use crate::ui::{input_popup::InputPopup, render::BORDER_COLOR};
 use ratatui::{prelude::*, style::Color};
 
 pub struct YearSelectorWidget {}
@@ -9,7 +9,7 @@ impl StatefulWidget for YearSelectorWidget {
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let border_color = if state.is_valid {
-            BORDER_FOCUSED_COLOR
+            BORDER_COLOR
         } else {
             Color::Red
         };

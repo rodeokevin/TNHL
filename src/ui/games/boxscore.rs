@@ -2,7 +2,7 @@ use crate::app::App;
 use crate::models::games::boxscore::{BoxscoreResponse, Defenseman, Forward, Goalie, PlayerData};
 use crate::state::app_state::PaneFocus;
 use crate::state::games_state::{BoxscorePosition, BoxscoreTeam};
-use crate::ui::render::BORDER_FOCUSED_COLOR;
+use crate::ui::render::border_style;
 
 use ratatui::{
     Frame,
@@ -92,14 +92,6 @@ pub fn render_boxscore(frame: &mut Frame, app: &mut App, area: Rect) {
     // Pass visible rows to standings state
     app.state.games.visible_rows = area.height.saturating_sub(3) as usize;
 
-    let focused = app.state.focus == PaneFocus::Content;
-    let border_style = if focused {
-        Style::default()
-            .fg(BORDER_FOCUSED_COLOR)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::DarkGray)
-    };
     let is_home = matches!(&app.state.games.boxscore_selected_team, BoxscoreTeam::Home);
     let game_id = app
         .state
@@ -131,7 +123,6 @@ pub fn render_boxscore(frame: &mut Frame, app: &mut App, area: Rect) {
         let table = create_table(
             rows,
             get_boxscore_title(is_home, boxscore),
-            border_style,
             widths,
             header,
         );
@@ -244,12 +235,11 @@ pub fn map_rows(
 fn create_table<'a>(
     rows: Vec<Row<'a>>,
     title: String,
-    border_style: Style,
     widths: &[Constraint],
     header: &[&str],
 ) -> Table<'a> {
     Table::new(rows, widths)
-        .block(Block::bordered().title(title).border_style(border_style))
+        .block(Block::bordered().title(title).border_style(border_style()))
         .header(
             Row::new(header.iter().map(|s| s.to_string()).collect::<Vec<_>>())
                 .style(Style::new().bold().add_modifier(Modifier::UNDERLINED)),

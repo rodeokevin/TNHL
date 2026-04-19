@@ -2,7 +2,7 @@ use crate::App;
 use crate::models::games::game_story::{GameStatsCategory, StatValue, TeamGameStats};
 use crate::ui::{
     games::{games::split_info_left_middle_right, scoring::MIDDLE_LENGTH},
-    render::BORDER_FOCUSED_COLOR,
+    render::border_style,
 };
 use std::collections::HashMap;
 use std::vec;
@@ -211,11 +211,7 @@ fn add_stat_lines(
     away_lines.push(Line::default());
     middle_lines.push(
         Line::from(title)
-            .style(
-                Style::default()
-                    .fg(BORDER_FOCUSED_COLOR)
-                    .add_modifier(Modifier::BOLD),
-            )
+            .style(border_style())
             .alignment(Alignment::Center),
     );
     home_lines.push(Line::default());

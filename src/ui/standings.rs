@@ -2,7 +2,7 @@ use crate::app::App;
 use crate::models::standings::{StandingsResponse, TeamData};
 use crate::state::app_state::PaneFocus;
 use crate::state::standings_state::{ConferenceFocus, DivisionFocus, StandingsFocus};
-use crate::ui::render::BORDER_FOCUSED_COLOR;
+use crate::ui::render::{border_style, BORDER_COLOR};
 
 use ratatui::{
     Frame,
@@ -63,31 +63,17 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         StandingsFocus::League => 3,
     };
 
-    let focused = app.state.focus == PaneFocus::Content;
-    let border_style = if focused {
+    let highlight_style =
         Style::default()
-            .fg(BORDER_FOCUSED_COLOR)
+            .fg(BORDER_COLOR)
             .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::DarkGray)
-    };
-
-    let highlight_style = if focused {
-        Style::default()
-            .fg(BORDER_FOCUSED_COLOR)
-            .add_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::UNDERLINED)
-    } else {
-        Style::default()
-            .add_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::UNDERLINED)
-    };
+            .add_modifier(Modifier::UNDERLINED);
 
     let tabs = Tabs::new(titles)
         .select(selected_standings_index)
         .block(
             Block::bordered()
-                .border_style(border_style)
+                .border_style(border_style())
                 .title(app.state.date_state.format_date_border_title()),
         )
         .highlight_style(highlight_style);
@@ -103,7 +89,6 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
                     &app.state.standings.selected_wildcard,
                     tab_content_chunks[1],
                     data,
-                    border_style,
                 );
             }
             StandingsFocus::Division => {
@@ -113,7 +98,6 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
                     &app.state.standings.selected_division,
                     tab_content_chunks[1],
                     data,
-                    border_style,
                 );
             }
             StandingsFocus::Conference => {
@@ -123,7 +107,6 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
                     &app.state.standings.selected_conference,
                     tab_content_chunks[1],
                     data,
-                    border_style,
                 );
             }
             StandingsFocus::League => {
@@ -132,7 +115,6 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
                     &mut app.state.standings.table_state,
                     tab_content_chunks[1],
                     data,
-                    border_style,
                 );
             }
         };
@@ -144,10 +126,9 @@ fn render_league_standings(
     table_state: &mut TableState,
     area: Rect,
     teams: &StandingsResponse,
-    border_style: Style,
 ) {
     let rows = map_rows(teams, |_| true, |team| team.league_sequence, None);
-    let table = create_table(rows, " League Standings ".to_string(), border_style);
+    let table = create_table(rows, " League Standings ".to_string());
     frame.render_stateful_widget(table, area, table_state);
 }
 
@@ -157,7 +138,6 @@ fn render_conference_standings(
     selected_conference: &ConferenceFocus,
     area: Rect,
     teams: &StandingsResponse,
-    border_style: Style,
 ) {
     let (abbrev, title) = match selected_conference {
         ConferenceFocus::Eastern => ("E", " Eastern Conference Standings "),
@@ -172,7 +152,6 @@ fn render_conference_standings(
         |team| team.conference_abbrev == abbrev,
         |team| team.conference_sequence,
         title.to_string(),
-        border_style,
     );
 }
 
@@ -182,7 +161,6 @@ fn render_division_standings(
     selected_division: &DivisionFocus,
     area: Rect,
     teams: &StandingsResponse,
-    border_style: Style,
 ) {
     let (abbrev, title) = match selected_division {
         DivisionFocus::Atlantic => ("A", " Atlantic Division Standings "),
@@ -199,7 +177,6 @@ fn render_division_standings(
         |team| team.division_abbrev == abbrev,
         |team| team.division_sequence,
         title.to_string(),
-        border_style,
     );
 }
 
@@ -209,7 +186,6 @@ fn render_wildcard_standings(
     selected_wildcard: &ConferenceFocus,
     area: Rect,
     teams: &StandingsResponse,
-    border_style: Style,
 ) {
     let (div1_abbr, div1_full, div2_abbr, div2_full, conf, title) = match selected_wildcard {
         ConferenceFocus::Eastern => (
@@ -230,7 +206,7 @@ fn render_wildcard_standings(
         ),
     };
     let division_conference_rows_style = Style::default()
-        .fg(BORDER_FOCUSED_COLOR)
+        .fg(BORDER_COLOR)
         .add_modifier(Modifier::UNDERLINED);
     let mut rows = Vec::new();
     rows.extend(vec![
@@ -261,13 +237,13 @@ fn render_wildcard_standings(
         None,
     ));
 
-    let table = create_table(rows, title.to_string(), border_style);
+    let table = create_table(rows, title.to_string());
     frame.render_stateful_widget(table, area, table_state);
 }
 
-fn create_table(rows: Vec<Row<'_>>, title: String, border_style: Style) -> Table<'_> {
+fn create_table(rows: Vec<Row<'_>>, title: String) -> Table<'_> {
     Table::new(rows, &STANDINGS_COLUMN_WIDTHS)
-        .block(Block::bordered().title(title).border_style(border_style))
+        .block(Block::bordered().title(title).border_style(border_style()))
         .header(standings_header())
         .column_spacing(1)
         .row_highlight_style(
@@ -348,9 +324,8 @@ fn render_standings_table(
     filter: impl Fn(&TeamData) -> bool,
     sort_key: impl Fn(&TeamData) -> u8,
     title: String,
-    border_style: Style,
 ) {
     let rows = map_rows(teams, filter, sort_key, None);
-    let table = create_table(rows, title, border_style);
+    let table = create_table(rows, title);
     frame.render_stateful_widget(table, area, table_state);
 }

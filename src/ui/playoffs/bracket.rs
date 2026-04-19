@@ -6,10 +6,11 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 
+use crate::{app::App, state::playoffs_state::PlayoffsState};
 use crate::models::playoffs::bracket::Series;
 use crate::state::app_state::PaneFocus;
-use crate::ui::render::{BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR};
-use crate::{app::App, state::playoffs_state::PlayoffsState};
+use crate::ui::render::border_style;
+
 
 const CARD_WIDTH: u16 = 18;
 const CARD_HEIGHT: u16 = 5;
@@ -20,15 +21,7 @@ const COLOR_WIN: Color = Color::Green;
 const COLOR_LOSE: Color = Color::DarkGray;
 
 pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
-    let focused = app.state.focus == PaneFocus::Content;
-    let border_style = if focused {
-        Style::default()
-            .fg(BORDER_FOCUSED_COLOR)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(BORDER_UNFOCUSED_COLOR)
-    };
-    let outer_block = Block::bordered().border_style(border_style).title(format!(
+    let outer_block = Block::bordered().border_style(border_style()).title(format!(
         " {} Stanley Cup Playoffs ",
         app.state.date_state.year
     ));

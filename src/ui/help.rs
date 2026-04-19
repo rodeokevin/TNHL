@@ -9,7 +9,7 @@ const GENERAL_DOCS: &[&[&str; 2]; 6] = &[
     &["Exit help", "esc"],
     &["Move down", "j/↓"],
     &["Move up", "k/↑"],
-    &["Toggle focused pane", "tab"],
+    &["Select menu", "1/2/3/4"],
     &["Show/hide menu", "m"],
     &["Quit TNHL", "q/ctrl + c"],
 ];

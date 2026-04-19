@@ -1,10 +1,7 @@
 use std::rc::Rc;
 
 use ratatui::{
-    Frame,
-    layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
-    widgets::{Block, Clear, List, ListItem, ListState},
+    Frame, layout::{Constraint, Direction, Layout, Rect}, style::{Color, Modifier, Style}, symbols::border, widgets::{Block, Clear, List, ListItem, ListState}
 };
 
 use crate::state::{
@@ -18,8 +15,12 @@ use crate::ui::{
 };
 use crate::{app::App, ui::team_stats::team_stats};
 
-pub const BORDER_FOCUSED_COLOR: Color = Color::Rgb(247, 194, 0); // Orange-yellowish
-pub const BORDER_UNFOCUSED_COLOR: Color = Color::DarkGray;
+pub const BORDER_COLOR: Color = Color::Rgb(247, 194, 0); // Orange-yellowish
+pub fn border_style() -> Style {
+    Style::default()
+        .fg(BORDER_COLOR)
+        .add_modifier(Modifier::BOLD)
+}
 
 pub fn render(frame: &mut Frame, app: &mut App) {
     match app.state.focus {
@@ -63,24 +64,15 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 }
 
 fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
-    let focused = app.state.focus == PaneFocus::Menu;
-    let border_style = if focused {
-        Style::default()
-            .fg(BORDER_FOCUSED_COLOR)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::DarkGray)
-    };
-
     let menu_items = vec![
-        ListItem::new("Games"),
-        ListItem::new("Standings"),
-        ListItem::new("Team Stats"),
-        ListItem::new("Playoffs"),
+        ListItem::new("1.Games"),
+        ListItem::new("2.Standings"),
+        ListItem::new("3.Team Stats"),
+        ListItem::new("4.Playoffs"),
     ];
 
     let list = List::new(menu_items)
-        .block(Block::bordered().title(" Menu ").border_style(border_style))
+        .block(Block::bordered().title(" Menu ").border_style(border_style()))
         .highlight_style(
             Style::default()
                 .bg(Color::DarkGray)
@@ -131,7 +123,7 @@ fn render_help(frame: &mut Frame, area: Rect, app: &mut App) {
 
     let block = Block::bordered()
         .title(" Help ")
-        .border_style(Style::default().fg(BORDER_FOCUSED_COLOR));
+        .border_style(border_style());
     frame.render_widget(block, area);
 
     frame.render_stateful_widget(HelpWidget {}, area, &mut app.state.help.state);

@@ -11,11 +11,9 @@ use crossterm::event::{KeyCode, KeyCode::Char, KeyEvent, KeyEventKind, KeyModifi
 pub enum Action {
     Quit,
 
-    SwitchPaneFocus,
     ToggleDisplayMenu,
 
-    MenuUp,
-    MenuDown,
+    SelectMenu(usize),
 
     PrevGame,
     NextGame,
@@ -128,24 +126,20 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         // q quits if we are not in any picker widgets
         (_, _, Char('q'), _) => Action::Quit,
 
-        (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Tab, _) => Action::SwitchPaneFocus,
-        (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char('m'), _) => {
-            Action::ToggleDisplayMenu
-        }
-        (PaneFocus::Content | PaneFocus::Menu, MenuFocus::TeamStats, KeyCode::Char('t'), _) => {
+        (PaneFocus::Content, _, KeyCode::Char('m'), _) => Action::ToggleDisplayMenu,
+        (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Char('t'), _) => {
             Action::EnterTeamPicker
         }
-        (PaneFocus::Content | PaneFocus::Menu, MenuFocus::TeamStats, KeyCode::Char(':'), _) => {
-            Action::EnterDatePicker
-        }
-        (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char(':'), _) => Action::EnterDatePicker,
-        (PaneFocus::Content | PaneFocus::Menu, _, KeyCode::Char('?'), _) => Action::EnterHelp,
+        (PaneFocus::Content, _, KeyCode::Char(':'), _) => Action::EnterDatePicker,
+        (PaneFocus::Content, _, KeyCode::Char('?'), _) => Action::EnterHelp,
 
         // (_, _, KeyCode::Char('r), _) => self.refresh(),
 
-        // In menu pane
-        (PaneFocus::Menu, _, KeyCode::Up | KeyCode::Char('k'), _) => Action::MenuUp,
-        (PaneFocus::Menu, _, KeyCode::Down | KeyCode::Char('j'), _) => Action::MenuDown,
+        // Selecting a menu
+        (PaneFocus::Content, _, KeyCode::Char('1'), _) => Action::SelectMenu(1),
+        (PaneFocus::Content, _, KeyCode::Char('2'), _) => Action::SelectMenu(2),
+        (PaneFocus::Content, _, KeyCode::Char('3'), _) => Action::SelectMenu(3),
+        (PaneFocus::Content, _, KeyCode::Char('4'), _) => Action::SelectMenu(4),
 
         // In games content pane
         (PaneFocus::Content, MenuFocus::Games, _, _) => {
@@ -272,18 +266,6 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             KeyCode::Left | KeyCode::Char('H'),
             KeyModifiers::SHIFT,
         ) => Action::PlayoffsPageLeft,
-        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Up | KeyCode::Char('k'), _) => {
-            Action::PlayoffsScrollUp
-        }
-        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Down | KeyCode::Char('j'), _) => {
-            Action::PlayoffsScrollDown
-        }
-        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Right | KeyCode::Char('l'), _) => {
-            Action::PlayoffsScrollRight
-        }
-        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Left | KeyCode::Char('h'), _) => {
-            Action::PlayoffsScrollLeft
-        }
         (PaneFocus::Content, MenuFocus::Playoffs, Char(c), _) => {
             // Can only choose series from bracket page
             if matches!(&state.playoffs.focus, PlayoffsFocus::Bracket) {
@@ -291,6 +273,19 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             } else {
                 Action::None
             }
+        }
+        // No hjkl for scrolling since it's used to select series
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Up, _) => {
+            Action::PlayoffsScrollUp
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Down, _) => {
+            Action::PlayoffsScrollDown
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Right, _) => {
+            Action::PlayoffsScrollRight
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Left, _) => {
+            Action::PlayoffsScrollLeft
         }
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Esc, _) => {
             // Go back to bracket page from series page

@@ -25,22 +25,11 @@ use tokio::sync::mpsc::Sender;
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum PaneFocus {
     #[default]
-    Menu,
     Content,
     DatePicker,
     /// Widget for selecting the team and year for team stats page
     TeamPicker,
     Help,
-}
-
-impl PaneFocus {
-    pub fn switch(self) -> Self {
-        match self {
-            PaneFocus::Menu => PaneFocus::Content,
-            PaneFocus::Content => PaneFocus::Menu,
-            _ => self,
-        }
-    }
 }
 
 /// Which menu item is currently selected.
@@ -215,20 +204,8 @@ impl AppState {
         match action {
             Action::Quit => self.should_quit = true,
 
-            Action::SwitchPaneFocus => {
-                // Only switch if menu is visible
-                if self.display_menu {
-                    self.focus = self.focus.switch();
-                }
-            }
-            Action::ToggleDisplayMenu => {
-                if self.display_menu {
-                    self.focus = PaneFocus::Content;
-                } else {
-                    self.focus = PaneFocus::Menu;
-                }
-                self.display_menu = !self.display_menu;
-            }
+            Action::ToggleDisplayMenu => self.display_menu = !self.display_menu,
+            
             Action::DatePickerInputChar(c) => {
                 self.date_state.is_valid = true; // reset status
                 self.date_state.text.push(c);
@@ -237,16 +214,9 @@ impl AppState {
                 self.team_stats.team_picker.is_valid = true; // reset status
                 self.team_stats.team_picker.text.push(c);
             }
-            Action::MenuUp => {
+            Action::SelectMenu(i) => {
                 let prev = self.selected_menu;
-                self.selected_menu = self.selected_menu.prev();
-                if prev != self.selected_menu {
-                    self.reset_app_state();
-                }
-            }
-            Action::MenuDown => {
-                let prev = self.selected_menu;
-                self.selected_menu = self.selected_menu.next();
+                self.selected_menu = self.select_menu(i);
                 if prev != self.selected_menu {
                     self.reset_app_state();
                 }
@@ -452,6 +422,15 @@ impl AppState {
     }
 
     // Helper functions for handling actions
+    fn select_menu(&mut self, index: usize) -> MenuFocus{
+        match index {
+            1 => MenuFocus::Games,
+            2 => MenuFocus::Standings,
+            3 => MenuFocus::TeamStats,
+            4 => MenuFocus::Playoffs,
+            _ => self.selected_menu,
+        }
+    }
     fn try_update_date_from_input(&mut self) -> Result<(), ParseError> {
         let valid_date = self.date_state.validate_input_date(self.timezone)?;
         self.date_state.set_date_from_valid_input(valid_date);

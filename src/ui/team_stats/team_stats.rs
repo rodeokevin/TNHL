@@ -1,7 +1,7 @@
 use crate::app::App;
 use crate::models::team_stats::{Goalie, Skater};
 use crate::state::app_state::PaneFocus;
-use crate::ui::render::BORDER_FOCUSED_COLOR;
+use crate::ui::render::border_style;
 
 use ratatui::{
     Frame,
@@ -64,14 +64,6 @@ const BOXSCORE_GOALIES_COLUMN_WIDTHS: [Constraint; 18] = [
 pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     // Pass visible rows to team stats state
     app.state.team_stats.visible_rows = area.height.saturating_sub(3) as usize;
-    let focused = app.state.focus == PaneFocus::Content;
-    let border_style = if focused {
-        Style::default()
-            .fg(BORDER_FOCUSED_COLOR)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(Color::DarkGray)
-    };
 
     let show_skaters = app.state.team_stats.show_skaters;
 
@@ -82,7 +74,7 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
         app.state.team_stats.team_picker.current_team,
         if show_skaters { "Skaters" } else { "Goalies" }
     );
-    let block = Block::bordered().title(title).border_style(border_style);
+    let block = Block::bordered().title(title).border_style(border_style());
     let inner = block.inner(area);
     frame.render_widget(block, area);
 

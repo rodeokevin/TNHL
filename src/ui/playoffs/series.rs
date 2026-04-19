@@ -11,7 +11,7 @@ use crate::state::app_state::PaneFocus;
 use crate::ui::{
     games::games::{get_period_title, split_info_left_middle_right},
     games::stats::{AWAY_BAR_COLOR, HOME_BAR_COLOR},
-    render::{BORDER_FOCUSED_COLOR, BORDER_UNFOCUSED_COLOR, split_area_vertical},
+    render::{border_style, split_area_vertical},
 };
 
 use ratatui::{
@@ -28,21 +28,12 @@ use crate::ui::games::games::BIG_SCORE_COLOR;
 use crate::ui::games::games::MIDDLE_LENGTH;
 
 pub fn render_series(frame: &mut Frame, app: &mut App, area: Rect) {
-    let focused = app.state.focus == PaneFocus::Content;
-    let border_style = if focused {
-        Style::default()
-            .fg(BORDER_FOCUSED_COLOR)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(BORDER_UNFOCUSED_COLOR)
-    };
-
     let block = Block::bordered()
         .title(format!(
             " {} Stanley Cup Playoffs ",
             app.state.date_state.year
         ))
-        .border_style(border_style);
+        .border_style(border_style());
     let inner = block.inner(area);
 
     frame.render_widget(block, area);
