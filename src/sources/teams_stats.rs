@@ -34,20 +34,20 @@ impl TeamStatsSource {
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
-        let url = format!(
+        let regular_season_url = format!(
             "https://api-web.nhle.com/v1/club-stats/{}/{}{}/2",
             self.current_team.to_string(),
             self.current_year - 1,
             self.current_year,
         );
 
-        match reqwest::get(&url).await {
+        match reqwest::get(&regular_season_url).await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
                     // Parse the JSON
                     match TeamStatsResponse::from_json(&body) {
                         Ok(mut parsed_team_stats) => {
-                            log::info!("Team stats data successfully parsed!");
+                            log::info!("Regular season team stats data successfully parsed!");
                             // Sort by points for skaters
                             parsed_team_stats
                                 .skaters
@@ -56,14 +56,50 @@ impl TeamStatsSource {
                             parsed_team_stats
                                 .goalies
                                 .sort_by_key(|s| std::cmp::Reverse(s.games_played));
-                            let _ = tx.send(AppEvent::TeamStatsUpdate(parsed_team_stats)).await;
-                            log::info!("Sent team stats data to app");
+                            let _ = tx
+                                .send(AppEvent::TeamStatsRegularSeasonUpdate(parsed_team_stats))
+                                .await;
+                            log::info!("Sent regular season team stats data to app");
                         }
-                        Err(e) => log::error!("Failed to parse team stats: {}", e),
+                        Err(e) => log::error!("Failed to parse regular season team stats: {}", e),
                     }
                 }
             }
-            Err(err) => log::info!("Failed to fetch team stats: {}", err),
+            Err(err) => log::info!("Failed to fetch regular season team stats: {}", err),
+        }
+
+        let playoffs_url = format!(
+            "https://api-web.nhle.com/v1/club-stats/{}/{}{}/3",
+            self.current_team.to_string(),
+            self.current_year - 1,
+            self.current_year,
+        );
+
+        match reqwest::get(&playoffs_url).await {
+            Ok(resp) => {
+                if let Ok(body) = resp.text().await {
+                    // Parse the JSON
+                    match TeamStatsResponse::from_json(&body) {
+                        Ok(mut parsed_team_stats) => {
+                            log::info!("Playoffs team stats data successfully parsed!");
+                            // Sort by points for skaters
+                            parsed_team_stats
+                                .skaters
+                                .sort_by_key(|s| std::cmp::Reverse(s.points));
+                            // Sort by games played for goalies
+                            parsed_team_stats
+                                .goalies
+                                .sort_by_key(|s| std::cmp::Reverse(s.games_played));
+                            let _ = tx
+                                .send(AppEvent::TeamStatsPlayoffsUpdate(parsed_team_stats))
+                                .await;
+                            log::info!("Sent playoffs team stats data to app");
+                        }
+                        Err(e) => log::error!("Failed to parse playoffs team stats: {}", e),
+                    }
+                }
+            }
+            Err(err) => log::info!("Failed to fetch playoffs team stats: {}", err),
         }
     }
 }

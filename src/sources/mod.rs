@@ -17,8 +17,6 @@ pub mod teams_stats;
 pub enum FetchInterval {
     GamesShortInterval,
     GamesLongInterval,
-    SeriesShortInterval,
-    SeriesLongInterval,
     InfoShortInterval,
     InfoLongInterval,
 }
@@ -27,8 +25,6 @@ impl FetchInterval {
         match self {
             FetchInterval::GamesShortInterval => Duration::from_secs(10),
             FetchInterval::GamesLongInterval => Duration::from_secs(60),
-            FetchInterval::SeriesShortInterval => Duration::from_secs(10),
-            FetchInterval::SeriesLongInterval => Duration::from_secs(60),
             FetchInterval::InfoShortInterval => Duration::from_secs(30),
             FetchInterval::InfoLongInterval => Duration::from_secs(600),
         }
@@ -39,7 +35,8 @@ impl FetchInterval {
 #[derive(Debug)]
 pub enum AppEvent {
     StandingsUpdate(StandingsResponse),
-    TeamStatsUpdate(TeamStatsResponse),
+    TeamStatsRegularSeasonUpdate(TeamStatsResponse),
+    TeamStatsPlayoffsUpdate(TeamStatsResponse),
     GamesUpdate {
         game_ids: Vec<u32>,
         parsed_games: GamesResponse,

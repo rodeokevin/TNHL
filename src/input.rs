@@ -70,8 +70,12 @@ pub enum Action {
     TeamStatsPageUp,
     /// Page down in team stats table
     TeamStatsPageDown,
-    /// Toggle between skaters and goalies
-    ToggleTeamStats,
+    /// Select skaters
+    TeamStatsSkaters,
+    /// Select goalies
+    TeamStatsGoalies,
+    /// Toggle between regular season and playoffs
+    ToggleTeamStatsGame,
 
     DatePickerInputChar(char),
     EnterDatePicker,
@@ -240,7 +244,13 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             Action::TeamStatsDown
         }
         (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Char('>') | KeyCode::Char('<'), _) => {
-            Action::ToggleTeamStats
+            Action::ToggleTeamStatsGame
+        }
+        (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Char('s'), _) => {
+            Action::TeamStatsSkaters
+        }
+        (PaneFocus::Content, MenuFocus::TeamStats, KeyCode::Char('g'), _) => {
+            Action::TeamStatsGoalies
         }
 
         // In playoffs content page

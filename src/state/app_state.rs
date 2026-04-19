@@ -12,6 +12,7 @@ use crate::sources::{
 };
 use crate::state::playoffs_state::PlayoffsFocus;
 use crate::state::team_stats::team_picker::InputError;
+use crate::state::team_stats::team_stats_state::PlayerType;
 use crate::state::{
     date_state::DateState, games_state::BoxscorePosition, games_state::GamesState, help::HelpState,
     playoffs_state::PlayoffsState, standings_state::StandingsState,
@@ -160,9 +161,13 @@ impl AppState {
                     .game_story_data
                     .insert(game_id, parsed_game_story);
             }
-            AppEvent::TeamStatsUpdate(parsed_team_stats) => {
-                log::info!("Updating standings data");
-                self.team_stats.team_stats_data = Some(parsed_team_stats);
+            AppEvent::TeamStatsRegularSeasonUpdate(parsed_team_stats) => {
+                log::info!("Updating regular season team stats data");
+                self.team_stats.regular_season_team_stats_data = Some(parsed_team_stats);
+            }
+            AppEvent::TeamStatsPlayoffsUpdate(parsed_team_stats) => {
+                log::info!("Updating playoffs team stats data");
+                self.team_stats.playoffs_team_stats_data = Some(parsed_team_stats);
             }
             AppEvent::BracketUpdate(parsed_bracket) => {
                 log::info!("Updating playoff bracket data");
@@ -289,7 +294,18 @@ impl AppState {
             Action::TeamStatsDown => self.team_stats.row_down(),
             Action::TeamStatsPageUp => self.team_stats.page_up(),
             Action::TeamStatsPageDown => self.team_stats.page_down(),
-            Action::ToggleTeamStats => self.team_stats.show_skaters = !self.team_stats.show_skaters,
+            Action::TeamStatsSkaters => {
+                self.team_stats.table_state.select(Some(0));
+                self.team_stats.player_type = PlayerType::Skaters;
+            }
+            Action::TeamStatsGoalies => {
+                self.team_stats.table_state.select(Some(0));
+                self.team_stats.player_type = PlayerType::Goalies;
+            }
+            Action::ToggleTeamStatsGame => {
+                self.team_stats.table_state.select(Some(0));
+                self.team_stats.game_type = self.team_stats.game_type.toggle()
+            }
 
             // Playoffs page actions
             Action::PlayoffsScrollUp => {
@@ -473,7 +489,8 @@ impl AppState {
             log::error!("Failed to send TeamStatsCommand::SetYear: {:?}", e);
         } else {
             // Clear old data and reset state
-            self.team_stats.team_stats_data = None;
+            self.team_stats.regular_season_team_stats_data = None;
+            self.team_stats.playoffs_team_stats_data = None;
             self.team_stats.reset_state();
         }
     }

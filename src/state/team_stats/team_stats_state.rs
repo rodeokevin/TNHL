@@ -5,12 +5,38 @@ use crate::state::{
 };
 use ratatui::widgets::TableState;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PlayerType {
+    #[default]
+    Skaters,
+    Goalies,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum GameType {
+    #[default]
+    RegularSeason,
+    Playoffs,
+}
+
+impl GameType {
+    pub fn toggle(&self) -> Self {
+        match self {
+            GameType::Playoffs => GameType::RegularSeason,
+            GameType::RegularSeason => GameType::Playoffs,
+        }
+    }
+}
+
 pub struct TeamStatsState {
-    pub team_stats_data: Option<TeamStatsResponse>,
+    pub regular_season_team_stats_data: Option<TeamStatsResponse>,
+    pub playoffs_team_stats_data: Option<TeamStatsResponse>,
     pub table_state: TableState,
     /// Number of visible rows in the table, updated during render
     pub visible_rows: usize,
-    pub show_skaters: bool, // true: skaters (fowards + defense), false: goalies
+    pub player_type: PlayerType,
+    pub game_type: GameType,
+
     pub team_picker: TeamPickerState,
 }
 
@@ -23,10 +49,12 @@ impl Default for TeamStatsState {
         }
 
         Self {
-            team_stats_data: None,
+            regular_season_team_stats_data: None,
+            playoffs_team_stats_data: None,
             table_state: table(),
             visible_rows: 0,
-            show_skaters: true,
+            player_type: PlayerType::default(),
+            game_type: GameType::default(),
             team_picker: TeamPickerState::default(),
         }
     }
@@ -35,16 +63,30 @@ impl Default for TeamStatsState {
 impl TeamStatsState {
     /// Return the length of the table
     pub fn current_table_len(&self) -> usize {
-        self.team_stats_data
-            .as_ref()
-            .map(|data| {
-                if self.show_skaters {
-                    data.skaters.len()
-                } else {
-                    data.goalies.len()
-                }
-            })
-            .unwrap_or(0)
+        match self.game_type {
+            GameType::RegularSeason => {
+                self.regular_season_team_stats_data
+                    .as_ref()
+                    .map(|data| {
+                        match self.player_type {
+                            PlayerType::Skaters => data.skaters.len(),
+                            PlayerType::Goalies => data.goalies.len(),
+                        }
+                    })
+                    .unwrap_or(0)
+            }
+            GameType::Playoffs => {
+                self.playoffs_team_stats_data
+                    .as_ref()
+                    .map(|data| {
+                        match self.player_type {
+                            PlayerType::Skaters => data.skaters.len(),
+                            PlayerType::Goalies => data.goalies.len(),
+                        }
+                    })
+                    .unwrap_or(0)
+            }
+        }
     }
     /// Move rows
     pub fn row_up(&mut self) {
@@ -66,8 +108,8 @@ impl TeamStatsState {
     /// Reset standings to default state
     pub fn reset_state(&mut self) {
         self.reset_table_state();
-
-        self.show_skaters = true;
+        self.game_type = GameType::default();
+        self.player_type = PlayerType::default();
     }
     /// Reset selected row in table
     pub fn reset_table_state(&mut self) {

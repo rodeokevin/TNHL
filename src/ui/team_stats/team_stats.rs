@@ -1,5 +1,6 @@
 use crate::app::App;
 use crate::models::team_stats::{Goalie, Skater};
+use crate::state::team_stats::team_stats_state::{GameType, PlayerType};
 use crate::ui::render::border_style;
 
 use ratatui::{
@@ -10,12 +11,12 @@ use ratatui::{
 };
 
 const SKATERS_COLUMNS: [&str; 17] = [
-    "Player", "POS", "GP", "G", "A", "P", "+/-", "PIM", "PPG", "SHG", "GWG", "OTG", "S", "S%",
+    "Skater", "POS", "GP", "G", "A", "P", "+/-", "PIM", "PPG", "SHG", "GWG", "OTG", "S", "S%",
     "TOI/G", "SHIFT/G", "FO%",
 ];
 
 const GOALIES_COLUMNS: [&str; 18] = [
-    "Player", "GP", "GS", "W", "L", "T", "OTL", "GAA", "SV%", "SA", "SV", "GA", "SO", "G", "A",
+    "Goalie", "GP", "GS", "W", "L", "T", "OTL", "GAA", "SV%", "SA", "SV", "GA", "SO", "G", "A",
     "P", "PIM", "TOI",
 ];
 
@@ -63,27 +64,40 @@ const BOXSCORE_GOALIES_COLUMN_WIDTHS: [Constraint; 18] = [
 pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     // Pass visible rows to team stats state
     app.state.team_stats.visible_rows = area.height.saturating_sub(3) as usize;
-
-    let show_skaters = app.state.team_stats.show_skaters;
+    let show_regular_season = matches!(&app.state.team_stats.game_type, GameType::RegularSeason);
 
     let title = format!(
         " ({} - {}) {} {} ",
         app.state.date_state.year - 1,
         app.state.date_state.year,
         app.state.team_stats.team_picker.current_team,
-        if show_skaters { "Skaters" } else { "Goalies" }
+        if show_regular_season { "Regular Season Stats" } else { "Playoff Stats" }
     );
     let block = Block::bordered().title(title).border_style(border_style());
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    if let Some(data) = &app.state.team_stats.team_stats_data {
+    let team_data = if show_regular_season {
+        &app.state.team_stats.regular_season_team_stats_data
+    } else {
+        &app.state.team_stats.playoffs_team_stats_data
+    };
+
+    if let Some(data) = team_data {
+        let show_skaters = matches!(&app.state.team_stats.player_type, PlayerType::Skaters);
         let (rows, widths, header): (Vec<Row<'static>>, &[Constraint], &[&str]) = if show_skaters {
             let rows = map_skater_rows(&data.skaters);
             (rows, &SKATERS_COLUMNS_WIDTHS, &SKATERS_COLUMNS)
         } else {
             let rows = map_goalie_rows(&data.goalies);
             (rows, &BOXSCORE_GOALIES_COLUMN_WIDTHS, &GOALIES_COLUMNS)
+        };
+
+        let rows = if rows.is_empty() {
+            vec![Row::default()
+                .style(Style::default())]
+        } else {
+            rows
         };
 
         let table = Table::new(rows, widths)
