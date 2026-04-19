@@ -275,18 +275,10 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             }
         }
         // No hjkl for scrolling since it's used to select series
-        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Up, _) => {
-            Action::PlayoffsScrollUp
-        }
-        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Down, _) => {
-            Action::PlayoffsScrollDown
-        }
-        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Right, _) => {
-            Action::PlayoffsScrollRight
-        }
-        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Left, _) => {
-            Action::PlayoffsScrollLeft
-        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Up, _) => Action::PlayoffsScrollUp,
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Down, _) => Action::PlayoffsScrollDown,
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Right, _) => Action::PlayoffsScrollRight,
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Left, _) => Action::PlayoffsScrollLeft,
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Esc, _) => {
             // Go back to bracket page from series page
             if matches!(&state.playoffs.focus, PlayoffsFocus::Series) {

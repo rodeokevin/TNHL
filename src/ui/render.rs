@@ -1,7 +1,10 @@
 use std::rc::Rc;
 
 use ratatui::{
-    Frame, layout::{Constraint, Direction, Layout, Rect}, style::{Color, Modifier, Style}, symbols::border, widgets::{Block, Clear, List, ListItem, ListState}
+    Frame,
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    widgets::{Block, Clear, List, ListItem, ListState},
 };
 
 use crate::state::{
@@ -72,7 +75,11 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
     ];
 
     let list = List::new(menu_items)
-        .block(Block::bordered().title(" Menu ").border_style(border_style()))
+        .block(
+            Block::bordered()
+                .title(" Menu ")
+                .border_style(border_style()),
+        )
         .highlight_style(
             Style::default()
                 .bg(Color::DarkGray)

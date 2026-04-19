@@ -7,7 +7,6 @@ use crate::ui::{
 use std::collections::HashMap;
 use std::vec;
 
-use ratatui::style::Modifier;
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},

@@ -4,10 +4,17 @@ use crate::models::games::{
         AssistInfo, GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType,
     },
 };
-use crate::ui::{render::border_style, games::games::split_info_left_middle_right};
-
+use crate::ui::{
+    games::games::{BIG_SCORE_COLOR, split_info_left_middle_right},
+    games::stats::AWAY_BAR_COLOR,
+    render::border_style,
+};
 use ratatui::{
-    Frame, layout::{Alignment, Constraint, Direction, Layout, Rect}, style::{Color, Modifier, Style}, symbols::border, text::{Line, Span}, widgets::Paragraph
+    Frame,
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::Paragraph,
 };
 
 // Length of the middle chunk for scoring and stats
@@ -76,7 +83,9 @@ pub fn render_scoring(
                     let label = strengths.join(", ");
                     away_spans.push(Span::styled(
                         format!("[{}] ", label),
-                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(AWAY_BAR_COLOR)
+                            .add_modifier(Modifier::BOLD),
                     ));
                 }
 
@@ -103,7 +112,9 @@ pub fn render_scoring(
                     let label = strengths.join(", ");
                     home_spans.push(Span::styled(
                         format!(" [{}]", label),
-                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(AWAY_BAR_COLOR)
+                            .add_modifier(Modifier::BOLD),
                     ));
                 }
 
@@ -132,15 +143,17 @@ pub fn render_scoring(
             // Add shootout lines
             away_lines.push(Line::default());
             middle_lines.push(
-                Line::from("Shootout").alignment(Alignment::Center).style(border_style()),
+                Line::from("Shootout")
+                    .alignment(Alignment::Center)
+                    .style(border_style()),
             );
             home_lines.push(Line::default());
             for shootout_attempt in &summary.shootout {
                 let (attempt_symbol, attempt_color) =
                     if matches!(shootout_attempt.result, ShootoutAttemptResult::Goal) {
-                        ("[✓]", Color::Green)
+                        ("[✓]", BIG_SCORE_COLOR)
                     } else {
-                        ("[✗]", Color::Red)
+                        ("[✗]", AWAY_BAR_COLOR)
                     };
 
                 let attempt_span = Span::styled(attempt_symbol, Style::default().fg(attempt_color));

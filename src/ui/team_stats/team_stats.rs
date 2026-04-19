@@ -1,6 +1,5 @@
 use crate::app::App;
 use crate::models::team_stats::{Goalie, Skater};
-use crate::state::app_state::PaneFocus;
 use crate::ui::render::border_style;
 
 use ratatui::{

@@ -1,6 +1,5 @@
 use crate::app::App;
 use crate::models::games::boxscore::{BoxscoreResponse, Defenseman, Forward, Goalie, PlayerData};
-use crate::state::app_state::PaneFocus;
 use crate::state::games_state::{BoxscorePosition, BoxscoreTeam};
 use crate::ui::render::border_style;
 
@@ -120,12 +119,7 @@ pub fn render_boxscore(frame: &mut Frame, app: &mut App, area: Rect) {
                     (&BOXSCORE_GOALIES_COLUMN_WIDTHS, &BOXSCORE_GOALIES_COLUMNS)
                 }
             };
-        let table = create_table(
-            rows,
-            get_boxscore_title(is_home, boxscore),
-            widths,
-            header,
-        );
+        let table = create_table(rows, get_boxscore_title(is_home, boxscore), widths, header);
         frame.render_stateful_widget(table, area, &mut app.state.games.boxscore_table_state);
     }
 }

@@ -7,7 +7,6 @@ use crate::models::{
     games::games::{GameState, PeriodType},
     playoffs::series::SeriesResponse,
 };
-use crate::state::app_state::PaneFocus;
 use crate::ui::{
     games::games::{get_period_title, split_info_left_middle_right},
     games::stats::{AWAY_BAR_COLOR, HOME_BAR_COLOR},
@@ -24,7 +23,6 @@ use ratatui::{
 
 use tui_big_text::{BigText, PixelSize};
 
-use crate::ui::games::games::BIG_SCORE_COLOR;
 use crate::ui::games::games::MIDDLE_LENGTH;
 
 pub fn render_series(frame: &mut Frame, app: &mut App, area: Rect) {
@@ -130,7 +128,7 @@ fn render_big_series_score(series: &SeriesResponse, frame: &mut Frame, area: Rec
 fn build_big_text(text: String, alignment: Alignment) -> BigText<'static> {
     BigText::builder()
         .pixel_size(PixelSize::Sextant)
-        .style(Style::default().fg(BIG_SCORE_COLOR))
+        .style(Style::default().fg(HOME_BAR_COLOR))
         .lines(vec![Line::from(text)])
         .alignment(alignment)
         .build()
@@ -251,8 +249,7 @@ fn render_schedule(
                     .fg(away_base_color)
                     .add_modifier(Modifier::BOLD),
 
-                (_, true) => Style::default()
-                    .fg(Color::DarkGray),
+                (_, true) => Style::default().fg(Color::DarkGray),
 
                 _ => Style::default().fg(away_base_color),
             }
@@ -280,8 +277,7 @@ fn render_schedule(
                     .fg(home_base_color)
                     .add_modifier(Modifier::BOLD),
 
-                (_, true) => Style::default()
-                    .fg(Color::DarkGray),
+                (_, true) => Style::default().fg(Color::DarkGray),
 
                 _ => Style::default().fg(home_base_color),
             }

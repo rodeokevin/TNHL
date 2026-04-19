@@ -2,12 +2,11 @@ use crate::app::App;
 use crate::models::games::games::{
     GameData, GameState, PeriodDescriptor, PeriodType, SeriesStatus, SituationDesc,
 };
-use crate::state::{app_state::PaneFocus, games_state::GamesFocus};
+use crate::state::games_state::GamesFocus;
+use crate::ui::games::stats::AWAY_BAR_COLOR;
 use crate::ui::{
     games::{boxscore, scoring, stats},
-    render::{
-        border_style, split_area_horizontal, split_area_vertical,
-    },
+    render::{border_style, split_area_horizontal, split_area_vertical},
 };
 use chrono_tz::Tz;
 use std::rc::Rc;
@@ -24,7 +23,7 @@ use ratatui::{
 use tui_big_text::{BigText, PixelSize};
 
 pub const MIDDLE_LENGTH: u16 = 10;
-pub const BIG_SCORE_COLOR: Color = Color::Green;
+pub const BIG_SCORE_COLOR: Color = Color::Rgb(35, 179, 16); // Green
 
 pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
@@ -92,18 +91,20 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let mut visible_matchups: Vec<Line> = matchups[start..end].to_vec();
     if has_right {
-        visible_matchups.push(Line::from(">").style(Style::default().fg(Color::Gray)));
+        visible_matchups.push(Line::from(">"));
     }
     if has_left {
-        visible_matchups.insert(0, Line::from("<").style(Style::default().fg(Color::Gray)));
+        visible_matchups.insert(0, Line::from("<"));
     }
 
     if num_matchups == 0 && app.state.games.games_data.is_some() {
-        let tabs = Tabs::new(vec!["No games today :("]).block(
-            Block::bordered()
-                .border_style(border_style())
-                .title(app.state.date_state.format_date_border_title()),
-        );
+        let tabs = Tabs::new(vec!["No games today :("])
+            .block(
+                Block::bordered()
+                    .border_style(border_style())
+                    .title(app.state.date_state.format_date_border_title()),
+            )
+            .highlight_style(Style::default());
 
         frame.render_widget(tabs, tab_content_chunks[0]);
     } else {
@@ -252,7 +253,9 @@ pub fn render_time_remaining(
                                 s.away_team.strength.max(s.home_team.strength),
                                 s.away_team.strength.min(s.home_team.strength)
                             ),
-                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                            Style::default()
+                                .fg(AWAY_BAR_COLOR)
+                                .add_modifier(Modifier::BOLD),
                         )]
                     })
                     .unwrap_or_default();
@@ -364,7 +367,9 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
                 let label = format!("[{}] ", parts.join(", "));
                 left_spans.push(Span::styled(
                     label,
-                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(AWAY_BAR_COLOR)
+                        .add_modifier(Modifier::BOLD),
                 ));
             }
         }
@@ -395,7 +400,9 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
                 let label = format!(" [{}]", parts.join(", "));
                 right_spans.push(Span::styled(
                     label,
-                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(AWAY_BAR_COLOR)
+                        .add_modifier(Modifier::BOLD),
                 ));
             }
         }

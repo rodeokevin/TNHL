@@ -43,22 +43,6 @@ pub enum MenuFocus {
 }
 
 impl MenuFocus {
-    pub fn next(self) -> Self {
-        match self {
-            MenuFocus::Games => MenuFocus::Standings,
-            MenuFocus::Standings => MenuFocus::TeamStats,
-            MenuFocus::TeamStats => MenuFocus::Playoffs,
-            MenuFocus::Playoffs => MenuFocus::Playoffs,
-        }
-    }
-    pub fn prev(self) -> Self {
-        match self {
-            MenuFocus::Playoffs => MenuFocus::TeamStats,
-            MenuFocus::TeamStats => MenuFocus::Standings,
-            MenuFocus::Standings => MenuFocus::Games,
-            MenuFocus::Games => MenuFocus::Games,
-        }
-    }
     pub fn index(&self) -> usize {
         match self {
             MenuFocus::Games => 0,
@@ -205,7 +189,7 @@ impl AppState {
             Action::Quit => self.should_quit = true,
 
             Action::ToggleDisplayMenu => self.display_menu = !self.display_menu,
-            
+
             Action::DatePickerInputChar(c) => {
                 self.date_state.is_valid = true; // reset status
                 self.date_state.text.push(c);
@@ -422,7 +406,7 @@ impl AppState {
     }
 
     // Helper functions for handling actions
-    fn select_menu(&mut self, index: usize) -> MenuFocus{
+    fn select_menu(&mut self, index: usize) -> MenuFocus {
         match index {
             1 => MenuFocus::Games,
             2 => MenuFocus::Standings,

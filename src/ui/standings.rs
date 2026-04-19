@@ -1,8 +1,7 @@
 use crate::app::App;
 use crate::models::standings::{StandingsResponse, TeamData};
-use crate::state::app_state::PaneFocus;
 use crate::state::standings_state::{ConferenceFocus, DivisionFocus, StandingsFocus};
-use crate::ui::render::{border_style, BORDER_COLOR};
+use crate::ui::render::{BORDER_COLOR, border_style};
 
 use ratatui::{
     Frame,
@@ -63,11 +62,10 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         StandingsFocus::League => 3,
     };
 
-    let highlight_style =
-        Style::default()
-            .fg(BORDER_COLOR)
-            .add_modifier(Modifier::BOLD)
-            .add_modifier(Modifier::UNDERLINED);
+    let highlight_style = Style::default()
+        .fg(BORDER_COLOR)
+        .add_modifier(Modifier::BOLD)
+        .add_modifier(Modifier::UNDERLINED);
 
     let tabs = Tabs::new(titles)
         .select(selected_standings_index)
