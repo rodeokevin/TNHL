@@ -239,11 +239,7 @@ fn create_table<'a>(
                 .style(Style::new().bold().add_modifier(Modifier::UNDERLINED)),
         )
         .column_spacing(1)
-        .row_highlight_style(
-            Style::default()
-                .bg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        )
+        .row_highlight_style(Style::new().bg(Color::DarkGray).bold())
         .highlight_symbol(">> ")
 }
 

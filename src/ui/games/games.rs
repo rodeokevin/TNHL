@@ -56,7 +56,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         .unwrap_or_default();
     let num_matchups = matchups.len();
 
-    let selected_color = Style::default().add_modifier(Modifier::UNDERLINED);
+    let selected_color = Style::new().underlined();
 
     // Compute the displayed tabs
     let available_width = (tab_content_chunks[0].width - 2) as usize;
@@ -208,9 +208,9 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
 
 pub fn get_color_from_game_state(state: &GameState) -> Style {
     match state {
-        GameState::LIVE | GameState::CRIT | GameState::OVER => Style::default().fg(Color::Green),
-        GameState::FINAL | GameState::OFF => Style::default().fg(Color::DarkGray),
-        _ => Style::default().fg(Color::White), // FUT, PRE, Unknown
+        GameState::LIVE | GameState::CRIT | GameState::OVER => Style::new().fg(Color::Green),
+        GameState::FINAL | GameState::OFF => Style::new().fg(Color::DarkGray),
+        _ => Style::new().fg(Color::White), // FUT, PRE, Unknown
     }
 }
 
@@ -239,7 +239,7 @@ pub fn render_time_remaining(
                     get_period_title(game.period_descriptor.as_ref().unwrap()),
                     clock.time_remaining,
                 ))
-                .alignment(Alignment::Center);
+                .centered();
 
                 frame.render_widget(time, chunks[1]);
 
@@ -253,13 +253,11 @@ pub fn render_time_remaining(
                                 s.away_team.strength.max(s.home_team.strength),
                                 s.away_team.strength.min(s.home_team.strength)
                             ),
-                            Style::default()
-                                .fg(AWAY_BAR_COLOR)
-                                .add_modifier(Modifier::BOLD),
+                            Style::new().fg(AWAY_BAR_COLOR).bold(),
                         )]
                     })
                     .unwrap_or_default();
-                frame.render_widget(Line::from(spans).alignment(Alignment::Left), chunks[2]);
+                frame.render_widget(Line::from(spans).left_aligned(), chunks[2]);
                 return;
             }
         }
@@ -302,7 +300,7 @@ pub fn render_time_remaining(
         }
     };
 
-    frame.render_widget(line.alignment(Alignment::Center), area);
+    frame.render_widget(line.centered(), area);
 }
 
 pub fn render_sweeping_status(
@@ -322,20 +320,20 @@ pub fn render_sweeping_status(
                             let pos = offset % width;
                             let dist = i.abs_diff(pos).min(width - i.abs_diff(pos));
                             if dist == 0 || dist == 1 {
-                                Span::styled("━", Style::default().fg(Color::Green))
+                                Span::styled("━", Style::new().fg(Color::Green))
                             } else {
-                                Span::styled("─", Style::default().fg(Color::DarkGray))
+                                Span::styled("─", Style::new().fg(Color::DarkGray))
                             }
                         })
                         .collect();
-                    frame.render_widget(Line::from(spans).alignment(Alignment::Center), chunks[1]);
+                    frame.render_widget(Line::from(spans).centered(), chunks[1]);
                 } else {
                     let spans: Vec<_> =
-                        std::iter::repeat(Span::styled("─", Style::default().fg(Color::Red)))
+                        std::iter::repeat(Span::styled("─", Style::new().fg(Color::Red)))
                             .take(width)
                             .collect();
 
-                    frame.render_widget(Line::from(spans).alignment(Alignment::Center), chunks[1]);
+                    frame.render_widget(Line::from(spans).centered(), chunks[1]);
                 }
             }
         }
@@ -365,21 +363,13 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
 
             if !parts.is_empty() {
                 let label = format!("[{}] ", parts.join(", "));
-                left_spans.push(Span::styled(
-                    label,
-                    Style::default()
-                        .fg(AWAY_BAR_COLOR)
-                        .add_modifier(Modifier::BOLD),
-                ));
+                left_spans.push(Span::styled(label, Style::new().fg(AWAY_BAR_COLOR).bold()));
             }
         }
     }
     left_spans.push(Span::raw(&game.away_team.name.default));
-    frame.render_widget(
-        Line::from(left_spans).alignment(Alignment::Right),
-        chunks[0],
-    );
-    frame.render_widget(Line::from("vs").alignment(Alignment::Center), chunks[1]);
+    frame.render_widget(Line::from(left_spans).right_aligned(), chunks[0]);
+    frame.render_widget(Line::from("vs").centered(), chunks[1]);
 
     let mut right_spans = vec![];
     right_spans.push(Span::raw(&game.home_team.name.default));
@@ -398,19 +388,11 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
                 .collect();
             if !parts.is_empty() {
                 let label = format!(" [{}]", parts.join(", "));
-                right_spans.push(Span::styled(
-                    label,
-                    Style::default()
-                        .fg(AWAY_BAR_COLOR)
-                        .add_modifier(Modifier::BOLD),
-                ));
+                right_spans.push(Span::styled(label, Style::new().fg(AWAY_BAR_COLOR).bold()));
             }
         }
     }
-    frame.render_widget(
-        Line::from(right_spans).alignment(Alignment::Left),
-        chunks[2],
-    );
+    frame.render_widget(Line::from(right_spans).left_aligned(), chunks[2]);
 }
 
 fn render_big_score(game: &GameData, frame: &mut Frame, area: Rect) {
@@ -433,7 +415,7 @@ fn render_big_score(game: &GameData, frame: &mut Frame, area: Rect) {
 fn build_big_text(text: String, alignment: Alignment) -> BigText<'static> {
     BigText::builder()
         .pixel_size(PixelSize::Sextant)
-        .style(Style::default().fg(BIG_SCORE_COLOR))
+        .style(Style::new().fg(BIG_SCORE_COLOR))
         .lines(vec![Line::from(text)])
         .alignment(alignment)
         .build()
@@ -453,7 +435,7 @@ fn render_shots_on_goal(game: &GameData, frame: &mut Frame, area: Rect) {
 
 fn create_line_from_sog(sog: u16, alignment: Alignment) -> Line<'static> {
     Line::from(format!("SOG: {}", sog))
-        .style(Style::default().fg(Color::DarkGray))
+        .style(Style::new().fg(Color::DarkGray))
         .alignment(alignment)
 }
 
@@ -483,7 +465,7 @@ fn render_series_info(series: &SeriesStatus, frame: &mut Frame, area: Rect) {
             series.series_abbrev, series.game_number_of_series
         ))
         .style(Style::new().fg(Color::DarkGray))
-        .alignment(Alignment::Center),
+        .centered(),
         area,
     );
 }
@@ -529,8 +511,7 @@ fn render_series_status(series: &SeriesStatus, frame: &mut Frame, area: Rect) {
         ))
     };
     frame.render_widget(
-        line.style(Style::new().fg(Color::DarkGray))
-            .alignment(Alignment::Center),
+        line.style(Style::new().fg(Color::DarkGray)).centered(),
         area,
     );
 }

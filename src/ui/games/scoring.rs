@@ -12,7 +12,7 @@ use crate::ui::{
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Style},
     text::{Line, Span},
     widgets::Paragraph,
 };
@@ -54,7 +54,7 @@ pub fn render_scoring(
                 home_lines.push(Line::default());
                 middle_lines.push(
                     Line::from(get_period_title(&goal.period_descriptor))
-                        .alignment(Alignment::Center)
+                        .centered()
                         .style(border_style()),
                 );
                 current_period = goal.period_descriptor.number;
@@ -83,9 +83,7 @@ pub fn render_scoring(
                     let label = strengths.join(", ");
                     away_spans.push(Span::styled(
                         format!("[{}] ", label),
-                        Style::default()
-                            .fg(AWAY_BAR_COLOR)
-                            .add_modifier(Modifier::BOLD),
+                        Style::new().fg(AWAY_BAR_COLOR).bold(),
                     ));
                 }
 
@@ -94,7 +92,7 @@ pub fn render_scoring(
                     goal.time_in_period, goal.first_name, goal.last_name, goals_to_date
                 )));
 
-                away_lines.push(Line::from(away_spans).alignment(Alignment::Right));
+                away_lines.push(Line::from(away_spans).right_aligned());
                 home_lines.push(Line::default());
                 middle_lines.push(Line::default());
 
@@ -112,9 +110,7 @@ pub fn render_scoring(
                     let label = strengths.join(", ");
                     home_spans.push(Span::styled(
                         format!(" [{}]", label),
-                        Style::default()
-                            .fg(AWAY_BAR_COLOR)
-                            .add_modifier(Modifier::BOLD),
+                        Style::new().fg(AWAY_BAR_COLOR).bold(),
                     ));
                 }
 
@@ -142,11 +138,7 @@ pub fn render_scoring(
         {
             // Add shootout lines
             away_lines.push(Line::default());
-            middle_lines.push(
-                Line::from("Shootout")
-                    .alignment(Alignment::Center)
-                    .style(border_style()),
-            );
+            middle_lines.push(Line::from("Shootout").centered().style(border_style()));
             home_lines.push(Line::default());
             for shootout_attempt in &summary.shootout {
                 let (attempt_symbol, attempt_color) =
@@ -156,7 +148,7 @@ pub fn render_scoring(
                         ("[✗]", AWAY_BAR_COLOR)
                     };
 
-                let attempt_span = Span::styled(attempt_symbol, Style::default().fg(attempt_color));
+                let attempt_span = Span::styled(attempt_symbol, Style::new().fg(attempt_color));
 
                 if shootout_attempt.team_abbrev.default == *away_team_abbrev.to_string() {
                     away_lines.push(
@@ -167,7 +159,7 @@ pub fn render_scoring(
                             )),
                             attempt_span,
                         ])
-                        .alignment(Alignment::Right),
+                        .right_aligned(),
                     );
                     middle_lines.push(Line::default());
                     home_lines.push(Line::default());
@@ -180,7 +172,7 @@ pub fn render_scoring(
                                 shootout_attempt.first_name, shootout_attempt.last_name
                             )),
                         ])
-                        .alignment(Alignment::Left),
+                        .left_aligned(),
                     );
                     middle_lines.push(Line::default());
                     away_lines.push(Line::default());
@@ -190,7 +182,7 @@ pub fn render_scoring(
     } else if matches!(game.game_state, GameState::LIVE | GameState::CRIT) {
         // No goals yet but game is live (but not shootout)
         middle_lines.push(
-            Line::from("\"No goals.\" - Juuse Saros").style(Style::default().fg(Color::DarkGray)),
+            Line::from("\"No goals.\" - Juuse Saros").style(Style::new().fg(Color::DarkGray)),
         );
         home_lines.push(Line::default());
         away_lines.push(Line::default());
@@ -221,11 +213,11 @@ pub fn render_scoring(
     let visible_middle = middle_lines[offset..end].to_vec();
 
     frame.render_widget(
-        Line::from(if can_scroll_up { "▲" } else { "" }).alignment(Alignment::Center),
+        Line::from(if can_scroll_up { "▲" } else { "" }).centered(),
         vert_chunks[0],
     );
     frame.render_widget(
-        Line::from(if can_scroll_down { "▼" } else { "" }).alignment(Alignment::Center),
+        Line::from(if can_scroll_down { "▼" } else { "" }).centered(),
         vert_chunks[2],
     );
 
@@ -242,11 +234,11 @@ fn get_assists_line(assists: &Vec<AssistInfo>, alignment: Alignment) -> Line<'st
         let assists_text = get_assists_text(assists);
         Line::styled(
             format!("[{}]", assists_text),
-            Style::default().fg(Color::DarkGray),
+            Style::new().fg(Color::DarkGray),
         )
         .alignment(alignment)
     } else {
-        Line::styled("[Unassisted]", Style::default().fg(Color::DarkGray)).alignment(alignment)
+        Line::styled("[Unassisted]", Style::new().fg(Color::DarkGray)).alignment(alignment)
     }
 }
 

@@ -16,7 +16,7 @@ use crate::ui::{
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Style},
     text::Line,
     widgets::Block,
 };
@@ -66,25 +66,22 @@ pub fn render_series(frame: &mut Frame, app: &mut App, area: Rect) {
             "SCF" => "Stanley Cup Final",
             _ => &series.round_abbrev.clone(),
         };
-        let round_info_line = Line::from(round_info).alignment(Alignment::Center);
+        let round_info_line = Line::from(round_info).centered();
         frame.render_widget(round_info_line, upper_info_chunks[0]);
         // Teams
         let teams_chunks = split_info_left_middle_right(upper_info_chunks[2], MIDDLE_LENGTH);
         let bottom_seed = if series.bottom_seed_team.id == -1 {
-            Line::from("TBD").style(Style::default().fg(Color::DarkGray))
+            Line::from("TBD").style(Style::new().fg(Color::DarkGray))
         } else {
             Line::from(format!(
                 "{} {}",
                 series.bottom_seed_team.place_name.default, series.bottom_seed_team.name.default
             ))
         };
-        frame.render_widget(bottom_seed.alignment(Alignment::Right), teams_chunks[0]);
-        frame.render_widget(
-            Line::from("vs").alignment(Alignment::Center),
-            teams_chunks[1],
-        );
+        frame.render_widget(bottom_seed.right_aligned(), teams_chunks[0]);
+        frame.render_widget(Line::from("vs").centered(), teams_chunks[1]);
         let top_seed = if series.top_seed_team.id == -1 {
-            Line::from("TBD").style(Style::default().fg(Color::DarkGray))
+            Line::from("TBD").style(Style::new().fg(Color::DarkGray))
         } else {
             Line::from(format!(
                 "{} {}",
@@ -128,7 +125,7 @@ fn render_big_series_score(series: &SeriesResponse, frame: &mut Frame, area: Rec
 fn build_big_text(text: String, alignment: Alignment) -> BigText<'static> {
     BigText::builder()
         .pixel_size(PixelSize::Sextant)
-        .style(Style::default().fg(HOME_BAR_COLOR))
+        .style(Style::new().fg(HOME_BAR_COLOR))
         .lines(vec![Line::from(text)])
         .alignment(alignment)
         .build()
@@ -170,7 +167,7 @@ fn render_schedule(
             .compute_local_time(timezone)
             .format("%b %d")
             .to_string();
-        game_number_lines.push(Line::from(date).style(Style::default().fg(Color::DarkGray)));
+        game_number_lines.push(Line::from(date).style(Style::new().fg(Color::DarkGray)));
 
         let away_score = game
             .away_team
@@ -183,10 +180,10 @@ fn render_schedule(
             .map(|s| s.to_string())
             .unwrap_or_else(|| "-".to_string());
 
-        away_score_lines.push(Line::from(away_score).alignment(Alignment::Center));
+        away_score_lines.push(Line::from(away_score).centered());
         away_score_lines.push(Line::default());
 
-        home_score_lines.push(Line::from(home_score).alignment(Alignment::Center));
+        home_score_lines.push(Line::from(home_score).centered());
         home_score_lines.push(Line::default());
 
         let status_line = match game.game_state {
@@ -198,7 +195,7 @@ fn render_schedule(
 
             GameState::LIVE | GameState::CRIT => match game.period_descriptor.as_ref() {
                 None => Line::from("Live"),
-                Some(d) => Line::styled(get_period_title(d), Style::default().fg(Color::Green)),
+                Some(d) => Line::styled(get_period_title(d), Style::new().fg(Color::Green)),
             },
 
             GameState::OVER | GameState::FINAL | GameState::OFF => {
@@ -216,7 +213,7 @@ fn render_schedule(
             GameState::Unknown => Line::default(),
         };
 
-        game_status_lines.push(status_line.alignment(Alignment::Center));
+        game_status_lines.push(status_line.centered());
         game_status_lines.push(Line::default());
 
         let winner = match (game.away_team.score, game.home_team.score) {
@@ -245,13 +242,11 @@ fn render_schedule(
 
         let away_style = if is_played {
             match (winner, is_final) {
-                (Some("away"), true) => Style::default()
-                    .fg(away_base_color)
-                    .add_modifier(Modifier::BOLD),
+                (Some("away"), true) => Style::new().fg(away_base_color).bold(),
 
-                (_, true) => Style::default().fg(Color::DarkGray),
+                (_, true) => Style::new().fg(Color::DarkGray),
 
-                _ => Style::default().fg(away_base_color),
+                _ => Style::new().fg(away_base_color),
             }
         } else {
             Style::default()
@@ -273,13 +268,11 @@ fn render_schedule(
 
         let home_style = if is_played {
             match (winner, is_final) {
-                (Some("home"), true) => Style::default()
-                    .fg(home_base_color)
-                    .add_modifier(Modifier::BOLD),
+                (Some("home"), true) => Style::new().fg(home_base_color).bold(),
 
-                (_, true) => Style::default().fg(Color::DarkGray),
+                (_, true) => Style::new().fg(Color::DarkGray),
 
-                _ => Style::default().fg(home_base_color),
+                _ => Style::new().fg(home_base_color),
             }
         } else {
             Style::default()
@@ -331,17 +324,18 @@ fn render_schedule(
     let visible_home_team_lines = home_team_lines[offset..end].to_vec();
 
     frame.render_widget(
-        Line::from(if can_scroll_up { "▲" } else { "" }).alignment(Alignment::Center),
+        Line::from(if can_scroll_up { "▲" } else { "" }).centered(),
         vert_chunks[0],
     );
 
     frame.render_widget(
-        Line::from(if can_scroll_down { "▼" } else { "" }).alignment(Alignment::Center),
+        Line::from(if can_scroll_down { "▼" } else { "" }).centered(),
         vert_chunks[2],
     );
 
     let constraints = [
         Constraint::Fill(1),
+        Constraint::Length(1), // For spacing
         Constraint::Length(9),
         Constraint::Length(14),
         Constraint::Length(3),
@@ -356,18 +350,16 @@ fn render_schedule(
         .constraints(constraints)
         .split(vert_chunks[1]);
 
-    frame.render_widget(Paragraph::new(visible_game_number_lines), columns[1]);
-    frame.render_widget(Paragraph::new(visible_away_team_lines), columns[2]);
-    frame.render_widget(Paragraph::new(visible_away_score_lines), columns[3]);
-    frame.render_widget(Paragraph::new(visible_game_status_lines), columns[4]);
-    frame.render_widget(Paragraph::new(visible_home_score_lines), columns[5]);
-    frame.render_widget(Paragraph::new(visible_home_team_lines), columns[6]);
+    frame.render_widget(Paragraph::new(visible_game_number_lines), columns[2]);
+    frame.render_widget(Paragraph::new(visible_away_team_lines), columns[3]);
+    frame.render_widget(Paragraph::new(visible_away_score_lines), columns[4]);
+    frame.render_widget(Paragraph::new(visible_game_status_lines), columns[5]);
+    frame.render_widget(Paragraph::new(visible_home_score_lines), columns[6]);
+    frame.render_widget(Paragraph::new(visible_home_team_lines), columns[7]);
 
     if has_if_necessary {
         frame.render_widget(
-            Line::from("* If necessary")
-                .style(Style::default().fg(Color::DarkGray))
-                .alignment(Alignment::Center),
+            Line::from("* If necessary").style(Style::new().fg(Color::DarkGray)),
             columns[0],
         );
     }

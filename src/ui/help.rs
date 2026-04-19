@@ -1,6 +1,6 @@
 use crate::banner::BANNER;
 use crate::config::ConfigFile;
-use ratatui::layout::{Alignment, Constraint, Flex, Layout};
+use ratatui::layout::{Constraint, Flex, Layout};
 use ratatui::prelude::*;
 use ratatui::widgets::{Paragraph, Row, Table, TableState};
 
@@ -97,8 +97,8 @@ impl StatefulWidget for HelpWidget {
                 text: vec![format!("{:30}{:15}", r[0], r[1])],
             }
         };
-        let header_style = Style::default().add_modifier(Modifier::BOLD | Modifier::UNDERLINED);
-        let sub_header_style = Style::default().add_modifier(Modifier::BOLD | Modifier::UNDERLINED);
+        let header_style = Style::new().bold().underlined();
+        let sub_header_style = Style::new().bold().underlined();
         let help_menu_style = Style::default();
 
         let header = Row::new(format_row(HEADER).text)
@@ -122,9 +122,7 @@ impl StatefulWidget for HelpWidget {
             .horizontal_margin(2)
             .areas(area);
 
-        let selected_style = Style::default()
-            .bg(Color::DarkGray)
-            .add_modifier(Modifier::BOLD);
+        let selected_style = Style::new().bg(Color::DarkGray).bold();
         StatefulWidget::render(
             Table::new(rows, [Constraint::Percentage(100)])
                 .header(header)
@@ -146,7 +144,7 @@ impl StatefulWidget for HelpWidget {
             env!("CARGO_PKG_VERSION"),
             config_file
         ))
-        .alignment(Alignment::Center)
+        .centered()
         .render(banner, buf);
     }
 }

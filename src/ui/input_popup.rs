@@ -30,8 +30,8 @@ impl Widget for InputPopup<'_> {
             let input_width = self.input_text.len() as u16 + 2; // +2 for " " prefix and gap
             if inp.width > info_width + input_width {
                 Paragraph::new(format!("{} ", info))
-                    .alignment(Alignment::Right)
-                    .style(Style::default().fg(Color::DarkGray))
+                    .right_aligned()
+                    .style(Style::new().fg(Color::DarkGray))
                     .render(inp, buf);
             }
         }
@@ -40,12 +40,12 @@ impl Widget for InputPopup<'_> {
             .title(self.title)
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(Style::default().fg(self.border_color));
+            .border_style(Style::new().fg(self.border_color));
 
         if let Some(bottom) = self.bottom_text {
             block = block.title_bottom(Span::styled(
                 format!("{}", bottom),
-                Style::default().fg(Color::DarkGray),
+                Style::new().fg(Color::DarkGray),
             ));
         }
         block.render(area, buf);

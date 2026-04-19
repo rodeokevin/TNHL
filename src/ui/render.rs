@@ -3,7 +3,7 @@ use std::rc::Rc;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Style},
     widgets::{Block, Clear, List, ListItem, ListState},
 };
 
@@ -20,9 +20,7 @@ use crate::{app::App, ui::team_stats::team_stats};
 
 pub const BORDER_COLOR: Color = Color::Rgb(247, 194, 0); // Orange-yellowish
 pub fn border_style() -> Style {
-    Style::default()
-        .fg(BORDER_COLOR)
-        .add_modifier(Modifier::BOLD)
+    Style::new().fg(BORDER_COLOR).bold()
 }
 
 pub fn render(frame: &mut Frame, app: &mut App) {
@@ -80,11 +78,7 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
                 .title(" Menu ")
                 .border_style(border_style()),
         )
-        .highlight_style(
-            Style::default()
-                .bg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        )
+        .highlight_style(Style::new().bg(Color::DarkGray).bold())
         .highlight_symbol(">> ");
 
     let mut state = ListState::default();

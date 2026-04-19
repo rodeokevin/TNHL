@@ -9,7 +9,7 @@ use std::vec;
 
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::Paragraph,
@@ -83,14 +83,14 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
             if let Some(&power_play_rate) = stats_map.get(&GameStatsCategory::PowerPlay) {
                 away_lines.push(
                     Line::from(power_play_rate.away_value.to_string())
-                        .style(Style::default().fg(Color::DarkGray))
-                        .alignment(Alignment::Right),
+                        .style(Style::new().fg(Color::DarkGray))
+                        .right_aligned(),
                 );
-                middle_lines.push(Line::default().alignment(Alignment::Center));
+                middle_lines.push(Line::default().centered());
                 home_lines.push(
                     Line::from(power_play_rate.home_value.to_string())
-                        .style(Style::default().fg(Color::DarkGray))
-                        .alignment(Alignment::Left),
+                        .style(Style::new().fg(Color::DarkGray))
+                        .left_aligned(),
                 );
             }
         }
@@ -181,11 +181,11 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     let visible_period: Vec<Line> = middle_lines[offset..end].to_vec();
 
     frame.render_widget(
-        Line::from(if can_scroll_up { "▲" } else { "" }).alignment(Alignment::Center),
+        Line::from(if can_scroll_up { "▲" } else { "" }).centered(),
         vert_chunks[0],
     );
     frame.render_widget(
-        Line::from(if can_scroll_down { "▼" } else { "" }).alignment(Alignment::Center),
+        Line::from(if can_scroll_down { "▼" } else { "" }).centered(),
         vert_chunks[2],
     );
 
@@ -208,16 +208,12 @@ fn add_stat_lines(
     home_value: String,
 ) {
     away_lines.push(Line::default());
-    middle_lines.push(
-        Line::from(title)
-            .style(border_style())
-            .alignment(Alignment::Center),
-    );
+    middle_lines.push(Line::from(title).style(border_style()).centered());
     home_lines.push(Line::default());
 
-    away_lines.push(Line::from(away_value).alignment(Alignment::Right));
+    away_lines.push(Line::from(away_value).right_aligned());
     middle_lines.push(compute_middle_bar(&stat.away_value, &stat.home_value));
-    home_lines.push(Line::from(home_value).alignment(Alignment::Left));
+    home_lines.push(Line::from(home_value).left_aligned());
 }
 
 fn compute_middle_bar<'a>(away_value: &'a StatValue, home_value: &'a StatValue) -> Line<'static> {
@@ -248,19 +244,17 @@ fn compute_middle_bar<'a>(away_value: &'a StatValue, home_value: &'a StatValue) 
         home_length = MIDDLE_LENGTH - 3 - away_length;
     }
     let gap = std::iter::once(Span::raw(if away_zero ^ home_zero { "" } else { " " }));
-    let away_spans: Vec<_> =
-        std::iter::repeat(Span::styled("─", Style::default().fg(AWAY_BAR_COLOR)))
-            .take(away_length as usize)
-            .collect();
-    let home_spans: Vec<_> =
-        std::iter::repeat(Span::styled("─", Style::default().fg(HOME_BAR_COLOR)))
-            .take(home_length as usize)
-            .collect();
+    let away_spans: Vec<_> = std::iter::repeat(Span::styled("─", Style::new().fg(AWAY_BAR_COLOR)))
+        .take(away_length as usize)
+        .collect();
+    let home_spans: Vec<_> = std::iter::repeat(Span::styled("─", Style::new().fg(HOME_BAR_COLOR)))
+        .take(home_length as usize)
+        .collect();
     let spans: Vec<_> = away_spans
         .into_iter()
         .chain(gap)
         .chain(home_spans.into_iter())
         .collect();
 
-    Line::from(spans).alignment(Alignment::Center)
+    Line::from(spans).centered()
 }

@@ -62,10 +62,7 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
         StandingsFocus::League => 3,
     };
 
-    let highlight_style = Style::default()
-        .fg(BORDER_COLOR)
-        .add_modifier(Modifier::BOLD)
-        .add_modifier(Modifier::UNDERLINED);
+    let highlight_style = Style::new().fg(BORDER_COLOR).bold().underlined();
 
     let tabs = Tabs::new(titles)
         .select(selected_standings_index)
@@ -203,9 +200,7 @@ fn render_wildcard_standings(
             " Western Wildcard Standings ",
         ),
     };
-    let division_conference_rows_style = Style::default()
-        .fg(BORDER_COLOR)
-        .add_modifier(Modifier::UNDERLINED);
+    let division_conference_rows_style = Style::new().fg(BORDER_COLOR).underlined();
     let mut rows = Vec::new();
     rows.extend(vec![
         Row::new(vec!["", div1_full]).style(division_conference_rows_style),
@@ -244,11 +239,7 @@ fn create_table(rows: Vec<Row<'_>>, title: String) -> Table<'_> {
         .block(Block::bordered().title(title).border_style(border_style()))
         .header(standings_header())
         .column_spacing(1)
-        .row_highlight_style(
-            Style::default()
-                .bg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        )
+        .row_highlight_style(Style::new().bg(Color::DarkGray).bold())
         .highlight_symbol(">> ")
 }
 

@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Alignment, Rect},
+    layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
@@ -167,7 +167,7 @@ fn draw_round_label(
         return;
     }
     frame.render_widget(
-        Line::from(label.to_string()).alignment(Alignment::Center),
+        Line::from(label.to_string()).centered(),
         Rect {
             x,
             y: area.y + ay as u16,
@@ -281,15 +281,14 @@ fn render_series_card(
         .map(|t| t.common_name.default.clone())
         .unwrap_or_default();
 
-    let bold = Modifier::BOLD;
     let (top_style, bottom_style) = match (top_won, bottom_won) {
         (true, _) => (
-            Style::default().fg(COLOR_WIN).add_modifier(bold),
-            Style::default().fg(COLOR_LOSE),
+            Style::new().fg(COLOR_WIN).bold(),
+            Style::new().fg(COLOR_LOSE),
         ),
         (_, true) => (
-            Style::default().fg(COLOR_LOSE),
-            Style::default().fg(COLOR_WIN).add_modifier(bold),
+            Style::new().fg(COLOR_LOSE),
+            Style::new().fg(COLOR_WIN).bold(),
         ),
         _ => (Style::default(), Style::default()),
     };
@@ -304,8 +303,8 @@ fn render_series_card(
     let all_lines = vec![
         build_team_line(&top_team, top_seed_wins, inner_w, top_style),
         Line::from(series.series_letter.clone())
-            .alignment(Alignment::Center)
-            .style(Style::default().fg(Color::DarkGray)),
+            .centered()
+            .style(Style::new().fg(Color::DarkGray)),
         build_team_line(&bottom_team, bottom_seed_wins, inner_w, bottom_style),
     ];
 
