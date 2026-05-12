@@ -37,14 +37,14 @@ pub struct Series {
     pub bottom_seed_wins: u8,
     pub top_seed_team: Option<SeriesTeam>,
     pub bottom_seed_team: Option<SeriesTeam>,
-    pub winning_team_id: Option<u32>,
-    pub losing_team_id: Option<u32>,
+    pub winning_team_id: Option<i32>,
+    pub losing_team_id: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SeriesTeam {
-    pub id: u32,
+    pub id: i32,
     pub abbrev: TeamAbbrev,
     pub name: TeamName,
     pub common_name: TeamName,

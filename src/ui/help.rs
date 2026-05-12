@@ -16,19 +16,19 @@ const GENERAL_DOCS: &[&[&str; 2]; 8] = &[
     &["Quit TNHL", "q/ctrl + c"],
 ];
 const GAMES_DOCS: &[&[&str; 2]; 10] = &[
-    &["Games", " "],
+    &["1.Games", " "],
     &["Next game", "l/→"],
     &["Previous game", "h/←"],
     &["Scroll down", "j/↓"],
     &["Scroll up", "k/↑"],
     &["Page down", "shift + j/↓"],
     &["Page up", "shift + k/↑"],
-    &["Next view", "<"],
-    &["Previous view", ">"],
+    &["Next info", "<"],
+    &["Previous info", ">"],
     &["Select date", ":"],
 ];
 const STANDINGS_DOCS: &[&[&str; 2]; 10] = &[
-    &["Standings", " "],
+    &["2.Standings", " "],
     &["Next standings", "l/→"],
     &["Previous standings", "h/←"],
     &["Move down", "j/↓"],
@@ -40,7 +40,7 @@ const STANDINGS_DOCS: &[&[&str; 2]; 10] = &[
     &["Select date", ":"],
 ];
 const TEAM_STATS_DOCS: &[&[&str; 2]; 8] = &[
-    &["Team Stats", " "],
+    &["3.Team Stats", " "],
     &["Move down", "j/↓"],
     &["Move up", "k/↑"],
     &["Page down", "shift + j/↓"],
@@ -50,7 +50,7 @@ const TEAM_STATS_DOCS: &[&[&str; 2]; 8] = &[
     &["Select team", "t"],
 ];
 const PLAYOFFS_DOCS: &[&[&str; 2]; 11] = &[
-    &["Playoffs", " "],
+    &["4.Playoffs", " "],
     &["Move down", "j/↓"],
     &["Move up", "k/↑"],
     &["Move left", "h/←"],

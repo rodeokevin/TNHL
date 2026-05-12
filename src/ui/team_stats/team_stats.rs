@@ -71,7 +71,11 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
         app.state.date_state.year - 1,
         app.state.date_state.year,
         app.state.team_stats.team_picker.current_team,
-        if show_regular_season { "Regular Season Stats" } else { "Playoff Stats" }
+        if show_regular_season {
+            "Regular Season Stats"
+        } else {
+            "Playoff Stats"
+        }
     );
     let block = Block::bordered().title(title).border_style(border_style());
     let inner = block.inner(area);
@@ -94,8 +98,7 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
         };
 
         let rows = if rows.is_empty() {
-            vec![Row::default()
-                .style(Style::default())]
+            vec![Row::default().style(Style::default())]
         } else {
             rows
         };

@@ -48,6 +48,7 @@ impl PlayoffsState {
     pub fn reset_state(&mut self) {
         self.reset_scoring_scroll();
         self.selected_series = None;
+        self.series_data = None;
         self.focus = PlayoffsFocus::default();
     }
     /// Page up

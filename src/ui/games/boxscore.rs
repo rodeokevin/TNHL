@@ -48,10 +48,10 @@ const BOXSCORE_FORWARDS_COLUMN_WIDTHS: [Constraint; 17] = [
     Constraint::Length(6), // SHIFT
     Constraint::Length(4), // PPG
     Constraint::Length(3), // S
-    Constraint::Length(5), // BLK
+    Constraint::Length(4), // BLK
     Constraint::Length(6), // HITS
-    Constraint::Length(4), // GV
-    Constraint::Length(4), // TK
+    Constraint::Length(3), // GV
+    Constraint::Length(3), // TK
     Constraint::Length(5), // FO%
 ];
 

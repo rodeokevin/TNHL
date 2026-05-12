@@ -341,7 +341,7 @@ fn render_schedule(
         Constraint::Length(3),
         Constraint::Length(16),
         Constraint::Length(3),
-        Constraint::Length(14),
+        Constraint::Length(17),
         Constraint::Fill(1),
     ];
 

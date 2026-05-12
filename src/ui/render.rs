@@ -4,7 +4,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    widgets::{Block, Clear, List, ListItem, ListState},
+    widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
 };
 
 use crate::state::{
@@ -65,6 +65,19 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 }
 
 fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
+    let block = Block::bordered()
+        .title(" Menu ")
+        .border_style(border_style());
+
+    frame.render_widget(block.clone(), area);
+
+    let inner = block.inner(area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(4), Constraint::Length(1)])
+        .split(inner);
+
     let menu_items = vec![
         ListItem::new("1.Games"),
         ListItem::new("2.Standings"),
@@ -73,18 +86,18 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
     ];
 
     let list = List::new(menu_items)
-        .block(
-            Block::bordered()
-                .title(" Menu ")
-                .border_style(border_style()),
-        )
         .highlight_style(Style::new().bg(Color::DarkGray).bold())
         .highlight_symbol(">> ");
 
     let mut state = ListState::default();
     state.select(Some(app.state.selected_menu.index()));
 
-    frame.render_stateful_widget(list, area, &mut state);
+    frame.render_stateful_widget(list, chunks[0], &mut state);
+
+    let help = Paragraph::new("Help: ?")
+        .style(Style::new().fg(Color::DarkGray));
+
+    frame.render_widget(help, chunks[1]);
 }
 
 fn render_date_picker(f: &mut Frame, app: &mut App, rect: Rect) {

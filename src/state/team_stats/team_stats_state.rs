@@ -64,28 +64,22 @@ impl TeamStatsState {
     /// Return the length of the table
     pub fn current_table_len(&self) -> usize {
         match self.game_type {
-            GameType::RegularSeason => {
-                self.regular_season_team_stats_data
-                    .as_ref()
-                    .map(|data| {
-                        match self.player_type {
-                            PlayerType::Skaters => data.skaters.len(),
-                            PlayerType::Goalies => data.goalies.len(),
-                        }
-                    })
-                    .unwrap_or(0)
-            }
-            GameType::Playoffs => {
-                self.playoffs_team_stats_data
-                    .as_ref()
-                    .map(|data| {
-                        match self.player_type {
-                            PlayerType::Skaters => data.skaters.len(),
-                            PlayerType::Goalies => data.goalies.len(),
-                        }
-                    })
-                    .unwrap_or(0)
-            }
+            GameType::RegularSeason => self
+                .regular_season_team_stats_data
+                .as_ref()
+                .map(|data| match self.player_type {
+                    PlayerType::Skaters => data.skaters.len(),
+                    PlayerType::Goalies => data.goalies.len(),
+                })
+                .unwrap_or(0),
+            GameType::Playoffs => self
+                .playoffs_team_stats_data
+                .as_ref()
+                .map(|data| match self.player_type {
+                    PlayerType::Skaters => data.skaters.len(),
+                    PlayerType::Goalies => data.goalies.len(),
+                })
+                .unwrap_or(0),
         }
     }
     /// Move rows
