@@ -100,7 +100,7 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
                 &mut away_lines,
                 &mut middle_lines,
                 &mut home_lines,
-                "Power Play %".to_string(),
+                "Penalty Minutes".to_string(),
                 pims,
                 pims.away_value.to_string(),
                 pims.home_value.to_string(),
