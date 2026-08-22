@@ -13,6 +13,14 @@ TNHL is a terminal-based NHL data dashboard built with Rust. It provides an inte
 - Display playoff brackets and series details
 - Change dates and/or teams directly in the UI
 
+## Installation
+
+Using cargo:
+
+```bash
+cargo run
+```
+
 ## Usage
 
 - `1` – Games
