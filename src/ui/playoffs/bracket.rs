@@ -10,10 +10,25 @@ use crate::models::playoffs::bracket::Series;
 use crate::ui::render::border_style;
 use crate::{app::App, state::playoffs_state::PlayoffsState};
 
+// Base card width used for most brackets.
 const CARD_WIDTH: u16 = 18;
+// Wider card width used for division-era brackets that show a seed prefix
+// (e.g. "WC1 ") on round-1 cards. Uniform across the whole bracket.
+const WIDE_CARD_WIDTH: u16 = 22;
 const CARD_HEIGHT: u16 = 5;
 // Horizontal gap length between rounds
 const ROUND_HOR_GAP: u16 = 6;
+
+/// Card width for a given bracket year. Division-era years (2014+, except the
+/// 2020 COVID bubble which used conference-wide reseeding) show a seed prefix
+/// on round-1 cards, so those brackets use the wider card.
+fn card_width_for_year(year: i32) -> u16 {
+    if year >= 2014 && year != 2020 {
+        WIDE_CARD_WIDTH
+    } else {
+        CARD_WIDTH
+    }
+}
 
 const COLOR_WIN: Color = Color::Green;
 const COLOR_LOSE: Color = Color::DarkGray;
@@ -33,6 +48,8 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
     if let Some(playoff_bracket) = &app.state.playoffs.bracket_data {
         let h_off = app.state.playoffs.horizontal_scroll_offset as u16;
         let v_off = app.state.playoffs.vertical_scroll_offset as u16;
+        let year = app.state.date_state.year;
+        let cw = card_width_for_year(year);
 
         let bracket_area = Rect {
             x: inner.x + 1,
@@ -45,11 +62,18 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
         app.state.playoffs.visible_rows = bracket_area.height.saturating_sub(1) as usize;
 
         app.state.playoffs.horizontal_max_scroll =
-            canvas_width().saturating_sub(bracket_area.width) as usize;
+            canvas_width(cw).saturating_sub(bracket_area.width) as usize;
         app.state.playoffs.vertical_max_scroll =
             canvas_height().saturating_sub(bracket_area.height) as usize;
 
-        render_bracket(frame, bracket_area, &playoff_bracket.series, h_off, v_off);
+        render_bracket(
+            frame,
+            bracket_area,
+            &playoff_bracket.series,
+            year,
+            h_off,
+            v_off,
+        );
         render_scroll_indicators(frame, inner, &app.state.playoffs);
     };
 }
@@ -78,8 +102,8 @@ fn series_letter_to_position(letter: &str) -> Option<(usize, usize)> {
 
 const COLUMN_LABELS: [&str; 7] = ["R1", "R2", "WCF", "SCF", "ECF", "R2", "R1"];
 
-fn canvas_width() -> u16 {
-    7 * CARD_WIDTH + 6 * ROUND_HOR_GAP
+fn canvas_width(cw: u16) -> u16 {
+    7 * cw + 6 * ROUND_HOR_GAP
 }
 fn canvas_height() -> u16 {
     1 + 4 * CARD_HEIGHT + 3 * 1 // label row + 4 cards + 3 gaps of 1
@@ -94,8 +118,8 @@ fn midpoint(a: u16, b: u16) -> u16 {
 }
 
 // Compute the card position based on R1 cards
-fn card_virtual_pos(col: usize, row: usize) -> (u16, u16) {
-    let x = col as u16 * (CARD_WIDTH + ROUND_HOR_GAP);
+fn card_virtual_pos(col: usize, row: usize, cw: u16) -> (u16, u16) {
+    let x = col as u16 * (cw + ROUND_HOR_GAP);
 
     let y = match col {
         // R1
@@ -119,15 +143,24 @@ fn card_virtual_pos(col: usize, row: usize) -> (u16, u16) {
     (x, y)
 }
 
-fn card_mid_y(col: usize, row: usize) -> u16 {
-    card_virtual_pos(col, row).1 + CARD_HEIGHT / 2
+fn card_mid_y(col: usize, row: usize, cw: u16) -> u16 {
+    card_virtual_pos(col, row, cw).1 + CARD_HEIGHT / 2
 }
 
-fn render_bracket(frame: &mut Frame, area: Rect, series_list: &[Series], h_off: u16, v_off: u16) {
+fn render_bracket(
+    frame: &mut Frame,
+    area: Rect,
+    series_list: &[Series],
+    year: i32,
+    h_off: u16,
+    v_off: u16,
+) {
+    let cw = card_width_for_year(year);
+
     // Column labels
     for (col, label) in COLUMN_LABELS.iter().enumerate() {
-        let vx = col as u16 * (CARD_WIDTH + ROUND_HOR_GAP);
-        draw_round_label(frame, area, vx, 0, CARD_WIDTH, label, h_off, v_off);
+        let vx = col as u16 * (cw + ROUND_HOR_GAP);
+        draw_round_label(frame, area, vx, 0, cw, label, h_off, v_off);
     }
 
     // Series cards — look up each series' column/row from its letter
@@ -135,13 +168,13 @@ fn render_bracket(frame: &mut Frame, area: Rect, series_list: &[Series], h_off: 
         let Some((col, row)) = series_letter_to_position(&series.series_letter) else {
             continue;
         };
-        let (vx, vy) = card_virtual_pos(col, row);
-        render_series_card(frame, area, series, vx, vy, h_off, v_off);
+        let (vx, vy) = card_virtual_pos(col, row, cw);
+        render_series_card(frame, area, series, year, cw, vx, vy, h_off, v_off);
     }
 
     // Connectors
-    draw_east_connectors(frame, area, h_off, v_off);
-    draw_west_connectors(frame, area, h_off, v_off);
+    draw_east_connectors(frame, area, cw, h_off, v_off);
+    draw_west_connectors(frame, area, cw, h_off, v_off);
 }
 
 fn draw_round_label(
@@ -184,6 +217,8 @@ fn render_series_card(
     frame: &mut Frame,
     area: Rect,
     series: &Series,
+    year: i32,
+    cw: u16,
     vx: u16,
     vy: u16,
     h_off: u16,
@@ -192,7 +227,7 @@ fn render_series_card(
     let ax = vx as i32 - h_off as i32;
     let ay = vy as i32 - v_off as i32;
 
-    if ax + CARD_WIDTH as i32 <= 0
+    if ax + cw as i32 <= 0
         || ax >= area.width as i32
         || ay + CARD_HEIGHT as i32 <= 0
         || ay >= area.height as i32
@@ -201,7 +236,7 @@ fn render_series_card(
     }
 
     let left = ax;
-    let right = ax + CARD_WIDTH as i32;
+    let right = ax + cw as i32;
     let top = ay;
     let bottom = ay + CARD_HEIGHT as i32;
 
@@ -222,7 +257,7 @@ fn render_series_card(
     let x = (area.x as i32 + ax).max(area.x as i32) as u16;
     let y = (area.y as i32 + ay).max(area.y as i32) as u16;
 
-    let width = (CARD_WIDTH as i32 - (0 - ax).max(0))
+    let width = (cw as i32 - (0 - ax).max(0))
         .max(0)
         .min((area.x as i32 + area.width as i32 - x as i32).max(0)) as u16;
     let height = (CARD_HEIGHT as i32 - (0 - ay).max(0))
@@ -246,7 +281,7 @@ fn render_series_card(
     // Compute inner from VIRTUAL position so text doesn't shift when clipped
     let inner_vx = ax + 1;
     let inner_vy = ay + 1;
-    let inner_vw = CARD_WIDTH as i32 - 2;
+    let inner_vw = cw as i32 - 2;
     let inner_vh = CARD_HEIGHT as i32 - 2;
 
     let inner_x = (area.x as i32 + inner_vx).max(area.x as i32) as u16;
@@ -300,12 +335,44 @@ fn render_series_card(
             (None, None)
         };
 
+    // Seeding labels are only shown for round 1 (division/conference seeding).
+    let (top_seed, bottom_seed) = if series.playoff_round == 1 {
+        (
+            seed_label(
+                year,
+                &series.series_letter,
+                series.top_seed_rank,
+                &series.top_seed_rank_abbrev,
+            ),
+            seed_label(
+                year,
+                &series.series_letter,
+                series.bottom_seed_rank,
+                &series.bottom_seed_rank_abbrev,
+            ),
+        )
+    } else {
+        (None, None)
+    };
+
     let all_lines = vec![
-        build_team_line(&top_team, top_seed_wins, inner_w, top_style),
+        build_team_line(
+            &top_team,
+            top_seed.as_deref(),
+            top_seed_wins,
+            inner_w,
+            top_style,
+        ),
         Line::from(series.series_letter.clone())
             .centered()
             .style(Style::new().fg(Color::DarkGray)),
-        build_team_line(&bottom_team, bottom_seed_wins, inner_w, bottom_style),
+        build_team_line(
+            &bottom_team,
+            bottom_seed.as_deref(),
+            bottom_seed_wins,
+            inner_w,
+            bottom_style,
+        ),
     ];
 
     // Skip lines that are scrolled off the top so text stays anchored to its virtual position
@@ -323,29 +390,89 @@ fn render_series_card(
     );
 }
 
-fn build_team_line<'a>(abbrev: &str, wins: Option<u8>, width: u16, style: Style) -> Line<'a> {
+fn build_team_line<'a>(
+    abbrev: &str,
+    seed: Option<&str>,
+    wins: Option<u8>,
+    width: u16,
+    style: Style,
+) -> Line<'a> {
     let wins_str = wins.map(|w| format!("{}", w)).unwrap_or_default();
-    let abbrev_str = abbrev.to_string();
-    let pad = (width as usize).saturating_sub(abbrev_str.len() + wins_str.len());
+    // Prefix the seed (e.g. "A1", "WC1", or "8") when available.
+    let name_str = match seed {
+        Some(s) if !s.is_empty() => format!("{s} {abbrev}"),
+        _ => abbrev.to_string(),
+    };
+    let pad = (width as usize).saturating_sub(name_str.len() + wins_str.len());
     Line::from(vec![
-        Span::styled(abbrev_str, style),
+        Span::styled(name_str, style),
         Span::raw(" ".repeat(pad)),
         Span::styled(wins_str, style.add_modifier(Modifier::BOLD)),
     ])
 }
 
-fn draw_east_connectors(frame: &mut Frame, area: Rect, h_off: u16, v_off: u16) {
-    draw_pair(frame, area, ["A", "B"], "I", h_off, v_off, -1);
-    draw_pair(frame, area, ["C", "D"], "J", h_off, v_off, -1);
-    draw_pair(frame, area, ["I", "J"], "M", h_off, v_off, -1);
-    draw_straight(frame, area, "M", "O", h_off, v_off);
+/// Division letters in the fixed order the NHL API returns round-1 series:
+/// series A/B = Atlantic, C/D = Metropolitan, E/F = Central, G/H = Pacific.
+const DIVISION_ORDER: [&str; 4] = ["A", "M", "C", "P"];
+
+/// Compute the seeding label shown on a round-1 series card.
+///
+/// - 1994–2013: seeding was conference-wide (1 vs 8), so just show the numeric
+///   `seed_rank` from the data.
+/// - 2020: the COVID "bubble" playoffs used conference-wide reseeding (ranks up
+///   to 12), so fall back to the numeric `seed_rank` like the pre-2014 era.
+/// - Other 2014+ years: seeding is division-based. The API's `seed_rank_abbrev`
+///   gives `D1`/`D2`/`D3` (division rank) or `WC1`/`WC2` (wildcard). Wildcards
+///   are shown verbatim; for division seeds we substitute the specific division
+///   letter, derived from the series letter's fixed position.
+/// - Before 1994 (or an unrecognized series letter): no label.
+fn seed_label(
+    year: i32,
+    series_letter: &str,
+    seed_rank: u8,
+    seed_rank_abbrev: &str,
+) -> Option<String> {
+    match year {
+        1994..=2013 | 2020 => Some(seed_rank.to_string()),
+        y if y >= 2014 => {
+            if seed_rank_abbrev.starts_with("WC") {
+                Some(seed_rank_abbrev.to_string())
+            } else {
+                // Expect "D1"/"D2"/"D3"; replace the leading "D" with the division letter.
+                let division = division_from_series_letter(series_letter)?;
+                let rank = seed_rank_abbrev.trim_start_matches(|c: char| c.is_ascii_alphabetic());
+                Some(format!("{division}{rank}"))
+            }
+        }
+        _ => None,
+    }
 }
 
-fn draw_west_connectors(frame: &mut Frame, area: Rect, h_off: u16, v_off: u16) {
-    draw_pair(frame, area, ["E", "F"], "K", h_off, v_off, 1);
-    draw_pair(frame, area, ["G", "H"], "L", h_off, v_off, 1);
-    draw_pair(frame, area, ["K", "L"], "N", h_off, v_off, 1);
-    draw_straight(frame, area, "N", "O", h_off, v_off);
+/// Map a round-1 series letter (A–H) to its division letter using the fixed
+/// order the API emits: A,B→Atlantic, C,D→Metro, E,F→Central, G,H→Pacific.
+fn division_from_series_letter(series_letter: &str) -> Option<&'static str> {
+    let idx = match series_letter {
+        "A" | "B" => 0,
+        "C" | "D" => 1,
+        "E" | "F" => 2,
+        "G" | "H" => 3,
+        _ => return None,
+    };
+    Some(DIVISION_ORDER[idx])
+}
+
+fn draw_east_connectors(frame: &mut Frame, area: Rect, cw: u16, h_off: u16, v_off: u16) {
+    draw_pair(frame, area, ["A", "B"], "I", cw, h_off, v_off, -1);
+    draw_pair(frame, area, ["C", "D"], "J", cw, h_off, v_off, -1);
+    draw_pair(frame, area, ["I", "J"], "M", cw, h_off, v_off, -1);
+    draw_straight(frame, area, "M", "O", cw, h_off, v_off);
+}
+
+fn draw_west_connectors(frame: &mut Frame, area: Rect, cw: u16, h_off: u16, v_off: u16) {
+    draw_pair(frame, area, ["E", "F"], "K", cw, h_off, v_off, 1);
+    draw_pair(frame, area, ["G", "H"], "L", cw, h_off, v_off, 1);
+    draw_pair(frame, area, ["K", "L"], "N", cw, h_off, v_off, 1);
+    draw_straight(frame, area, "N", "O", cw, h_off, v_off);
 }
 
 /// Connect two series (vertically)
@@ -354,6 +481,7 @@ fn draw_pair(
     area: Rect,
     srcs: [&str; 2],
     dst: &str,
+    card_w: u16,
     h_off: u16,
     v_off: u16,
     dir: i32, // +1 = right, -1 = left
@@ -366,7 +494,7 @@ fn draw_pair(
         return;
     };
 
-    let cw = CARD_WIDTH as i32;
+    let cw = card_w as i32;
     let gap = ROUND_HOR_GAP as i32;
 
     let src_x = c0 as i32 * (cw + gap) + if dir == 1 { cw } else { 0 };
@@ -379,8 +507,8 @@ fn draw_pair(
         dst_x + gap / 2
     };
 
-    let my0 = card_mid_y(c0, r0) as i32;
-    let my1 = card_mid_y(c1, r1) as i32;
+    let my0 = card_mid_y(c0, r0, card_w) as i32;
+    let my1 = card_mid_y(c1, r1, card_w) as i32;
     let join_y = (my0 + my1) / 2;
 
     // horizontal from sources to mid
@@ -413,27 +541,35 @@ fn draw_pair(
 }
 
 /// Draw a straight connector between series
-fn draw_straight(frame: &mut Frame, area: Rect, src: &str, dst: &str, h_off: u16, v_off: u16) {
+fn draw_straight(
+    frame: &mut Frame,
+    area: Rect,
+    src: &str,
+    dst: &str,
+    cw: u16,
+    h_off: u16,
+    v_off: u16,
+) {
     let (Some((sc, sr)), Some((dc, _))) = (
         series_letter_to_position(src),
         series_letter_to_position(dst),
     ) else {
         return;
     };
-    let src_x = sc as u16 * (CARD_WIDTH + ROUND_HOR_GAP);
-    let dst_x = dc as u16 * (CARD_WIDTH + ROUND_HOR_GAP);
+    let src_x = sc as u16 * (cw + ROUND_HOR_GAP);
+    let dst_x = dc as u16 * (cw + ROUND_HOR_GAP);
     // pick the correct edge of each card
     let src_edge = if src_x < dst_x {
-        src_x + CARD_WIDTH // going right
+        src_x + cw // going right
     } else {
         src_x // going left
     };
     let dst_edge = if src_x < dst_x {
         dst_x // entering from left
     } else {
-        dst_x + CARD_WIDTH // entering from right
+        dst_x + cw // entering from right
     };
-    let my = card_mid_y(sc, sr);
+    let my = card_mid_y(sc, sr, cw);
     let (start, end) = if src_edge < dst_edge {
         (src_edge, dst_edge)
     } else {
@@ -516,5 +652,59 @@ fn render_scroll_indicators(frame: &mut Frame, area: Rect, playoff_bracket: &Pla
                 height: 1,
             },
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{division_from_series_letter, seed_label};
+
+    #[test]
+    fn division_from_letter_follows_fixed_order() {
+        assert_eq!(division_from_series_letter("A"), Some("A"));
+        assert_eq!(division_from_series_letter("B"), Some("A"));
+        assert_eq!(division_from_series_letter("C"), Some("M"));
+        assert_eq!(division_from_series_letter("D"), Some("M"));
+        assert_eq!(division_from_series_letter("E"), Some("C"));
+        assert_eq!(division_from_series_letter("F"), Some("C"));
+        assert_eq!(division_from_series_letter("G"), Some("P"));
+        assert_eq!(division_from_series_letter("H"), Some("P"));
+        assert_eq!(division_from_series_letter("I"), None);
+    }
+
+    #[test]
+    fn conference_era_shows_numeric_seed() {
+        // 1994..=2013: use the numeric seed rank, ignore the abbrev.
+        assert_eq!(seed_label(2010, "A", 1, "D1").as_deref(), Some("1"));
+        assert_eq!(seed_label(2010, "A", 8, "C8").as_deref(), Some("8"));
+        assert_eq!(seed_label(2013, "D", 5, "C5").as_deref(), Some("5"));
+    }
+
+    #[test]
+    fn covid_2020_falls_back_to_numeric_seed() {
+        // 2020 bubble used conference-wide reseeding (ranks up to 12).
+        assert_eq!(seed_label(2020, "A", 1, "C4").as_deref(), Some("1"));
+        assert_eq!(seed_label(2020, "A", 8, "C12").as_deref(), Some("8"));
+        assert_eq!(seed_label(2020, "D", 4, "C1").as_deref(), Some("4"));
+    }
+
+    #[test]
+    fn division_era_uses_division_letter_and_wildcard() {
+        // 2014+: division seeds get the specific division letter.
+        assert_eq!(seed_label(2024, "A", 1, "D1").as_deref(), Some("A1"));
+        assert_eq!(seed_label(2024, "B", 2, "D2").as_deref(), Some("A2"));
+        assert_eq!(seed_label(2024, "B", 3, "D3").as_deref(), Some("A3"));
+        assert_eq!(seed_label(2024, "D", 2, "D2").as_deref(), Some("M2"));
+        assert_eq!(seed_label(2024, "F", 3, "D3").as_deref(), Some("C3"));
+        assert_eq!(seed_label(2024, "H", 2, "D2").as_deref(), Some("P2"));
+        // Wildcards are shown verbatim regardless of series letter.
+        assert_eq!(seed_label(2024, "A", 4, "WC1").as_deref(), Some("WC1"));
+        assert_eq!(seed_label(2024, "C", 4, "WC2").as_deref(), Some("WC2"));
+    }
+
+    #[test]
+    fn unsupported_years_have_no_label() {
+        assert_eq!(seed_label(1993, "A", 1, "D1"), None);
+        assert_eq!(seed_label(1980, "A", 1, ""), None);
     }
 }
