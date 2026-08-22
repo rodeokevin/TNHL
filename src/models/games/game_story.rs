@@ -5,11 +5,11 @@ use crate::models::{games::games::PlayerName, standings::TeamAbbrev};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GameStoryReponse {
+pub struct GameStoryResponse {
     pub summary: Option<Summary>,
 }
 
-impl GameStoryReponse {
+impl GameStoryResponse {
     pub fn from_json(data: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(data)
     }

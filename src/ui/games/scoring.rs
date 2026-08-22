@@ -1,5 +1,5 @@
 use crate::models::games::{
-    game_story::{GameStoryReponse, ShootoutAttemptResult},
+    game_story::{GameStoryResponse, ShootoutAttemptResult},
     games::{
         AssistInfo, GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType,
     },
@@ -22,7 +22,7 @@ pub const MIDDLE_LENGTH: u16 = 25;
 
 pub fn render_scoring(
     game: &GameData,
-    maybe_game_story: Option<&GameStoryReponse>,
+    maybe_game_story: Option<&GameStoryResponse>,
     frame: &mut Frame,
     area: Rect,
     scroll_offset: usize,

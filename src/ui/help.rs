@@ -51,15 +51,15 @@ const TEAM_STATS_DOCS: &[&[&str; 2]; 8] = &[
 ];
 const PLAYOFFS_DOCS: &[&[&str; 2]; 11] = &[
     &["4.Playoffs", " "],
-    &["Move down", "j/↓"],
-    &["Move up", "k/↑"],
-    &["Move left", "h/←"],
-    &["Move right", "l/→"],
-    &["Page down", "shift + j/↓"],
-    &["Page up", "shift + k/↑"],
-    &["Page left", "shift + h/←"],
-    &["Page right", "shift + l/→"],
-    &["Select series", "enter series letter"],
+    &["Scroll down", "↓"],
+    &["Scroll up", "↑"],
+    &["Scroll left", "←"],
+    &["Scroll right", "→"],
+    &["Page down", "shift + ↓"],
+    &["Page up", "shift + ↑"],
+    &["Page left", "shift + ←"],
+    &["Page right", "shift + →"],
+    &["Select series", "shift + series letter"],
     &["Select year", ":"],
 ];
 const PLAYERS_DOCS: &[&[&str; 2]; 2] = &[&["Players", " "], &["To be implemented", ""]];

@@ -1,5 +1,5 @@
 use crate::models::games::{
-    boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse,
+    boxscore::BoxscoreResponse, game_story::GameStoryResponse, games::GamesResponse,
 };
 use crate::state::app_state::{table_page_down, table_page_up};
 use ratatui::widgets::TableState;
@@ -64,7 +64,7 @@ pub struct GamesState {
 
     pub games_data: Option<GamesResponse>,
     pub boxscore_data: HashMap<u32, BoxscoreResponse>,
-    pub game_story_data: HashMap<u32, GameStoryReponse>,
+    pub game_story_data: HashMap<u32, GameStoryResponse>,
     pub selected_game_index: usize,
     // For the dynamic display bar under the time remaining
     pub sweeping_status_offset: usize,

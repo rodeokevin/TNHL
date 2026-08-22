@@ -2,7 +2,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::Sender;
 
 use crate::models::{
-    games::{boxscore::BoxscoreResponse, game_story::GameStoryReponse, games::GamesResponse},
+    games::{boxscore::BoxscoreResponse, game_story::GameStoryResponse, games::GamesResponse},
     playoffs::{bracket::BracketResponse, series::SeriesResponse},
     standings::StandingsResponse,
     team_stats::TeamStatsResponse,
@@ -47,7 +47,7 @@ pub enum AppEvent {
     },
     GameStoryUpdate {
         game_id: u32,
-        parsed_game_story: GameStoryReponse,
+        parsed_game_story: GameStoryResponse,
     },
     BracketUpdate(BracketResponse),
     SeriesUpdate(SeriesResponse),

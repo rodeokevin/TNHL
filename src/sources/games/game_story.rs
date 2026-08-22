@@ -2,7 +2,7 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
-use crate::models::games::game_story::GameStoryReponse;
+use crate::models::games::game_story::GameStoryResponse;
 use crate::sources::FetchInterval;
 use crate::{AppEvent, Source};
 
@@ -34,7 +34,7 @@ impl GameStorySource {
                 match reqwest::get(&url).await {
                     Ok(resp) => {
                         if let Ok(body) = resp.text().await {
-                            match GameStoryReponse::from_json(&body) {
+                            match GameStoryResponse::from_json(&body) {
                                 Ok(parsed_game_story) => {
                                     let _ = tx
                                         .send(AppEvent::GameStoryUpdate {

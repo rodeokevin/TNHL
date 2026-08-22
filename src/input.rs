@@ -257,28 +257,32 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         (
             PaneFocus::Content,
             MenuFocus::Playoffs,
-            KeyCode::Up | KeyCode::Char('K'),
+            KeyCode::Up,
             KeyModifiers::SHIFT,
         ) => Action::PlayoffsPageUp,
         (
             PaneFocus::Content,
             MenuFocus::Playoffs,
-            KeyCode::Down | KeyCode::Char('J'),
+            KeyCode::Down,
             KeyModifiers::SHIFT,
         ) => Action::PlayoffsPageDown,
         (
             PaneFocus::Content,
             MenuFocus::Playoffs,
-            KeyCode::Right | KeyCode::Char('L'),
+            KeyCode::Right,
             KeyModifiers::SHIFT,
         ) => Action::PlayoffsPageRight,
         (
             PaneFocus::Content,
             MenuFocus::Playoffs,
-            KeyCode::Left | KeyCode::Char('H'),
+            KeyCode::Left,
             KeyModifiers::SHIFT,
         ) => Action::PlayoffsPageLeft,
-        (PaneFocus::Content, MenuFocus::Playoffs, Char(c), _) => {
+        // Select a series with Shift + its letter (e.g. Shift + a). Using Shift
+        // avoids colliding with global bindings like `m` (toggle menu).
+        (PaneFocus::Content, MenuFocus::Playoffs, Char(c), KeyModifiers::SHIFT)
+            if c.is_ascii_alphabetic() =>
+        {
             // Can only choose series from bracket page
             if matches!(&state.playoffs.focus, PlayoffsFocus::Bracket) {
                 Action::SelectSeries(c)
@@ -286,7 +290,7 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
                 Action::None
             }
         }
-        // No hjkl for scrolling since it's used to select series
+        // Arrow keys scroll the bracket
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Up, _) => Action::PlayoffsScrollUp,
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Down, _) => Action::PlayoffsScrollDown,
         (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Right, _) => Action::PlayoffsScrollRight,
