@@ -254,30 +254,18 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
         }
 
         // In playoffs content page
-        (
-            PaneFocus::Content,
-            MenuFocus::Playoffs,
-            KeyCode::Up,
-            KeyModifiers::SHIFT,
-        ) => Action::PlayoffsPageUp,
-        (
-            PaneFocus::Content,
-            MenuFocus::Playoffs,
-            KeyCode::Down,
-            KeyModifiers::SHIFT,
-        ) => Action::PlayoffsPageDown,
-        (
-            PaneFocus::Content,
-            MenuFocus::Playoffs,
-            KeyCode::Right,
-            KeyModifiers::SHIFT,
-        ) => Action::PlayoffsPageRight,
-        (
-            PaneFocus::Content,
-            MenuFocus::Playoffs,
-            KeyCode::Left,
-            KeyModifiers::SHIFT,
-        ) => Action::PlayoffsPageLeft,
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Up, KeyModifiers::SHIFT) => {
+            Action::PlayoffsPageUp
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Down, KeyModifiers::SHIFT) => {
+            Action::PlayoffsPageDown
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Right, KeyModifiers::SHIFT) => {
+            Action::PlayoffsPageRight
+        }
+        (PaneFocus::Content, MenuFocus::Playoffs, KeyCode::Left, KeyModifiers::SHIFT) => {
+            Action::PlayoffsPageLeft
+        }
         // Select a series with Shift + its letter (e.g. Shift + a). Using Shift
         // avoids colliding with global bindings like `m` (toggle menu).
         (PaneFocus::Content, MenuFocus::Playoffs, Char(c), KeyModifiers::SHIFT)

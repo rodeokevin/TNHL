@@ -94,8 +94,7 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
 
     frame.render_stateful_widget(list, chunks[0], &mut state);
 
-    let help = Paragraph::new("Help: ?")
-        .style(Style::new().fg(Color::DarkGray));
+    let help = Paragraph::new("Help: ?").style(Style::new().fg(Color::DarkGray));
 
     frame.render_widget(help, chunks[1]);
 }
