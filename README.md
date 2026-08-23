@@ -29,3 +29,28 @@ cargo run
 - `4` – Playoffs
 - `?` – Open help screen
 - `Ctrl+c/q` – Quit
+
+## Configuration
+
+TNHL reads an optional `tnhl.toml` config file, auto-generated with defaults on
+first run. Its location depends on your OS:
+
+- Linux: `~/.config/tnhl/tnhl.toml`
+- macOS: `~/Library/Application Support/tnhl/tnhl.toml`
+- Windows: `%APPDATA%\tnhl\tnhl.toml`
+
+Available keys:
+
+| Key             | Type   | Default            | Description                                                                                          |
+| --------------- | ------ | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `timezone`      | string | `America/Montreal` | Timezone for displayed game start times. Any [IANA tz name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (e.g. `US/Eastern`). |
+| `favorite_team` | string | none               | Your team's 3-letter code (e.g. `MTL`, case-insensitive). Becomes the default team on the Team Stats page and is highlighted in gold in the standings and today's matchups. |
+| `log_level`     | string | `error`            | Logging verbosity written to `app.log`: `off`, `trace`, `debug`, `info`, `warn`, or `error`.         |
+
+Example:
+
+```toml
+timezone = "US/Eastern"
+favorite_team = "TOR"
+log_level = "info"
+```

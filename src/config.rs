@@ -145,8 +145,9 @@ impl ConfigFile {
     fn generate_config_file(path: &PathBuf) -> anyhow::Result<()> {
         let contents =
             toml::to_string(&ConfigFile::default()).context("could not serialize config")?;
-        let contents =
-            format!("# See https://github.com/mlb-rs/mlbt#config for options\n{contents}");
+        let contents = format!(
+            "# See https://github.com/rodeokevin/TNHL#configuration for options\n{contents}"
+        );
         std::fs::write(path, contents).context("could not write config file")
     }
 
