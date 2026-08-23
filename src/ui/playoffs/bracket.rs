@@ -1,14 +1,16 @@
 use ratatui::{
     Frame,
-    layout::Rect,
+    buffer::Buffer,
+    layout::{Alignment, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Widget},
 };
 
 use crate::models::playoffs::bracket::Series;
-use crate::ui::render::border_style;
+use crate::ui::render::{BORDER_COLOR, border_style};
 use crate::{app::App, state::playoffs_state::PlayoffsState};
+use tui_big_text::{BigText, PixelSize};
 
 // Base card width used for most brackets.
 const CARD_WIDTH: u16 = 18;
@@ -77,6 +79,11 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
         render_scroll_indicators(frame, inner, &app.state.playoffs);
     };
 }
+
+// All playoff series letters (A–O)
+const ALL_SERIES_LETTERS: [&str; 15] = [
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O",
+];
 
 // 6 columns, 4 rows
 fn series_letter_to_position(letter: &str) -> Option<(usize, usize)> {
@@ -157,24 +164,125 @@ fn render_bracket(
 ) {
     let cw = card_width_for_year(year);
 
+    // Background: "STANLEY CUP" / "PLAYOFFS" in big text
+    render_cup_text(frame, area, cw, h_off, v_off);
+
     // Column labels
     for (col, label) in COLUMN_LABELS.iter().enumerate() {
         let vx = col as u16 * (cw + ROUND_HOR_GAP);
         draw_round_label(frame, area, vx, 0, cw, label, h_off, v_off);
     }
 
-    // Series cards — look up each series' column/row from its letter
-    for series in series_list {
-        let Some((col, row)) = series_letter_to_position(&series.series_letter) else {
+    // Render a card at every known bracket position: the real series if the
+    // data contains it, otherwise an empty placeholder.
+    for &letter in &ALL_SERIES_LETTERS {
+        let Some((col, row)) = series_letter_to_position(letter) else {
             continue;
         };
         let (vx, vy) = card_virtual_pos(col, row, cw);
+        let series = series_list.iter().find(|s| s.series_letter == letter);
         render_series_card(frame, area, series, year, cw, vx, vy, h_off, v_off);
     }
 
     // Connectors
     draw_east_connectors(frame, area, cw, h_off, v_off);
     draw_west_connectors(frame, area, cw, h_off, v_off);
+}
+
+// Virtual rows (from the top of the canvas) where the two big-text banners sit
+const CUP_TEXT_TOP_VY: u16 = 3; // upper empty band
+const CUP_TEXT_BOTTOM_VY: u16 = 19; // lower empty band
+
+/// Draw the "STANLEY CUP" / "PLAYOFFS" big-text banners centered
+fn render_cup_text(frame: &mut Frame, area: Rect, cw: u16, h_off: u16, v_off: u16) {
+    // Horizontal center of the SCF column (col 3).
+    let center_vx = 3 * (cw + ROUND_HOR_GAP) + cw / 2;
+
+    let style = Style::new().fg(BORDER_COLOR).add_modifier(Modifier::DIM);
+
+    draw_big_text_virtual(
+        frame,
+        area,
+        "STANLEY CUP",
+        center_vx,
+        CUP_TEXT_TOP_VY,
+        style,
+        h_off,
+        v_off,
+    );
+    draw_big_text_virtual(
+        frame,
+        area,
+        "PLAYOFFS",
+        center_vx,
+        CUP_TEXT_BOTTOM_VY,
+        style,
+        h_off,
+        v_off,
+    );
+}
+
+// `PixelSize::Sextant` packs the 8x8 font into cells 2 pixels wide and 3
+// pixels tall, so a glyph needs ceil(8/2)=4 cells of width and ceil(8/3)=3
+// cells of height.
+const SEXTANT_GLYPH_WIDTH: u16 = 4;
+const SEXTANT_LINE_HEIGHT: u16 = 3;
+
+#[allow(clippy::too_many_arguments)]
+fn draw_big_text_virtual(
+    frame: &mut Frame,
+    area: Rect,
+    text: &str,
+    center_vx: u16,
+    vy: u16,
+    style: Style,
+    h_off: u16,
+    v_off: u16,
+) {
+    // Size the scratch buffer to the actual rendered glyph dimensions and anchor
+    // it centered on center_vx.
+    let vw = text.chars().count() as u16 * SEXTANT_GLYPH_WIDTH;
+    let vh = SEXTANT_LINE_HEIGHT;
+    if vw == 0 {
+        return;
+    }
+    let vx = center_vx.saturating_sub(vw / 2);
+
+    // Render the banner into a scratch buffer at local origin.
+    let scratch_area = Rect::new(0, 0, vw, vh);
+    let mut scratch = Buffer::empty(scratch_area);
+    let big_text = BigText::builder()
+        .pixel_size(PixelSize::Sextant)
+        .style(style)
+        .lines(vec![Line::from(text)])
+        .alignment(Alignment::Left)
+        .build();
+    big_text.render(scratch_area, &mut scratch);
+
+    // Blit each virtual cell to its mapped screen position, clipping to `area`.
+    let dst = frame.buffer_mut();
+    for local_y in 0..vh {
+        let screen_y = (vy + local_y) as i32 - v_off as i32 + area.y as i32;
+        if screen_y < area.y as i32 || screen_y >= (area.y + area.height) as i32 {
+            continue;
+        }
+        for local_x in 0..vw {
+            let screen_x = (vx + local_x) as i32 - h_off as i32 + area.x as i32;
+            if screen_x < area.x as i32 || screen_x >= (area.x + area.width) as i32 {
+                continue;
+            }
+            let src = scratch.cell((local_x, local_y));
+            let (Some(src), Some(target)) = (src, dst.cell_mut((screen_x as u16, screen_y as u16)))
+            else {
+                continue;
+            };
+            // Only draw non-blank cells so the banner reads as an overlay and
+            // doesn't paint empty space over the background.
+            if src.symbol() != " " {
+                *target = src.clone();
+            }
+        }
+    }
 }
 
 fn draw_round_label(
@@ -212,11 +320,10 @@ fn draw_round_label(
 
 /// Render the series card
 /// Computes actual positions based on scrolling offsets
-/// If the card goes outside of the render area, it clips
 fn render_series_card(
     frame: &mut Frame,
     area: Rect,
-    series: &Series,
+    series: Option<&Series>,
     year: i32,
     cw: u16,
     vx: u16,
@@ -297,6 +404,11 @@ fn render_series_card(
     if inner_w == 0 || inner_h == 0 {
         return;
     }
+
+    // For a placeholder (no series), only the bordered box is drawn.
+    let Some(series) = series else {
+        return;
+    };
 
     let top_won = series
         .winning_team_id
