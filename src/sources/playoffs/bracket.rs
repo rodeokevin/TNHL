@@ -11,12 +11,17 @@ pub enum BracketCommand {
 }
 
 pub struct BracketSource {
+    client: reqwest::Client,
     rx: Receiver<BracketCommand>,
     current_year: i32,
 }
 impl BracketSource {
-    pub fn new(rx: Receiver<BracketCommand>, current_year: i32) -> Self {
-        Self { rx, current_year }
+    pub fn new(client: reqwest::Client, rx: Receiver<BracketCommand>, current_year: i32) -> Self {
+        Self {
+            client,
+            rx,
+            current_year,
+        }
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
@@ -25,7 +30,7 @@ impl BracketSource {
             self.current_year.to_string()
         );
 
-        match reqwest::get(&url).await {
+        match self.client.get(&url).send().await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
                     // Parse the JSON

@@ -12,14 +12,16 @@ pub enum GameStoryCommand {
 }
 
 pub struct GameStorySource {
+    client: reqwest::Client,
     rx: Receiver<GameStoryCommand>,
     game_ids: Vec<u32>,
     fetch_interval: Duration,
 }
 
 impl GameStorySource {
-    pub fn new(rx: Receiver<GameStoryCommand>) -> Self {
+    pub fn new(client: reqwest::Client, rx: Receiver<GameStoryCommand>) -> Self {
         Self {
+            client,
             rx,
             game_ids: Vec::new(),
             fetch_interval: FetchInterval::InfoShortInterval.as_duration(),
@@ -27,11 +29,14 @@ impl GameStorySource {
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
-        if !self.game_ids.is_empty() {
-            for &game_id in &self.game_ids {
+        // Fetch every game's story concurrently so the UI isn't blocked on one
+        // slow request; each result is sent as soon as it completes.
+        let fetches = self.game_ids.iter().map(|&game_id| {
+            let client = &self.client;
+            async move {
                 let url = format!("https://api-web.nhle.com/v1/wsc/game-story/{}", game_id);
 
-                match reqwest::get(&url).await {
+                match client.get(&url).send().await {
                     Ok(resp) => {
                         if let Ok(body) = resp.text().await {
                             match GameStoryResponse::from_json(&body) {
@@ -60,7 +65,9 @@ impl GameStorySource {
                     }
                 }
             }
-        }
+        });
+
+        futures::future::join_all(fetches).await;
     }
 }
 

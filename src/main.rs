@@ -119,8 +119,12 @@ where
 {
     let (tx, mut rx) = tokio::sync::mpsc::channel::<AppEvent>(32);
 
+    // A single shared HTTP client is reused by every source
+    let client = reqwest::Client::new();
+
     // Spawn standings source
     let standings_source = Box::new(StandingsSource::new(
+        client.clone(),
         standings_rx,
         app.state.date_state.date.to_string(),
     ));
@@ -131,7 +135,11 @@ where
     });
 
     // Spawn games source
-    let games_source = GamesSource::new(games_rx, app.state.date_state.date.to_string());
+    let games_source = GamesSource::new(
+        client.clone(),
+        games_rx,
+        app.state.date_state.date.to_string(),
+    );
     let games_tx = tx.clone();
     let games_cancel = cancel.clone();
     tokio::spawn(async move {
@@ -139,7 +147,7 @@ where
     });
 
     // Spawn boxscore source
-    let boxscore_source = BoxscoreSource::new(boxscore_rx);
+    let boxscore_source = BoxscoreSource::new(client.clone(), boxscore_rx);
     let boxscore_tx = tx.clone();
     let boxscore_cancel = cancel.clone();
     tokio::spawn(async move {
@@ -149,7 +157,7 @@ where
     });
 
     // Spawn game story source
-    let game_story_source = GameStorySource::new(game_story_rx);
+    let game_story_source = GameStorySource::new(client.clone(), game_story_rx);
     let game_story_tx = tx.clone();
     let game_story_cancel = cancel.clone();
     tokio::spawn(async move {
@@ -160,6 +168,7 @@ where
 
     // Spawn team stats source
     let team_stats_source = TeamStatsSource::new(
+        client.clone(),
         team_stats_rx,
         app.settings.favorite_team.unwrap_or_default(),
         app.state.date_state.year,
@@ -173,7 +182,8 @@ where
     });
 
     // Spawn playoff bracket source
-    let playoff_bracket_source = BracketSource::new(bracket_rx, app.state.date_state.year);
+    let playoff_bracket_source =
+        BracketSource::new(client.clone(), bracket_rx, app.state.date_state.year);
     let playoff_bracket_tx = tx.clone();
     let playoff_bracket_cancel = cancel.clone();
     tokio::spawn(async move {
@@ -183,7 +193,8 @@ where
     });
 
     // Spawn playoffs series source
-    let playoff_bracket_source = SeriesSource::new(series_rx, app.state.date_state.year, None);
+    let playoff_bracket_source =
+        SeriesSource::new(client, series_rx, app.state.date_state.year, None);
     let playoff_bracket_tx = tx.clone();
     let playoff_bracket_cancel = cancel.clone();
     tokio::spawn(async move {

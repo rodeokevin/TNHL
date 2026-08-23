@@ -14,6 +14,7 @@ pub enum TeamStatsCommand {
 }
 
 pub struct TeamStatsSource {
+    client: reqwest::Client,
     rx: Receiver<TeamStatsCommand>,
     current_team: TeamAbbrev,
     current_year: i32,
@@ -21,11 +22,13 @@ pub struct TeamStatsSource {
 }
 impl TeamStatsSource {
     pub fn new(
+        client: reqwest::Client,
         rx: Receiver<TeamStatsCommand>,
         current_team: TeamAbbrev,
         current_year: i32,
     ) -> Self {
         Self {
+            client,
             rx,
             current_team,
             current_year,
@@ -41,7 +44,7 @@ impl TeamStatsSource {
             self.current_year,
         );
 
-        match reqwest::get(&regular_season_url).await {
+        match self.client.get(&regular_season_url).send().await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
                     // Parse the JSON
@@ -75,7 +78,7 @@ impl TeamStatsSource {
             self.current_year,
         );
 
-        match reqwest::get(&playoffs_url).await {
+        match self.client.get(&playoffs_url).send().await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
                     // Parse the JSON

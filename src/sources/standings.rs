@@ -12,13 +12,19 @@ pub enum StandingsCommand {
 }
 
 pub struct StandingsSource {
+    client: reqwest::Client,
     rx: Receiver<StandingsCommand>,
     current_date: String,
     fetch_interval: Duration,
 }
 impl StandingsSource {
-    pub fn new(rx: Receiver<StandingsCommand>, current_date: String) -> Self {
+    pub fn new(
+        client: reqwest::Client,
+        rx: Receiver<StandingsCommand>,
+        current_date: String,
+    ) -> Self {
         Self {
+            client,
             rx,
             current_date,
             fetch_interval: FetchInterval::InfoShortInterval.as_duration(),
@@ -31,7 +37,7 @@ impl StandingsSource {
             self.current_date
         );
 
-        match reqwest::get(&url).await {
+        match self.client.get(&url).send().await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
                     // Parse the JSON

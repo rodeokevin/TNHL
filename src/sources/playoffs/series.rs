@@ -12,17 +12,20 @@ pub enum SeriesCommand {
 }
 
 pub struct SeriesSource {
+    client: reqwest::Client,
     rx: Receiver<SeriesCommand>,
     current_year: i32,
     series_letter: Option<char>,
 }
 impl SeriesSource {
     pub fn new(
+        client: reqwest::Client,
         rx: Receiver<SeriesCommand>,
         current_year: i32,
         series_letter: Option<char>,
     ) -> Self {
         Self {
+            client,
             rx,
             current_year,
             series_letter,
@@ -37,7 +40,7 @@ impl SeriesSource {
                 self.current_year.to_string(),
                 letter,
             );
-            match reqwest::get(&url).await {
+            match self.client.get(&url).send().await {
                 Ok(resp) => {
                     if let Ok(body) = resp.text().await {
                         // Parse the JSON

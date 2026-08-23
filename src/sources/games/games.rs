@@ -12,13 +12,15 @@ pub enum GamesCommand {
 }
 
 pub struct GamesSource {
+    client: reqwest::Client,
     rx: Receiver<GamesCommand>,
     current_date: String,
     fetch_interval: Duration,
 }
 impl GamesSource {
-    pub fn new(rx: Receiver<GamesCommand>, current_date: String) -> Self {
+    pub fn new(client: reqwest::Client, rx: Receiver<GamesCommand>, current_date: String) -> Self {
         Self {
+            client,
             rx,
             current_date,
             fetch_interval: FetchInterval::GamesShortInterval.as_duration(),
@@ -28,7 +30,7 @@ impl GamesSource {
     async fn fetch(&self, tx: &Sender<AppEvent>) {
         let url = format!("https://api-web.nhle.com/v1/score/{}", self.current_date);
 
-        match reqwest::get(&url).await {
+        match self.client.get(&url).send().await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
                     match GamesResponse::from_json(&body) {

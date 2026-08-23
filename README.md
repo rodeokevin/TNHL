@@ -44,7 +44,7 @@ Available keys:
 | Key             | Type   | Default            | Description                                                                                          |
 | --------------- | ------ | ------------------ | ---------------------------------------------------------------------------------------------------- |
 | `timezone`      | string | `America/Montreal` | Timezone for displayed game start times. Any [IANA tz name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (e.g. `US/Eastern`). |
-| `favorite_team` | string | none               | Your team's 3-letter code (e.g. `MTL`, case-insensitive). Becomes the default team on the Team Stats page and is highlighted in gold in the standings and today's matchups. |
+| `favorite_team` | string | none               | Your team's 3-letter code (e.g. `MTL`, case-insensitive). Becomes the default team on the Team Stats page and is highlighted in the standings and today's matchups. |
 | `log_level`     | string | `error`            | Logging verbosity written to `app.log`: `off`, `trace`, `debug`, `info`, `warn`, or `error`.         |
 
 Example:
