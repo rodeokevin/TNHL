@@ -45,7 +45,14 @@ impl App {
     fn configure(&mut self) {
         self.set_all_datepickers_to_today();
         self.set_time_zone();
-        // self.state.standings.favorite_team = self.settings.favorite_team;
+
+        // Apply the favorite team (if configured) as the default team shown on
+        // the Team Stats page. The team stats source is initialized with the
+        // same team in `main.rs`, so no command needs to be sent here.
+        if let Some(favorite) = self.settings.favorite_team {
+            log::info!("Favorite team configured: {favorite}");
+            self.state.team_stats.team_picker.current_team = favorite;
+        }
 
         // override log level if set
         if let Some(level) = self.settings.log_level {

@@ -9,7 +9,6 @@ mod ui;
 
 use crate::{
     app::App,
-    models::TeamAbbrev,
     sources::{
         AppEvent, Source,
         games::{
@@ -162,7 +161,7 @@ where
     // Spawn team stats source
     let team_stats_source = TeamStatsSource::new(
         team_stats_rx,
-        TeamAbbrev::default(),
+        app.settings.favorite_team.unwrap_or_default(),
         app.state.date_state.year,
     );
     let team_stats_tx = tx.clone();

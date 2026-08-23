@@ -1,10 +1,10 @@
 use crate::config::ConfigFile;
+use crate::models::TeamAbbrev;
 use chrono_tz::Tz;
 
 #[derive(Debug, Default, Clone)]
 pub struct AppSettings {
-    // pub favorite_team: Option<Team>,
-    pub full_screen: bool,
+    pub favorite_team: Option<TeamAbbrev>,
     pub timezone: Tz,
     pub timezone_abbreviation: String,
     pub log_level: Option<log::LevelFilter>,

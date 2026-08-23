@@ -1,4 +1,5 @@
 use crate::app::App;
+use crate::models::TeamAbbrev;
 use crate::models::games::games::{
     GameData, GameState, PeriodDescriptor, PeriodType, SeriesStatus, SituationDesc,
 };
@@ -6,7 +7,7 @@ use crate::state::games_state::GamesFocus;
 use crate::ui::games::stats::AWAY_BAR_COLOR;
 use crate::ui::{
     games::{boxscore, scoring, stats},
-    render::{border_style, split_area_horizontal, split_area_vertical},
+    render::{BORDER_COLOR, border_style, split_area_horizontal, split_area_vertical},
 };
 use chrono_tz::Tz;
 use std::rc::Rc;
@@ -35,6 +36,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         ],
     );
 
+    let favorite = app.settings.favorite_team;
     let matchups: Vec<Line> = app
         .state
         .games
@@ -44,7 +46,16 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             data.games
                 .iter()
                 .map(|game| {
-                    let color = get_color_from_game_state(&game.game_state);
+                    // Favorite team playing in this matchup overrides the
+                    // game-state color with gold; otherwise use the state color.
+                    let is_favorite = favorite.is_some_and(|fav| {
+                        fav == game.away_team.abbrev || fav == game.home_team.abbrev
+                    });
+                    let color = if is_favorite {
+                        Style::new().fg(BORDER_COLOR)
+                    } else {
+                        get_color_from_game_state(&game.game_state)
+                    };
                     Line::from(format!(
                         "{} @ {}",
                         game.away_team.abbrev, game.home_team.abbrev
@@ -165,7 +176,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 frame,
                 upper_info_chunks[1],
             );
-            render_team_status(game, frame, upper_info_chunks[2]);
+            render_team_status(game, favorite, frame, upper_info_chunks[2]);
             render_shots_on_goal(game, frame, upper_info_chunks[3]);
             render_big_score(game, frame, upper_score_lower[1]);
 
@@ -341,8 +352,22 @@ pub fn render_sweeping_status(
     }
 }
 
-pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
+pub fn render_team_status(
+    game: &GameData,
+    favorite: Option<TeamAbbrev>,
+    frame: &mut Frame,
+    area: Rect,
+) {
     let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
+
+    // Style the favorite team's name gold when it's playing in this game.
+    let name_style = |abbrev: TeamAbbrev| {
+        if favorite == Some(abbrev) {
+            Style::new().fg(BORDER_COLOR).bold()
+        } else {
+            Style::default()
+        }
+    };
 
     let mut left_spans = vec![];
     let situation = game.situation.as_ref();
@@ -367,12 +392,18 @@ pub fn render_team_status(game: &GameData, frame: &mut Frame, area: Rect) {
             }
         }
     }
-    left_spans.push(Span::raw(&game.away_team.name.default));
+    left_spans.push(Span::styled(
+        &game.away_team.name.default,
+        name_style(game.away_team.abbrev),
+    ));
     frame.render_widget(Line::from(left_spans).right_aligned(), chunks[0]);
     frame.render_widget(Line::from("vs").centered(), chunks[1]);
 
     let mut right_spans = vec![];
-    right_spans.push(Span::raw(&game.home_team.name.default));
+    right_spans.push(Span::styled(
+        &game.home_team.name.default,
+        name_style(game.home_team.abbrev),
+    ));
     if let Some(s) = situation {
         if let Some(descs) = s.home_team.situation_descriptions.as_deref() {
             let parts: Vec<String> = descs

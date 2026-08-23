@@ -1,12 +1,13 @@
+use crate::models::TeamAbbrev;
 use crate::state::app_settings::AppSettings;
 use anyhow::Context;
 use chrono::{TimeZone, Utc};
-use chrono_tz::America::Montreal;
 use chrono_tz::{OffsetName, Tz};
 use directories::ProjectDirs;
 use log::{LevelFilter, error};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -22,7 +23,10 @@ pub enum LogLevel {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
-    /// See the `TEAM_NAMES` map in `components/constants.rs` for options.
+    /// Your favorite team's 3-letter abbreviation (e.g. "MTL", "TOR").
+    /// When set, it becomes the default team on the Team Stats page and is
+    /// highlighted in the standings and in today's game matchups.
+    /// Case-insensitive. See the `TeamAbbrev` enum for all valid codes.
     pub favorite_team: Option<String>,
 
     /// Timezone to display game start times in. Common options are:
@@ -53,8 +57,7 @@ impl Default for ConfigFile {
 impl Into<AppSettings> for ConfigFile {
     fn into(self) -> AppSettings {
         AppSettings {
-            // favorite_team: self.validate_favorite_team(),
-            full_screen: false,
+            favorite_team: self.validate_favorite_team(),
             timezone: self.validate_timezone(),
             timezone_abbreviation: self.get_timezone_abbreviation(),
             log_level: self.validate_log_level(),
@@ -65,7 +68,7 @@ impl Into<AppSettings> for ConfigFile {
 static CONFIG_FILE_LOCATION: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 impl ConfigFile {
-    const DEFAULT_TIMEZONE: Tz = Montreal;
+    const DEFAULT_TIMEZONE: Tz = chrono_tz::America::Montreal;
     const CONFIG_FILE_NAME: &'static str = "tnhl.toml";
 
     pub fn load_from_file() -> anyhow::Result<ConfigFile> {
@@ -79,14 +82,18 @@ impl ConfigFile {
         }
     }
 
-    // fn validate_favorite_team(&self) -> Option<Team> {
-    //     if let Some(favorite) = &self.favorite_team
-    //         && let Some(team) = TEAM_IDS.get(favorite.as_str())
-    //     {
-    //         return Some(*team);
-    //     }
-    //     None
-    // }
+    /// Parse the configured favorite team abbreviation into a `TeamAbbrev`.
+    /// Invalid or missing values yield `None` (logged, non-fatal).
+    fn validate_favorite_team(&self) -> Option<TeamAbbrev> {
+        let favorite = self.favorite_team.as_ref()?;
+        match TeamAbbrev::from_str(favorite.trim()) {
+            Ok(team) => Some(team),
+            Err(_) => {
+                error!("invalid favorite_team in config: {favorite:?}");
+                None
+            }
+        }
+    }
 
     fn validate_timezone(&self) -> Tz {
         self.timezone.unwrap_or(Self::DEFAULT_TIMEZONE)
@@ -146,5 +153,52 @@ impl ConfigFile {
     fn load_config_file(path: &PathBuf) -> anyhow::Result<Self> {
         let contents = std::fs::read_to_string(path).context("could not read config file")?;
         toml::from_str(&contents).context("could not deserialize config file")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config_with_favorite(favorite: Option<&str>) -> ConfigFile {
+        ConfigFile {
+            favorite_team: favorite.map(|s| s.to_string()),
+            ..ConfigFile::default()
+        }
+    }
+
+    #[test]
+    fn valid_favorite_team_parses() {
+        let cfg = config_with_favorite(Some("TOR"));
+        assert_eq!(cfg.validate_favorite_team(), Some(TeamAbbrev::TOR));
+    }
+
+    #[test]
+    fn favorite_team_is_case_insensitive_and_trimmed() {
+        assert_eq!(
+            config_with_favorite(Some("mtl")).validate_favorite_team(),
+            Some(TeamAbbrev::MTL)
+        );
+        assert_eq!(
+            config_with_favorite(Some("  VgK ")).validate_favorite_team(),
+            Some(TeamAbbrev::VGK)
+        );
+    }
+
+    #[test]
+    fn invalid_favorite_team_is_none() {
+        assert_eq!(
+            config_with_favorite(Some("ZZZ")).validate_favorite_team(),
+            None
+        );
+        assert_eq!(
+            config_with_favorite(Some("")).validate_favorite_team(),
+            None
+        );
+    }
+
+    #[test]
+    fn missing_favorite_team_is_none() {
+        assert_eq!(config_with_favorite(None).validate_favorite_team(), None);
     }
 }
