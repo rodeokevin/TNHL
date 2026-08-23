@@ -10,7 +10,8 @@ use crate::models::{
 use crate::ui::{
     games::games::{get_period_title, split_info_left_middle_right},
     games::stats::{AWAY_BAR_COLOR, HOME_BAR_COLOR},
-    render::{border_style, split_area_vertical},
+    layout::split_area_vertical,
+    render::border_style,
 };
 
 use ratatui::{

@@ -2,11 +2,12 @@ use crate::app::App;
 use crate::models::TeamAbbrev;
 use crate::models::standings::{StandingsResponse, TeamData};
 use crate::state::standings_state::{ConferenceFocus, DivisionFocus, StandingsFocus};
+use crate::ui::layout::tabs_and_content;
 use crate::ui::render::{BORDER_COLOR, border_style};
 
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Rect},
     style::{Color, Modifier, Style},
     text::Line,
     widgets::{Block, Row, Table, TableState, Tabs},
@@ -40,13 +41,7 @@ const STANDINGS_COLUMN_WIDTHS: [Constraint; 18] = [
 
 pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
-    let tab_content_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3), // tabs
-            Constraint::Min(1),    // table
-        ])
-        .split(area);
+    let tab_content_chunks = tabs_and_content(area);
 
     // Pass visible rows to standings state
     app.state.standings.visible_rows = tab_content_chunks[1].height.saturating_sub(3) as usize;

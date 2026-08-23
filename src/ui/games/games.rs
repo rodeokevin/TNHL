@@ -7,7 +7,8 @@ use crate::state::games_state::GamesFocus;
 use crate::ui::games::stats::AWAY_BAR_COLOR;
 use crate::ui::{
     games::{boxscore, scoring, stats},
-    render::{BORDER_COLOR, border_style, split_area_horizontal, split_area_vertical},
+    layout::{split_area_horizontal, split_area_vertical, tabs_and_content},
+    render::{BORDER_COLOR, border_style},
 };
 use chrono_tz::Tz;
 use std::rc::Rc;
@@ -28,13 +29,7 @@ pub const BIG_SCORE_COLOR: Color = Color::Rgb(35, 179, 16); // Green
 
 pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
-    let tab_content_chunks = split_area_vertical(
-        area,
-        [
-            Constraint::Length(3), // tabs
-            Constraint::Min(1),    // game info
-        ],
-    );
+    let tab_content_chunks = tabs_and_content(area);
 
     let favorite = app.settings.favorite_team;
     let matchups: Vec<Line> = app

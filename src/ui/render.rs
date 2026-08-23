@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -140,19 +138,4 @@ fn render_help(frame: &mut Frame, area: Rect, app: &mut App) {
     frame.render_widget(block, area);
 
     frame.render_stateful_widget(HelpWidget {}, area, &mut app.state.help.table_state);
-}
-
-pub fn split_area_horizontal(area: Rect, constraints: impl Into<Vec<Constraint>>) -> Vec<Rect> {
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(constraints.into())
-        .split(area)
-        .to_vec()
-}
-
-pub fn split_area_vertical(area: Rect, constraints: impl Into<Vec<Constraint>>) -> Rc<[Rect]> {
-    Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(constraints.into())
-        .split(area)
 }
