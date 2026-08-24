@@ -1,7 +1,10 @@
 use crate::App;
 use crate::models::games::game_story::{GameStatsCategory, StatValue, TeamGameStats};
 use crate::ui::{
-    games::{games::split_info_left_middle_right, scoring::MIDDLE_LENGTH},
+    games::{
+        games::{render_scroll_frame, split_info_left_middle_right},
+        scoring::MIDDLE_LENGTH,
+    },
     render::border_style,
 };
 use std::collections::HashMap;
@@ -9,7 +12,7 @@ use std::vec;
 
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
     widgets::Paragraph,
@@ -19,9 +22,6 @@ pub const AWAY_BAR_COLOR: Color = Color::Rgb(220, 50, 47); // Red
 pub const HOME_BAR_COLOR: Color = Color::Rgb(38, 139, 210); // Blue
 
 pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
-    // Pass visible rows to game state
-    app.state.games.visible_rows = area.height.saturating_sub(3) as usize;
-
     let game_id = app
         .state
         .games
@@ -156,41 +156,22 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
         }
     }
 
-    // Split area into top scroll indicator, content and bottom scroll indicator
-    let vert_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(1),
-            Constraint::Min(0),
-            Constraint::Length(1),
-        ])
-        .split(area);
-
-    let content_height = vert_chunks[1].height as usize;
-    let last_line = away_lines.len().saturating_sub(content_height);
-    app.state.games.max_scroll = last_line;
-    let offset = app.state.games.scroll_offset.min(last_line);
-    let can_scroll_up = offset > 0;
-    let can_scroll_down = offset < last_line;
-
-    // Slice to visible window
-    let end = (offset + content_height).min(away_lines.len());
-
-    let visible_away: Vec<Line> = away_lines[offset..end].to_vec();
-    let visible_home: Vec<Line> = home_lines[offset..end].to_vec();
-    let visible_period: Vec<Line> = middle_lines[offset..end].to_vec();
-
-    frame.render_widget(
-        Line::from(if can_scroll_up { "▲" } else { "" }).centered(),
-        vert_chunks[0],
+    // Reserve indicator rows, compute the visible window, and render ▲/▼.
+    let view = render_scroll_frame(
+        frame,
+        area,
+        away_lines.len(),
+        app.state.games.scroll_offset,
+        &mut app.state.games.max_scroll,
+        &mut app.state.games.visible_rows,
     );
-    frame.render_widget(
-        Line::from(if can_scroll_down { "▼" } else { "" }).centered(),
-        vert_chunks[2],
-    );
+
+    let visible_away: Vec<Line> = away_lines[view.range.clone()].to_vec();
+    let visible_home: Vec<Line> = home_lines[view.range.clone()].to_vec();
+    let visible_period: Vec<Line> = middle_lines[view.range].to_vec();
 
     // Re-split the content area horizontally
-    let chunks = split_info_left_middle_right(vert_chunks[1], 25);
+    let chunks = split_info_left_middle_right(view.content, 25);
 
     frame.render_widget(Paragraph::new(visible_away), chunks[0]);
     frame.render_widget(Paragraph::new(visible_period), chunks[1]);

@@ -153,7 +153,8 @@ fn render_schedule(
 
     let mut has_if_necessary = false;
 
-    for game in &series.games {
+    let last_game_index = series.games.len().saturating_sub(1);
+    for (game_index, game) in series.games.iter().enumerate() {
         if game.if_necessary {
             has_if_necessary = true;
         }
@@ -287,13 +288,15 @@ fn render_schedule(
         home_team_lines.push(home_team_line);
         home_team_lines.push(Line::default());
 
-        // Empty line for spacing
-        game_number_lines.push(Line::default());
-        away_score_lines.push(Line::default());
-        home_score_lines.push(Line::default());
-        game_status_lines.push(Line::default());
-        away_team_lines.push(Line::default());
-        home_team_lines.push(Line::default());
+        // Empty line between games (but not after the last game).
+        if game_index != last_game_index {
+            game_number_lines.push(Line::default());
+            away_score_lines.push(Line::default());
+            home_score_lines.push(Line::default());
+            game_status_lines.push(Line::default());
+            away_team_lines.push(Line::default());
+            home_team_lines.push(Line::default());
+        }
     }
 
     let vert_chunks = Layout::default()

@@ -606,6 +606,59 @@ pub fn split_info_left_middle_right(area: Rect, middle_length: u16) -> Rc<[Rect]
         .split(area)
 }
 
+/// The content area and visible line range produced by [`render_scroll_frame`].
+pub struct ScrollView {
+    /// Inner content area (between the scroll indicators).
+    pub content: Rect,
+    /// Range of line indices currently visible: `offset..end`.
+    pub range: std::ops::Range<usize>,
+}
+
+/// Reserve top/bottom rows for `▲`/`▼` scroll indicators, compute the visible
+/// window over `total_lines`, render the indicators, and update `max_scroll` /
+/// `visible_rows`. Shared by the scrollable game views (scoring, stats,
+/// pre-game).
+pub fn render_scroll_frame(
+    frame: &mut Frame,
+    area: Rect,
+    total_lines: usize,
+    scroll_offset: usize,
+    max_scroll: &mut usize,
+    visible_rows: &mut usize,
+) -> ScrollView {
+    let vert_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Min(0),
+            Constraint::Length(1),
+        ])
+        .split(area);
+
+    let content = vert_chunks[1];
+    let content_height = content.height as usize;
+    *visible_rows = content_height;
+
+    let last_line = total_lines.saturating_sub(content_height);
+    *max_scroll = last_line;
+    let offset = scroll_offset.min(last_line);
+    let end = (offset + content_height).min(total_lines);
+
+    frame.render_widget(
+        Line::from(if offset > 0 { "▲" } else { "" }).centered(),
+        vert_chunks[0],
+    );
+    frame.render_widget(
+        Line::from(if offset < last_line { "▼" } else { "" }).centered(),
+        vert_chunks[2],
+    );
+
+    ScrollView {
+        content,
+        range: offset..end,
+    }
+}
+
 pub fn get_block_title(focus: &GamesFocus) -> String {
     match focus {
         GamesFocus::Scoring => " Scoring ".to_string(),

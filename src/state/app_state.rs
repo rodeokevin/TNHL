@@ -308,36 +308,10 @@ impl AppState {
             }
 
             // Playoffs page actions
-            Action::PlayoffsScrollUp => {
-                // Todo: move this into PlayoffsState
-                self.playoffs.vertical_scroll_offset =
-                    self.playoffs.vertical_scroll_offset.saturating_sub(1);
-            }
-            Action::PlayoffsScrollDown => {
-                // Todo: move this into PlayoffsState
-                self.playoffs.vertical_scroll_offset = self
-                    .playoffs
-                    .vertical_scroll_offset
-                    .saturating_add(1)
-                    .min(self.playoffs.vertical_max_scroll);
-            }
-            Action::PlayoffsScrollLeft => {
-                // Todo: move this into PlayoffsState
-                if self.playoffs.focus == PlayoffsFocus::Bracket {
-                    self.playoffs.horizontal_scroll_offset =
-                        self.playoffs.horizontal_scroll_offset.saturating_sub(1);
-                }
-            }
-            Action::PlayoffsScrollRight => {
-                // Todo: move this into PlayoffsState
-                if self.playoffs.focus == PlayoffsFocus::Bracket {
-                    self.playoffs.horizontal_scroll_offset = self
-                        .playoffs
-                        .horizontal_scroll_offset
-                        .saturating_add(1)
-                        .min(self.playoffs.horizontal_max_scroll);
-                }
-            }
+            Action::PlayoffsScrollUp => self.playoffs.scroll_up(),
+            Action::PlayoffsScrollDown => self.playoffs.scroll_down(),
+            Action::PlayoffsScrollLeft => self.playoffs.scroll_left(),
+            Action::PlayoffsScrollRight => self.playoffs.scroll_right(),
             Action::PlayoffsPageUp => self.playoffs.page_up(),
             Action::PlayoffsPageDown => self.playoffs.page_down(),
             Action::PlayoffsPageLeft => self.playoffs.page_left(),
@@ -573,11 +547,13 @@ impl AppState {
 
 pub fn table_page_up(visible_rows: usize, table_state: &mut TableState) {
     if visible_rows != 0 {
-        // The first visible row becomes the last visible row
+        // Page up so the current first visible row becomes the last visible row
+        // of the new page, and select that row.
         let offset = table_state.offset();
         let new_offset = offset.saturating_sub(visible_rows - 1);
         *table_state.offset_mut() = new_offset;
-        table_state.select(Some(new_offset));
+        // The old top row (`offset`) is always within the new page; select it.
+        table_state.select(Some(offset));
     }
 }
 pub fn table_page_down(visible_rows: usize, len: usize, table_state: &mut TableState) {
@@ -592,5 +568,51 @@ pub fn table_page_down(visible_rows: usize, len: usize, table_state: &mut TableS
             (offset + visible_rows - 1).min(len - 1)
         };
         table_state.select(Some(last_visible));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn state_at(offset: usize, selected: usize) -> TableState {
+        let mut t = TableState::default();
+        *t.offset_mut() = offset;
+        t.select(Some(selected));
+        t
+    }
+
+    #[test]
+    fn page_up_selects_old_top_row() {
+        // Viewing rows 10..20 (10 visible). Page up should scroll so the old
+        // top row (10) becomes the bottom of the new page, and select it.
+        let mut ts = state_at(10, 15);
+        table_page_up(10, &mut ts);
+        assert_eq!(ts.offset(), 1); // 10 - (10 - 1)
+        assert_eq!(ts.selected(), Some(10));
+    }
+
+    #[test]
+    fn page_up_clamps_at_top() {
+        let mut ts = state_at(3, 5);
+        table_page_up(10, &mut ts);
+        assert_eq!(ts.offset(), 0);
+        assert_eq!(ts.selected(), Some(3)); // old top still within the new page
+    }
+
+    #[test]
+    fn page_down_selects_old_bottom_row() {
+        // Viewing rows 0..10 of a 50-row table; last visible row (9) becomes
+        // the top of the new page and is selected.
+        let mut ts = state_at(0, 4);
+        table_page_down(10, 50, &mut ts);
+        assert_eq!(ts.selected(), Some(9));
+    }
+
+    #[test]
+    fn page_down_clamps_at_last_row() {
+        let mut ts = state_at(45, 47);
+        table_page_down(10, 50, &mut ts);
+        assert_eq!(ts.selected(), Some(49)); // len - 1
     }
 }

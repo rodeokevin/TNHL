@@ -5,13 +5,13 @@ use crate::models::games::{
     },
 };
 use crate::ui::{
-    games::games::{BIG_SCORE_COLOR, split_info_left_middle_right},
+    games::games::{BIG_SCORE_COLOR, render_scroll_frame, split_info_left_middle_right},
     games::stats::AWAY_BAR_COLOR,
     render::border_style,
 };
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::Paragraph,
@@ -29,9 +29,6 @@ pub fn render_scoring(
     max_scroll: &mut usize,
     visible_rows: &mut usize,
 ) {
-    // Pass visible rows to game state
-    *visible_rows = area.height.saturating_sub(3) as usize;
-
     let away_team_abbrev = &game.away_team.abbrev;
     let home_team_abbrev = &game.home_team.abbrev;
 
@@ -188,41 +185,22 @@ pub fn render_scoring(
         away_lines.push(Line::default());
     }
 
-    // Split area into top scroll indicator, content and bottom scroll indicator
-    let vert_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(1),
-            Constraint::Min(0),
-            Constraint::Length(1),
-        ])
-        .split(area);
-
-    let content_height = vert_chunks[1].height as usize;
-    let last_line = away_lines.len().saturating_sub(content_height);
-    *max_scroll = last_line;
-    let offset = scroll_offset.min(last_line);
-    let can_scroll_up = offset > 0;
-    let can_scroll_down = offset < last_line;
-
-    // Slice to visible window
-    let end = (offset + content_height).min(away_lines.len());
-
-    let visible_away = away_lines[offset..end].to_vec();
-    let visible_home = home_lines[offset..end].to_vec();
-    let visible_middle = middle_lines[offset..end].to_vec();
-
-    frame.render_widget(
-        Line::from(if can_scroll_up { "▲" } else { "" }).centered(),
-        vert_chunks[0],
+    // Reserve indicator rows, compute the visible window, and render ▲/▼.
+    let view = render_scroll_frame(
+        frame,
+        area,
+        away_lines.len(),
+        scroll_offset,
+        max_scroll,
+        visible_rows,
     );
-    frame.render_widget(
-        Line::from(if can_scroll_down { "▼" } else { "" }).centered(),
-        vert_chunks[2],
-    );
+
+    let visible_away: Vec<Line> = away_lines[view.range.clone()].to_vec();
+    let visible_home: Vec<Line> = home_lines[view.range.clone()].to_vec();
+    let visible_middle: Vec<Line> = middle_lines[view.range].to_vec();
 
     // Re-split the content area horizontally
-    let chunks = split_info_left_middle_right(vert_chunks[1], MIDDLE_LENGTH);
+    let chunks = split_info_left_middle_right(view.content, MIDDLE_LENGTH);
 
     frame.render_widget(Paragraph::new(visible_away), chunks[0]);
     frame.render_widget(Paragraph::new(visible_middle), chunks[1]);

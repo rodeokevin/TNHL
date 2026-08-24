@@ -1,6 +1,12 @@
 use crate::models::playoffs::bracket::BracketResponse;
 use crate::models::playoffs::series::SeriesResponse;
 
+/// Cells moved per arrow-key scroll in the bracket.
+const BRACKET_SCROLL_STEP: usize = 2;
+/// Cells moved per page (Shift + arrow) in the bracket. Fixed rather than a
+/// full screen so paging the large canvas isn't a huge jump.
+const BRACKET_PAGE_STEP: usize = 10;
+
 pub struct PlayoffsState {
     pub focus: PlayoffsFocus,
     pub bracket_data: Option<BracketResponse>,
@@ -51,34 +57,53 @@ impl PlayoffsState {
         self.series_data = None;
         self.focus = PlayoffsFocus::default();
     }
-    /// Page up
-    pub fn page_up(&mut self) {
-        if self.visible_rows != 0 {
-            self.vertical_scroll_offset = self
-                .vertical_scroll_offset
-                .saturating_sub(self.visible_rows);
-        }
+    /// Scroll the bracket by a fixed step.
+    pub fn scroll_up(&mut self) {
+        self.vertical_scroll_offset = self
+            .vertical_scroll_offset
+            .saturating_sub(BRACKET_SCROLL_STEP);
     }
-    /// Page down
-    pub fn page_down(&mut self) {
-        if self.visible_rows != 0 {
-            self.vertical_scroll_offset =
-                (self.vertical_scroll_offset + self.visible_rows).min(self.vertical_max_scroll);
-        }
+    pub fn scroll_down(&mut self) {
+        self.vertical_scroll_offset =
+            (self.vertical_scroll_offset + BRACKET_SCROLL_STEP).min(self.vertical_max_scroll);
     }
-    /// Page left
-    pub fn page_left(&mut self) {
-        if self.focus == PlayoffsFocus::Bracket && self.visible_columns != 0 {
+    pub fn scroll_left(&mut self) {
+        if self.focus == PlayoffsFocus::Bracket {
             self.horizontal_scroll_offset = self
                 .horizontal_scroll_offset
-                .saturating_sub(self.visible_columns);
+                .saturating_sub(BRACKET_SCROLL_STEP);
         }
     }
-    /// Page right bracket
-    pub fn page_right(&mut self) {
-        if self.focus == PlayoffsFocus::Bracket && self.visible_columns != 0 {
-            self.horizontal_scroll_offset = (self.horizontal_scroll_offset + self.visible_columns)
+    pub fn scroll_right(&mut self) {
+        if self.focus == PlayoffsFocus::Bracket {
+            self.horizontal_scroll_offset = (self.horizontal_scroll_offset + BRACKET_SCROLL_STEP)
                 .min(self.horizontal_max_scroll);
+        }
+    }
+    /// Page up by a fixed step.
+    pub fn page_up(&mut self) {
+        self.vertical_scroll_offset = self
+            .vertical_scroll_offset
+            .saturating_sub(BRACKET_PAGE_STEP);
+    }
+    /// Page down by a fixed step.
+    pub fn page_down(&mut self) {
+        self.vertical_scroll_offset =
+            (self.vertical_scroll_offset + BRACKET_PAGE_STEP).min(self.vertical_max_scroll);
+    }
+    /// Page left by a fixed step.
+    pub fn page_left(&mut self) {
+        if self.focus == PlayoffsFocus::Bracket {
+            self.horizontal_scroll_offset = self
+                .horizontal_scroll_offset
+                .saturating_sub(BRACKET_PAGE_STEP);
+        }
+    }
+    /// Page right by a fixed step.
+    pub fn page_right(&mut self) {
+        if self.focus == PlayoffsFocus::Bracket {
+            self.horizontal_scroll_offset =
+                (self.horizontal_scroll_offset + BRACKET_PAGE_STEP).min(self.horizontal_max_scroll);
         }
     }
     /// Try selecting a series using a letter if it exists. Return true if succeeded

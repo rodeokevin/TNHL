@@ -1,6 +1,6 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
     widgets::Paragraph,
@@ -9,7 +9,7 @@ use ratatui::{
 use crate::models::games::game_story::{
     GameStoryResponse, GoalieCompare, PreGameMatchup, StoryTeam,
 };
-use crate::ui::games::games::{ordinal, split_info_left_middle_right};
+use crate::ui::games::games::{ordinal, render_scroll_frame, split_info_left_middle_right};
 use crate::ui::games::stats::{AWAY_BAR_COLOR, HOME_BAR_COLOR};
 use crate::ui::render::border_style;
 
@@ -60,38 +60,20 @@ pub fn render_pregame(
         &mut rows,
     );
 
-    // Split off top/bottom rows for scroll indicators (mirrors render_scoring).
-    let vert_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(1),
-            Constraint::Min(0),
-            Constraint::Length(1),
-        ])
-        .split(area);
-
-    let content = vert_chunks[1];
-    let content_height = content.height as usize;
-    *visible_rows = content_height;
-    let last_line = rows.len().saturating_sub(content_height);
-    *max_scroll = last_line;
-    let offset = scroll_offset.min(last_line);
-    let can_scroll_up = offset > 0;
-    let can_scroll_down = offset < last_line;
-
-    frame.render_widget(
-        Line::from(if can_scroll_up { "▲" } else { "" }).centered(),
-        vert_chunks[0],
+    // Reserve indicator rows, compute the visible window, and render ▲/▼.
+    let view = render_scroll_frame(
+        frame,
+        area,
+        rows.len(),
+        scroll_offset,
+        max_scroll,
+        visible_rows,
     );
-    frame.render_widget(
-        Line::from(if can_scroll_down { "▼" } else { "" }).centered(),
-        vert_chunks[2],
-    );
+    let content = view.content;
 
     // Render the visible window one row at a time so columned and full-width
     // rows can coexist under a single scroll offset.
-    let end = (offset + content_height).min(rows.len());
-    for (i, row) in rows[offset..end].iter().enumerate() {
+    for (i, row) in rows[view.range].iter().enumerate() {
         let row_area = Rect {
             x: content.x,
             y: content.y + i as u16,
