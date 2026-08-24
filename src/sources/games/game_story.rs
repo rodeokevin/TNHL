@@ -57,7 +57,7 @@ impl GameStorySource {
                         }
                     }
                     Err(err) => {
-                        log::info!(
+                        log::warn!(
                             "Failed to fetch game story for game id {}: {}",
                             game_id,
                             err
@@ -85,12 +85,12 @@ impl Source for GameStorySource {
                     match cmd {
                         GameStoryCommand::SetGameIds(mut ids) => {
                             ids.sort();
-                            log::info!("Received game ids: {:?}", ids);
+                            log::trace!("Received game ids: {:?}", ids);
                             let mut current = self.game_ids.clone();
                             current.sort();
                             // Only fetch if game ids changed since this command is called on every GamesUpdate event
                             if ids != current {
-                                log::info!("Fetching game story because game ids changed");
+                                log::debug!("Fetching game story because game ids changed");
                                 self.game_ids = ids;
                                 self.fetch(&tx).await;
                                 interval.reset();
@@ -98,7 +98,7 @@ impl Source for GameStorySource {
                         },
                         GameStoryCommand::SetInterval(new_interval) => {
                             if new_interval != self.fetch_interval {
-                                log::info!("Setting game story interval to {:?}", new_interval);
+                                log::debug!("Setting game story interval to {:?}", new_interval);
                                 self.fetch_interval = new_interval;
 
                                 interval = tokio::time::interval(self.fetch_interval);

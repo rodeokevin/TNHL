@@ -46,18 +46,18 @@ impl SeriesSource {
                         // Parse the JSON
                         match SeriesResponse::from_json(&body) {
                             Ok(parsed_series) => {
-                                log::info!("Series data successfully parsed!");
+                                log::debug!("Series data successfully parsed");
                                 let _ = tx.send(AppEvent::SeriesUpdate(parsed_series)).await;
-                                log::info!("Sent series data to app");
+                                log::debug!("Sent series data to app");
                             }
                             Err(e) => log::error!("Failed to parse series: {}", e),
                         }
                     }
                 }
-                Err(err) => log::info!("Failed to fetch series: {}", err),
+                Err(err) => log::warn!("Failed to fetch series: {}", err),
             }
         } else {
-            log::info!("Not fetching series data because no series is selected");
+            log::debug!("Not fetching series data because no series is selected");
         }
     }
 }
@@ -80,12 +80,12 @@ impl Source for SeriesSource {
                         }
                         SeriesCommand::SetSeries(letter) => {
                             if let Some(letter) = letter {
-                                log::info!("Fetching new series data for {} series: {}", self.current_year, letter);
+                                log::debug!("Fetching new series data for {} series: {}", self.current_year, letter);
                                 self.series_letter = Some(letter);
                                 self.fetch(&tx).await;
                                 interval.reset();
                             } else {
-                                log::info!("Series letter not set because it was None");
+                                log::debug!("Series letter not set because it was None");
                             }
                         }
                     }

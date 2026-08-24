@@ -50,7 +50,7 @@ impl TeamStatsSource {
                     // Parse the JSON
                     match TeamStatsResponse::from_json(&body) {
                         Ok(mut parsed_team_stats) => {
-                            log::info!("Regular season team stats data successfully parsed!");
+                            log::debug!("Regular season team stats data successfully parsed");
                             // Sort by points for skaters
                             parsed_team_stats
                                 .skaters
@@ -62,13 +62,13 @@ impl TeamStatsSource {
                             let _ = tx
                                 .send(AppEvent::TeamStatsRegularSeasonUpdate(parsed_team_stats))
                                 .await;
-                            log::info!("Sent regular season team stats data to app");
+                            log::debug!("Sent regular season team stats data to app");
                         }
                         Err(e) => log::error!("Failed to parse regular season team stats: {}", e),
                     }
                 }
             }
-            Err(err) => log::info!("Failed to fetch regular season team stats: {}", err),
+            Err(err) => log::warn!("Failed to fetch regular season team stats: {}", err),
         }
 
         let playoffs_url = format!(
@@ -84,7 +84,7 @@ impl TeamStatsSource {
                     // Parse the JSON
                     match TeamStatsResponse::from_json(&body) {
                         Ok(mut parsed_team_stats) => {
-                            log::info!("Playoffs team stats data successfully parsed!");
+                            log::debug!("Playoffs team stats data successfully parsed");
                             // Sort by points for skaters
                             parsed_team_stats
                                 .skaters
@@ -96,13 +96,13 @@ impl TeamStatsSource {
                             let _ = tx
                                 .send(AppEvent::TeamStatsPlayoffsUpdate(parsed_team_stats))
                                 .await;
-                            log::info!("Sent playoffs team stats data to app");
+                            log::debug!("Sent playoffs team stats data to app");
                         }
                         Err(e) => log::error!("Failed to parse playoffs team stats: {}", e),
                     }
                 }
             }
-            Err(err) => log::info!("Failed to fetch playoffs team stats: {}", err),
+            Err(err) => log::warn!("Failed to fetch playoffs team stats: {}", err),
         }
     }
 }
@@ -130,7 +130,7 @@ impl Source for TeamStatsSource {
                         }
                         TeamStatsCommand::SetInterval(new_interval) => {
                             if new_interval != self.fetch_interval {
-                                log::info!("Setting team stats interval to {:?}", new_interval);
+                                log::debug!("Setting team stats interval to {:?}", new_interval);
                                 self.fetch_interval = new_interval;
 
                                 interval = tokio::time::interval(self.fetch_interval);

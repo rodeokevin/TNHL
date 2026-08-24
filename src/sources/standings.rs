@@ -43,15 +43,15 @@ impl StandingsSource {
                     // Parse the JSON
                     match StandingsResponse::from_json(&body) {
                         Ok(parsed_standings) => {
-                            log::info!("Standings data successfully parsed!");
+                            log::debug!("Standings data successfully parsed");
                             let _ = tx.send(AppEvent::StandingsUpdate(parsed_standings)).await;
-                            log::info!("Sent standings data to app");
+                            log::debug!("Sent standings data to app");
                         }
                         Err(e) => log::error!("Failed to parse standings: {}", e),
                     }
                 }
             }
-            Err(err) => log::info!("Failed to fetch standings: {}", err),
+            Err(err) => log::warn!("Failed to fetch standings: {}", err),
         }
     }
 }
@@ -74,7 +74,7 @@ impl Source for StandingsSource {
                         }
                         StandingsCommand::SetInterval(new_interval) => {
                             if new_interval != self.fetch_interval {
-                                log::info!("Setting standings interval to {:?}", new_interval);
+                                log::debug!("Setting standings interval to {:?}", new_interval);
                                 self.fetch_interval = new_interval;
 
                                 interval = tokio::time::interval(self.fetch_interval);

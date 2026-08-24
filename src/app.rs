@@ -17,6 +17,7 @@ pub struct App {
 
 impl App {
     pub fn new(
+        settings: AppSettings,
         games_tx: Sender<GamesCommand>,
         standings_tx: Sender<StandingsCommand>,
         boxscore_tx: Sender<BoxscoreCommand>,
@@ -35,7 +36,7 @@ impl App {
                 bracket_tx,
                 series_tx,
             ),
-            settings: AppSettings::load_from_file(),
+            settings,
         };
         app.configure();
         app
@@ -46,17 +47,23 @@ impl App {
         self.set_all_datepickers_to_today();
         self.set_time_zone();
 
+        // Log the resolved config once at startup
+        log::info!(
+            "Config: timezone={}, log_level={}, favorite_team={:?}",
+            self.settings.timezone,
+            self.settings.log_level.unwrap_or(log::LevelFilter::Error),
+            self.settings.favorite_team,
+        );
+
         // Apply the favorite team (if configured) as the default team shown on
         // the Team Stats page. The team stats source is initialized with the
         // same team in `main.rs`, so no command needs to be sent here.
         if let Some(favorite) = self.settings.favorite_team {
-            log::info!("Favorite team configured: {favorite}");
             self.state.team_stats.team_picker.current_team = favorite;
         }
 
-        // override log level if set
+        // Keep the in-app logger widget's level in sync with the config.
         if let Some(level) = self.settings.log_level {
-            log::set_max_level(level);
             tui_logger::set_default_level(level);
         }
     }

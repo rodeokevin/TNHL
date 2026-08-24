@@ -36,17 +36,17 @@ impl BracketSource {
                     // Parse the JSON
                     match BracketResponse::from_json(&body) {
                         Ok(parsed_playoff_bracket) => {
-                            log::info!("Bracket data successfully parsed!");
+                            log::debug!("Bracket data successfully parsed");
                             let _ = tx
                                 .send(AppEvent::BracketUpdate(parsed_playoff_bracket))
                                 .await;
-                            log::info!("Sent Bracket data to app");
+                            log::debug!("Sent Bracket data to app");
                         }
                         Err(e) => log::error!("Failed to parse Bracket: {}", e),
                     }
                 }
             }
-            Err(err) => log::info!("Failed to fetch Bracket: {}", err),
+            Err(err) => log::warn!("Failed to fetch Bracket: {}", err),
         }
     }
 }

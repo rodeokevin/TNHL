@@ -54,7 +54,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     let log_file = File::create("app.log")?;
-    WriteLogger::init(LevelFilter::Debug, Config::default(), log_file)?;
+    // Resolve the log level from config before initializing the logger
+    let settings = crate::state::app_settings::AppSettings::load_from_file();
+    let log_level = settings.log_level.unwrap_or(LevelFilter::Error);
+    WriteLogger::init(log_level, Config::default(), log_file)?;
 
     // create app and run it
     let (games_cmd_tx, games_cmd_rx) = tokio::sync::mpsc::channel(8);
@@ -67,6 +70,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Date is configured in here
     let mut app = App::new(
+        settings,
         games_cmd_tx.clone(),
         standings_cmd_tx.clone(),
         boxscore_cmd_tx.clone(),

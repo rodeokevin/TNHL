@@ -126,18 +126,16 @@ impl AppState {
     pub fn handle_event(&mut self, event: AppEvent) {
         match event {
             AppEvent::StandingsUpdate(parsed_standings) => {
-                log::info!("Updating standings data");
+                log::debug!("Updating standings data");
                 self.standings.standings_data = Some(parsed_standings);
             }
             AppEvent::GamesUpdate {
                 game_ids,
                 parsed_games,
             } => {
-                log::info!("Setting fetch interval for sources");
                 self.set_fetch_interval(self.is_games_live(&parsed_games));
-                log::info!("Updating games data");
+                log::debug!("Updating games data");
                 self.games.games_data = Some(parsed_games);
-                log::info!("Sending game ids to other sources");
                 self.boxscore_tx
                     .try_send(BoxscoreCommand::SetGameIds(game_ids.clone()))
                     .ok();
@@ -149,36 +147,36 @@ impl AppState {
                 game_id,
                 parsed_boxscore,
             } => {
-                log::info!("Updating boxscore data for game {}", game_id);
+                log::debug!("Updating boxscore data for game {}", game_id);
                 self.games.boxscore_data.insert(game_id, parsed_boxscore);
             }
             AppEvent::GameStoryUpdate {
                 game_id,
                 parsed_game_story,
             } => {
-                log::info!("Updating game story data for game {}", game_id);
+                log::debug!("Updating game story data for game {}", game_id);
                 self.games
                     .game_story_data
                     .insert(game_id, parsed_game_story);
             }
             AppEvent::TeamStatsRegularSeasonUpdate(parsed_team_stats) => {
-                log::info!("Updating regular season team stats data");
+                log::debug!("Updating regular season team stats data");
                 self.team_stats.regular_season_team_stats_data = Some(parsed_team_stats);
             }
             AppEvent::TeamStatsPlayoffsUpdate(parsed_team_stats) => {
-                log::info!("Updating playoffs team stats data");
+                log::debug!("Updating playoffs team stats data");
                 self.team_stats.playoffs_team_stats_data = Some(parsed_team_stats);
             }
             AppEvent::BracketUpdate(parsed_bracket) => {
-                log::info!("Updating playoff bracket data");
+                log::debug!("Updating playoff bracket data");
                 self.playoffs.bracket_data = Some(parsed_bracket);
             }
             AppEvent::SeriesUpdate(parsed_series) => {
-                log::info!("Updating series data");
+                log::debug!("Updating series data");
                 self.playoffs.series_data = Some(parsed_series);
             }
             AppEvent::Input(key_event) => {
-                log::info!("Key event detected: {:?}", key_event);
+                log::trace!("Key event detected: {:?}", key_event);
                 let action = map_key(key_event, self);
                 self.handle_action(action);
             }

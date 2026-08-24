@@ -324,7 +324,7 @@ pub fn render_time_remaining(
             }
         }
         GameState::Unknown => {
-            log::info!("Unknown game state");
+            log::warn!("Unknown game state");
             Line::default()
         }
     };

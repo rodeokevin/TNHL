@@ -60,7 +60,7 @@ impl BoxscoreSource {
                         }
                     }
                     Err(err) => {
-                        log::info!("Failed to fetch boxscore for game id {}: {}", game_id, err)
+                        log::warn!("Failed to fetch boxscore for game id {}: {}", game_id, err)
                     }
                 }
             }
@@ -88,7 +88,7 @@ impl Source for BoxscoreSource {
                             current.sort();
                             // Only fetch if game ids changed since this command is called on every GamesUpdate event
                             if ids != current {
-                                log::info!("Fetching boxscore because game ids changed");
+                                log::debug!("Fetching boxscore because game ids changed");
                                 self.game_ids = ids;
                                 self.fetch(&tx).await;
                                 interval.reset();
@@ -96,7 +96,7 @@ impl Source for BoxscoreSource {
                         },
                         BoxscoreCommand::SetInterval(new_interval) => {
                             if new_interval != self.fetch_interval {
-                                log::info!("Setting boxscore interval to {:?}", new_interval);
+                                log::debug!("Setting boxscore interval to {:?}", new_interval);
                                 self.fetch_interval = new_interval;
 
                                 interval = tokio::time::interval(self.fetch_interval);

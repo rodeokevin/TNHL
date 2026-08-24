@@ -47,7 +47,7 @@ impl GamesSource {
                     }
                 }
             }
-            Err(err) => log::info!("Failed to fetch games: {}", err),
+            Err(err) => log::warn!("Failed to fetch games: {}", err),
         }
     }
 }
@@ -71,7 +71,7 @@ impl Source for GamesSource {
                         },
                         GamesCommand::SetInterval(new_interval) => {
                             if new_interval != self.fetch_interval {
-                                log::info!("Setting games interval to {:?}", new_interval);
+                                log::debug!("Setting games interval to {:?}", new_interval);
                                 self.fetch_interval = new_interval;
 
                                 interval = tokio::time::interval(self.fetch_interval);
