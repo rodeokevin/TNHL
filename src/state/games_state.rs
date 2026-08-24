@@ -1,5 +1,6 @@
 use crate::models::games::{
-    boxscore::BoxscoreResponse, game_story::GameStoryResponse, games::GamesResponse,
+    boxscore::BoxscoreResponse, game_story::GameStoryResponse, games::GameState,
+    games::GamesResponse,
 };
 use crate::state::app_state::{table_page_down, table_page_up};
 use ratatui::widgets::TableState;
@@ -11,6 +12,7 @@ pub enum GamesFocus {
     Scoring,
     Stats,
     Boxscore,
+    Pregame,
 }
 
 impl GamesFocus {
@@ -19,6 +21,7 @@ impl GamesFocus {
             GamesFocus::Scoring => GamesFocus::Stats,
             GamesFocus::Stats => GamesFocus::Boxscore,
             GamesFocus::Boxscore => GamesFocus::Scoring,
+            GamesFocus::Pregame => GamesFocus::Pregame,
         }
     }
     pub fn prev(self) -> Self {
@@ -26,6 +29,7 @@ impl GamesFocus {
             GamesFocus::Scoring => GamesFocus::Boxscore,
             GamesFocus::Stats => GamesFocus::Scoring,
             GamesFocus::Boxscore => GamesFocus::Stats,
+            GamesFocus::Pregame => GamesFocus::Pregame,
         }
     }
 }
@@ -129,11 +133,38 @@ impl GamesState {
     }
     /// Cycle between games display (Scoring, boxscore, stats, etc.)
     pub fn cycle_display(&mut self, forward: bool) {
+        // Pregame has no other tabs to cycle to.
+        if self.focus == GamesFocus::Pregame {
+            return;
+        }
         self.focus = if forward {
             self.focus.next()
         } else {
             self.focus.prev()
         };
+    }
+
+    /// The `GameState` of the currently selected game, if any.
+    pub fn current_game_state(&self) -> Option<GameState> {
+        self.games_data
+            .as_ref()
+            .and_then(|d| d.games.get(self.selected_game_index))
+            .map(|g| g.game_state)
+    }
+
+    /// Keep `focus` consistent with the selected game's state: pre-game games
+    /// use the `Pregame` focus; once a game is live/final, fall back to a normal
+    /// tab. Called each render so transitions are handled.
+    pub fn sync_focus_to_game_state(&mut self) {
+        let is_pregame = matches!(
+            self.current_game_state(),
+            Some(GameState::FUT | GameState::PRE)
+        );
+        if is_pregame {
+            self.focus = GamesFocus::Pregame;
+        } else if self.focus == GamesFocus::Pregame {
+            self.focus = GamesFocus::default();
+        }
     }
     /// Move rows in boxscore
     pub fn boxscore_row_up(&mut self) {
@@ -178,16 +209,20 @@ impl GamesState {
         self.boxscore_table_state.select(Some(0));
         self.boxscore_selected_team = BoxscoreTeam::default();
     }
-    /// Page up for scoring or stats page
+    /// Page up for scoring or stats page. Keeps one row of overlap so the first
+    /// visible row becomes the last visible row.
     pub fn games_page_up(&mut self) {
         if self.visible_rows != 0 {
-            self.scroll_offset = self.scroll_offset.saturating_sub(self.visible_rows);
+            let page = self.visible_rows.saturating_sub(1).max(1);
+            self.scroll_offset = self.scroll_offset.saturating_sub(page);
         }
     }
-    /// Page down for scoring or stats page
+    /// Page down for scoring or stats page. Keeps one row of overlap so the last
+    /// visible row becomes the first visible row.
     pub fn games_page_down(&mut self) {
         if self.visible_rows != 0 {
-            self.scroll_offset = (self.scroll_offset + self.visible_rows).min(self.max_scroll);
+            let page = self.visible_rows.saturating_sub(1).max(1);
+            self.scroll_offset = (self.scroll_offset + page).min(self.max_scroll);
         }
     }
     /// Page up for boxscore

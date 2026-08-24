@@ -46,7 +46,7 @@ pub struct Venue {
     pub default: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum GameState {
     FUT,
     PRE,

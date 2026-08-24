@@ -6,7 +6,7 @@ use crate::models::games::games::{
 use crate::state::games_state::GamesFocus;
 use crate::ui::games::stats::AWAY_BAR_COLOR;
 use crate::ui::{
-    games::{boxscore, scoring, stats},
+    games::{boxscore, pregame, scoring, stats},
     layout::{split_area_horizontal, split_area_vertical, tabs_and_content},
     render::{BORDER_COLOR, border_style},
 };
@@ -129,6 +129,9 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         frame.render_widget(tabs, tab_content_chunks[0]);
     }
 
+    // Keep the focus in sync with the selected game's state (pre-game vs. live)
+    app.state.games.sync_focus_to_game_state();
+
     let block = Block::bordered()
         .title(get_block_title(&app.state.games.focus))
         .border_style(border_style());
@@ -172,7 +175,16 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 upper_info_chunks[1],
             );
             render_team_status(game, favorite, frame, upper_info_chunks[2]);
-            render_shots_on_goal(game, frame, upper_info_chunks[3]);
+            // Show record if pregame, sog if live
+            if app.state.games.focus == GamesFocus::Pregame {
+                render_season_records(
+                    app.state.games.game_story_data.get(&game.id),
+                    frame,
+                    upper_info_chunks[3],
+                );
+            } else {
+                render_shots_on_goal(game, frame, upper_info_chunks[3]);
+            }
             render_big_score(game, frame, upper_score_lower[1]);
 
             // Lower info
@@ -190,6 +202,17 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 render_series_status(series, frame, lower_info_chunks[1]);
             }
             match &app.state.games.focus {
+                // Before a game goes live, show the pre-game matchup
+                GamesFocus::Pregame => {
+                    pregame::render_pregame(
+                        app.state.games.game_story_data.get(&game.id),
+                        frame,
+                        lower_info_chunks[2],
+                        app.state.games.scroll_offset,
+                        &mut app.state.games.max_scroll,
+                        &mut app.state.games.visible_rows,
+                    );
+                }
                 GamesFocus::Scoring => {
                     scoring::render_scoring(
                         game,
@@ -465,23 +488,52 @@ fn create_line_from_sog(sog: u16, alignment: Alignment) -> Line<'static> {
         .alignment(alignment)
 }
 
+fn render_season_records(
+    game_story: Option<&crate::models::games::game_story::GameStoryResponse>,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
+    let grey = Style::new().fg(Color::DarkGray);
+
+    let record = |team: Option<&crate::models::games::game_story::StoryTeam>| {
+        team.and_then(|t| t.record.clone()).unwrap_or_default()
+    };
+    let away = record(game_story.and_then(|gs| gs.away_team.as_ref()));
+    let home = record(game_story.and_then(|gs| gs.home_team.as_ref()));
+
+    frame.render_widget(
+        Line::from(away).style(grey).alignment(Alignment::Right),
+        chunks[0],
+    );
+    frame.render_widget(
+        Line::from(home).style(grey).alignment(Alignment::Left),
+        chunks[2],
+    );
+}
+
 pub fn get_period_title(period: &PeriodDescriptor) -> String {
     match period.period_type {
-        PeriodType::REG => match period.number {
-            1 => "1st Period".to_string(),
-            2 => "2nd Period".to_string(),
-            3 => "3rd Period".to_string(),
-            _ => format!("{}th Period", period.number).to_string(),
-        },
+        PeriodType::REG => format!("{} Period", ordinal(period.number as u16)),
         PeriodType::OT => match period.ot_periods.unwrap_or(0) {
             0 | 1 => "Overtime".to_string(),
-            2 => "2nd Overtime".to_string(),
-            3 => "3rd Overtime".to_string(),
-            _ => format!("{}th Overtime", period.ot_periods.unwrap_or(0)),
+            n => format!("{} Overtime", ordinal(n as u16)),
         },
         PeriodType::SO => "Shootout".to_string(),
         _ => "Unknown Period".to_string(),
     }
+}
+
+/// Format a 1-based number as an ordinal string, e.g. `1 -> "1st"`, `12 -> "12th"`.
+pub fn ordinal(n: u16) -> String {
+    let suffix = match (n % 10, n % 100) {
+        (1, 11) | (2, 12) | (3, 13) => "th",
+        (1, _) => "st",
+        (2, _) => "nd",
+        (3, _) => "rd",
+        _ => "th",
+    };
+    format!("{n}{suffix}")
 }
 
 fn render_series_info(series: &SeriesStatus, frame: &mut Frame, area: Rect) {
@@ -559,5 +611,48 @@ pub fn get_block_title(focus: &GamesFocus) -> String {
         GamesFocus::Scoring => " Scoring ".to_string(),
         GamesFocus::Boxscore => " Boxscore ".to_string(),
         GamesFocus::Stats => " Game Stats ".to_string(),
+        GamesFocus::Pregame => " Pre-Game ".to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::games::games::{PeriodDescriptor, PeriodType};
+
+    #[test]
+    fn ordinals() {
+        assert_eq!(ordinal(1), "1st");
+        assert_eq!(ordinal(2), "2nd");
+        assert_eq!(ordinal(3), "3rd");
+        assert_eq!(ordinal(4), "4th");
+        assert_eq!(ordinal(11), "11th");
+        assert_eq!(ordinal(12), "12th");
+        assert_eq!(ordinal(13), "13th");
+        assert_eq!(ordinal(21), "21st");
+        assert_eq!(ordinal(22), "22nd");
+        assert_eq!(ordinal(23), "23rd");
+        assert_eq!(ordinal(31), "31st");
+    }
+
+    #[test]
+    fn period_titles_use_ordinals() {
+        let reg = |n| PeriodDescriptor {
+            number: n,
+            period_type: PeriodType::REG,
+            ot_periods: None,
+        };
+        assert_eq!(get_period_title(&reg(1)), "1st Period");
+        assert_eq!(get_period_title(&reg(3)), "3rd Period");
+        assert_eq!(get_period_title(&reg(4)), "4th Period");
+
+        let ot = |n| PeriodDescriptor {
+            number: 4,
+            period_type: PeriodType::OT,
+            ot_periods: Some(n),
+        };
+        assert_eq!(get_period_title(&ot(1)), "Overtime");
+        assert_eq!(get_period_title(&ot(2)), "2nd Overtime");
+        assert_eq!(get_period_title(&ot(3)), "3rd Overtime");
     }
 }

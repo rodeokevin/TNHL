@@ -450,7 +450,9 @@ impl AppState {
         if let Err(e) = &games_res {
             log::error!("Failed to send GamesCommand::SetDate: {:?}", e);
         } else {
-            // Clear current data and reset all state in games since new data is incoming
+            // Clear current data and reset all state in games since new data is
+            // incoming.
+            self.games.games_data = None;
             self.games.boxscore_data.clear();
             self.games.game_story_data.clear();
             self.games.reset_state();

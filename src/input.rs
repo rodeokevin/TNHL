@@ -152,24 +152,28 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
             match (&state.games.focus, key_event.code, key_event.modifiers) {
                 (_, KeyCode::Left | KeyCode::Char('h'), _) => Action::PrevGame,
                 (_, KeyCode::Right | KeyCode::Char('l'), _) => Action::NextGame,
+                // Display switching is disabled during pre-game
+                (GamesFocus::Pregame, KeyCode::Char('<') | KeyCode::Char('>'), _) => Action::None,
                 (_, KeyCode::Char('<'), _) => Action::PrevGamesDisplay,
                 (_, KeyCode::Char('>'), _) => Action::NextGamesDisplay,
-                // Scoring or stats page actions
+                // Scoring / stats / pre-game scrolling
                 (
-                    GamesFocus::Scoring | GamesFocus::Stats,
+                    GamesFocus::Scoring | GamesFocus::Stats | GamesFocus::Pregame,
                     KeyCode::Up | KeyCode::Char('K'),
                     KeyModifiers::SHIFT,
                 ) => Action::GamesPageUp,
                 (
-                    GamesFocus::Scoring | GamesFocus::Stats,
+                    GamesFocus::Scoring | GamesFocus::Stats | GamesFocus::Pregame,
                     KeyCode::Down | KeyCode::Char('J'),
                     KeyModifiers::SHIFT,
                 ) => Action::GamesPageDown,
-                (GamesFocus::Scoring | GamesFocus::Stats, KeyCode::Up | KeyCode::Char('k'), _) => {
-                    Action::GamesScrollUp
-                }
                 (
-                    GamesFocus::Scoring | GamesFocus::Stats,
+                    GamesFocus::Scoring | GamesFocus::Stats | GamesFocus::Pregame,
+                    KeyCode::Up | KeyCode::Char('k'),
+                    _,
+                ) => Action::GamesScrollUp,
+                (
+                    GamesFocus::Scoring | GamesFocus::Stats | GamesFocus::Pregame,
                     KeyCode::Down | KeyCode::Char('j'),
                     _,
                 ) => Action::GamesScrollDown,
