@@ -1,6 +1,6 @@
 use ratatui::widgets::TableState;
 
-use crate::models::standings::StandingsResponse;
+use crate::models::standings::{SeasonBounds, StandingsResponse};
 use crate::state::app_state::{table_page_down, table_page_up};
 
 const LEAGUE_NUM_TEAMS: usize = 32;
@@ -84,6 +84,8 @@ impl DivisionFocus {
 
 pub struct StandingsState {
     pub standings_data: Option<StandingsResponse>,
+    /// Bounds of the season currently displayed (for the tabs header).
+    pub season: Option<SeasonBounds>,
     pub table_state: TableState,
     /// Number of visible rows in the table, updated during render
     pub visible_rows: usize,
@@ -104,6 +106,7 @@ impl Default for StandingsState {
 
         Self {
             standings_data: None,
+            season: None,
             table_state: table(),
             visible_rows: 0,
 

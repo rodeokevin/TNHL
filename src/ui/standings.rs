@@ -60,13 +60,26 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
 
     let highlight_style = Style::new().fg(BORDER_COLOR).bold().underlined();
 
+    // Season date range (start/end) shown on the right of the tabs border.
+    let season_range = app.state.standings.season.as_ref().map(|s| {
+        Line::from(format!(
+            " start: {}  end: {} ",
+            s.standings_start, s.standings_end
+        ))
+        .style(Style::new().fg(Color::DarkGray))
+        .right_aligned()
+    });
+
+    let mut block = Block::bordered()
+        .border_style(border_style())
+        .title(app.state.date_state.format_date_border_title());
+    if let Some(range) = season_range {
+        block = block.title_top(range);
+    }
+
     let tabs = Tabs::new(titles)
         .select(selected_standings_index)
-        .block(
-            Block::bordered()
-                .border_style(border_style())
-                .title(app.state.date_state.format_date_border_title()),
-        )
+        .block(block)
         .highlight_style(highlight_style);
 
     frame.render_widget(tabs, tab_content_chunks[0]);

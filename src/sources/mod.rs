@@ -4,7 +4,7 @@ use tokio::sync::mpsc::Sender;
 use crate::models::{
     games::{boxscore::BoxscoreResponse, game_story::GameStoryResponse, games::GamesResponse},
     playoffs::{bracket::BracketResponse, series::SeriesResponse},
-    standings::StandingsResponse,
+    standings::{SeasonBounds, StandingsResponse},
     team_stats::TeamStatsResponse,
 };
 
@@ -34,7 +34,10 @@ impl FetchInterval {
 /// Events sent to the main application loop.
 #[derive(Debug)]
 pub enum AppEvent {
-    StandingsUpdate(StandingsResponse),
+    StandingsUpdate {
+        standings: StandingsResponse,
+        season: Option<SeasonBounds>,
+    },
     TeamStatsRegularSeasonUpdate(TeamStatsResponse),
     TeamStatsPlayoffsUpdate(TeamStatsResponse),
     GamesUpdate {

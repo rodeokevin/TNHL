@@ -12,6 +12,7 @@ pub struct StandingsResponse {
 pub struct TeamData {
     pub team_name: TeamName,
     pub team_abbrev: TeamAbbrev,
+    pub season_id: u32,
     pub clinch_indicator: Option<String>,
     pub conference_abbrev: String,
     pub division_abbrev: String,
@@ -52,5 +53,35 @@ pub struct TeamAbbrev {
 impl StandingsResponse {
     pub fn from_json(data: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(data)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StandingsSeasonResponse {
+    pub seasons: Vec<SeasonBounds>,
+}
+
+/// The date range a season's standings are valid for.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SeasonBounds {
+    pub standings_start: String,
+    pub standings_end: String,
+}
+
+impl StandingsSeasonResponse {
+    pub fn from_json(data: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(data)
+    }
+}
+
+impl SeasonBounds {
+    /// Parsed start date, if valid.
+    pub fn start(&self) -> Option<chrono::NaiveDate> {
+        chrono::NaiveDate::parse_from_str(&self.standings_start, "%Y-%m-%d").ok()
+    }
+    /// Parsed end date, if valid.
+    pub fn end(&self) -> Option<chrono::NaiveDate> {
+        chrono::NaiveDate::parse_from_str(&self.standings_end, "%Y-%m-%d").ok()
     }
 }

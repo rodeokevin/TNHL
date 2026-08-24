@@ -125,9 +125,10 @@ impl AppState {
     // Handle an incoming event and update state accordingly
     pub fn handle_event(&mut self, event: AppEvent) {
         match event {
-            AppEvent::StandingsUpdate(parsed_standings) => {
+            AppEvent::StandingsUpdate { standings, season } => {
                 log::debug!("Updating standings data");
-                self.standings.standings_data = Some(parsed_standings);
+                self.standings.standings_data = Some(standings);
+                self.standings.season = season;
             }
             AppEvent::GamesUpdate {
                 game_ids,
