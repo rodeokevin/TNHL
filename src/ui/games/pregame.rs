@@ -122,12 +122,12 @@ fn build_leaders(matchup: &PreGameMatchup, rows: &mut Vec<Row<'static>>) {
         let away_str = cat
             .away_leader
             .as_ref()
-            .map(|l| format!("{} -- {}", l.name, l.value))
+            .map(|l| format!("{} • {}", l.name, l.value))
             .unwrap_or_else(|| "-".to_string());
         let home_str = cat
             .home_leader
             .as_ref()
-            .map(|l| format!("{} -- {}", l.value, l.name))
+            .map(|l| format!("{} • {}", l.value, l.name))
             .unwrap_or_else(|| "-".to_string());
         let away_sub = cat
             .away_leader
@@ -339,9 +339,9 @@ fn compute_bar(mut away: f64, mut home: f64) -> Line<'static> {
     Line::from(spans).centered()
 }
 
-/// Format an optional sweater number, rendering `--` when unknown.
+/// Format an optional sweater number
 fn sweater(number: Option<u16>) -> String {
-    number.map_or_else(|| "--".to_string(), |n| n.to_string())
+    number.map_or_else(|| "  ".to_string(), |n| n.to_string())
 }
 
 /// Format a 0..1 ratio as a whole-number percentage.
