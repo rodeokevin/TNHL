@@ -10,6 +10,7 @@ use crate::models::{
 
 pub mod games;
 pub mod playoffs;
+pub mod season;
 pub mod standings;
 pub mod teams_stats;
 
@@ -34,6 +35,10 @@ impl FetchInterval {
 /// Events sent to the main application loop.
 #[derive(Debug)]
 pub enum AppEvent {
+    /// The current NHL season (end year) resolved at startup from season bounds.
+    SeasonResolved {
+        year: i32,
+    },
     StandingsUpdate {
         standings: StandingsResponse,
         season: Option<SeasonBounds>,

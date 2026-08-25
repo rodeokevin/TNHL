@@ -37,6 +37,10 @@ impl TeamStatsSource {
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
+        // Skip until the current season has been resolved (year set via SetYear).
+        if self.current_year <= 0 {
+            return;
+        }
         let regular_season_url = format!(
             "https://api-web.nhle.com/v1/club-stats/{}/{}{}/2",
             self.current_team.to_string(),

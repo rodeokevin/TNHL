@@ -20,6 +20,7 @@ use crate::{
             bracket::{BracketCommand, BracketSource},
             series::{SeriesCommand, SeriesSource},
         },
+        season::SeasonSource,
         standings::{StandingsCommand, StandingsSource},
         teams_stats::{TeamStatsCommand, TeamStatsSource},
     },
@@ -198,13 +199,21 @@ where
 
     // Spawn playoffs series source
     let playoff_bracket_source =
-        SeriesSource::new(client, series_rx, app.state.date_state.year, None);
+        SeriesSource::new(client.clone(), series_rx, app.state.date_state.year, None);
     let playoff_bracket_tx = tx.clone();
     let playoff_bracket_cancel = cancel.clone();
     tokio::spawn(async move {
         Box::new(playoff_bracket_source)
             .run(playoff_bracket_tx, playoff_bracket_cancel)
             .await;
+    });
+
+    // Spawn the season resolver
+    let season_source = SeasonSource::new(client, app.state.date_state.date);
+    let season_tx = tx.clone();
+    let season_cancel = cancel.clone();
+    tokio::spawn(async move {
+        Box::new(season_source).run(season_tx, season_cancel).await;
     });
 
     // Spawn terminal event reader

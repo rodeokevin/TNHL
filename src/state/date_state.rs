@@ -8,8 +8,12 @@ pub struct DateState {
     pub text: String,
     /// Current date for games and standings (this is configured by App.configure() on startup)
     pub date: NaiveDate,
-    /// Current year for playoffs and team stats (this is configured by App.configure() on startup)
     pub year: i32,
+    /// The bounds-resolved current-season end year (set from SeasonResolved).
+    /// Used by the year picker's "t"/"today" shortcut so it picks the correct
+    /// season during the offseason / early season rather than the raw calendar
+    /// year.
+    pub current_season_year: Option<i32>,
     /// Used for selecting the date or year with arrow keys.
     pub date_selection_offset: i64,
     pub year_selection_offset: i32,
@@ -36,7 +40,10 @@ impl DateState {
         let input: String = self.text.drain(..).collect();
 
         let year = match input.as_str() {
-            "t" | "today" => Ok(Utc::now().with_timezone(&tz).year()),
+            // Use the bounds-resolved current season if available
+            "t" | "today" => Ok(self
+                .current_season_year
+                .unwrap_or_else(|| Utc::now().with_timezone(&tz).year())),
             _ => input.parse::<i32>().map_err(|_| ()),
         };
 
@@ -88,6 +95,7 @@ impl Default for DateState {
             text: String::new(),
             date: Utc::now().date_naive(),
             year: 0,
+            current_season_year: None,
             date_selection_offset: 0,
             year_selection_offset: 0,
         }

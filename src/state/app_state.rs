@@ -125,6 +125,13 @@ impl AppState {
     // Handle an incoming event and update state accordingly
     pub fn handle_event(&mut self, event: AppEvent) {
         match event {
+            AppEvent::SeasonResolved { year } => {
+                log::debug!("Season resolved to end year {}", year);
+                self.date_state.year = year;
+                self.date_state.current_season_year = Some(year);
+                // Fetch team stats / playoffs for the resolved season.
+                self.handle_year_change();
+            }
             AppEvent::StandingsUpdate { standings, season } => {
                 log::debug!("Updating standings data");
                 self.standings.standings_data = Some(standings);

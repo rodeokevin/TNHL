@@ -25,6 +25,10 @@ impl BracketSource {
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
+        // Skip until the current season has been resolved.
+        if self.current_year <= 0 {
+            return;
+        }
         let url = format!(
             "https://api-web.nhle.com/v1/playoff-bracket/{}",
             self.current_year.to_string()
