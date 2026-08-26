@@ -1,3 +1,4 @@
+use crate::models::games::play_by_play::PlaysResponse;
 use crate::models::games::{
     boxscore::BoxscoreResponse, game_story::GameStoryResponse, games::GameState,
     games::GamesResponse,
@@ -69,12 +70,20 @@ pub struct GamesState {
     pub games_data: Option<GamesResponse>,
     pub boxscore_data: HashMap<u32, BoxscoreResponse>,
     pub game_story_data: HashMap<u32, GameStoryResponse>,
+    pub plays_data: HashMap<u32, PlaysResponse>,
     pub selected_game_index: usize,
     // For the dynamic display bar under the time remaining
     pub sweeping_status_offset: usize,
     pub scroll_offset: usize,
     /// Max vertical scroll updated at render
     pub max_scroll: usize,
+
+    // Play-by-play side pane
+    pub plays_visible: bool,
+    pub plays_focused: bool,
+    pub plays_table_state: TableState,
+    pub plays_visible_rows: usize,
+    pub plays_len: usize,
 }
 
 impl Default for GamesState {
@@ -95,10 +104,17 @@ impl Default for GamesState {
             games_data: None,
             boxscore_data: HashMap::new(),
             game_story_data: HashMap::new(),
+            plays_data: HashMap::new(),
             selected_game_index: 0,
             sweeping_status_offset: 0,
             scroll_offset: 0,
             max_scroll: 0,
+
+            plays_visible: false,
+            plays_focused: false,
+            plays_table_state: table(),
+            plays_visible_rows: 0,
+            plays_len: 0,
         }
     }
 }
@@ -118,6 +134,40 @@ impl GamesState {
         self.scroll_offset = 0;
         self.max_scroll = 0;
     }
+
+    pub fn toggle_plays(&mut self) {
+        self.plays_visible = !self.plays_visible;
+        self.plays_focused = self.plays_visible;
+        self.reset_plays_scroll();
+    }
+
+    pub fn toggle_plays_focus(&mut self) {
+        if self.plays_visible {
+            self.plays_focused = !self.plays_focused;
+        }
+    }
+
+    pub fn reset_plays_scroll(&mut self) {
+        self.plays_table_state.select(Some(0));
+        *self.plays_table_state.offset_mut() = 0;
+    }
+
+    pub fn plays_scroll_up(&mut self) {
+        self.plays_table_state.scroll_up_by(1);
+    }
+    pub fn plays_scroll_down(&mut self) {
+        self.plays_table_state.scroll_down_by(1);
+    }
+    pub fn plays_page_up(&mut self) {
+        table_page_up(self.plays_visible_rows, &mut self.plays_table_state);
+    }
+    pub fn plays_page_down(&mut self) {
+        table_page_down(
+            self.plays_visible_rows,
+            self.plays_len,
+            &mut self.plays_table_state,
+        );
+    }
     /// Reset all state in games to default
     pub fn reset_state(&mut self) {
         self.reset_game_state();
@@ -130,6 +180,7 @@ impl GamesState {
         self.boxscore_selected_team = BoxscoreTeam::default();
         self.boxscore_table_state.select(Some(0));
         self.reset_scoring_scroll();
+        self.reset_plays_scroll();
     }
     /// Cycle between games display (Scoring, boxscore, stats, etc.)
     pub fn cycle_display(&mut self, forward: bool) {

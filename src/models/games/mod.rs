@@ -4,6 +4,7 @@ use std::fmt;
 pub mod boxscore;
 pub mod game_story;
 pub mod games;
+pub mod play_by_play;
 
 #[derive(Debug, Clone, Deserialize)]
 pub enum Position {

@@ -6,7 +6,7 @@ use crate::models::games::games::{
 use crate::state::games_state::GamesFocus;
 use crate::ui::games::stats::AWAY_BAR_COLOR;
 use crate::ui::{
-    games::{boxscore, pregame, scoring, stats},
+    games::{boxscore, play_by_play, pregame, scoring, stats},
     layout::{split_area_horizontal, split_area_vertical, tabs_and_content},
     render::{BORDER_COLOR, border_style},
 };
@@ -132,11 +132,10 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Keep the focus in sync with the selected game's state (pre-game vs. live)
     app.state.games.sync_focus_to_game_state();
 
-    let block = Block::bordered()
-        .title(get_block_title(&app.state.games.focus))
-        .border_style(border_style());
+    let block = Block::bordered().border_style(border_style());
     let inner = block.inner(tab_content_chunks[1]);
     frame.render_widget(block, tab_content_chunks[1]);
+
 
     let upper_score_lower = split_area_vertical(
         inner,
@@ -201,13 +200,38 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 render_series_info(series, frame, lower_info_chunks[0]);
                 render_series_status(series, frame, lower_info_chunks[1]);
             }
+
+            let show_plays =
+                app.state.games.plays_visible && app.state.games.focus != GamesFocus::Pregame;
+            let (main_area, plays_area) = if show_plays {
+                let halves = split_area_horizontal(
+                    lower_info_chunks[2],
+                    [Constraint::Percentage(50), Constraint::Percentage(50)],
+                );
+                (halves[0], Some(halves[1]))
+            } else {
+                (lower_info_chunks[2], None)
+            };
+
+            let main_focused = !app.state.games.plays_focused;
+            let main_border = if main_focused {
+                border_style()
+            } else {
+                Style::new().fg(Color::DarkGray)
+            };
+            let main_block = Block::bordered()
+                .title(get_block_title(&app.state.games.focus))
+                .border_style(main_border);
+            let main_inner = main_block.inner(main_area);
+            frame.render_widget(main_block, main_area);
+
             match &app.state.games.focus {
                 // Before a game goes live, show the pre-game matchup
                 GamesFocus::Pregame => {
                     pregame::render_pregame(
                         app.state.games.game_story_data.get(&game.id),
                         frame,
-                        lower_info_chunks[2],
+                        main_inner,
                         app.state.games.scroll_offset,
                         &mut app.state.games.max_scroll,
                         &mut app.state.games.visible_rows,
@@ -217,19 +241,24 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                     scoring::render_scoring(
                         app.state.games.game_story_data.get(&game.id),
                         frame,
-                        lower_info_chunks[2],
+                        main_inner,
                         app.state.games.scroll_offset,
                         &mut app.state.games.max_scroll,
                         &mut app.state.games.visible_rows,
                     );
                 }
                 GamesFocus::Boxscore => {
-                    boxscore::render_boxscore(frame, app, lower_info_chunks[2]);
+                    boxscore::render_boxscore(frame, app, main_inner);
                 }
                 GamesFocus::Stats => {
-                    stats::render_stats(frame, app, lower_info_chunks[2]);
+                    stats::render_stats(frame, app, main_inner);
                 }
             }
+
+            if let Some(plays_area) = plays_area {
+                play_by_play::render_play_by_play(frame, app, plays_area);
+            }
+
         }
     }
 }

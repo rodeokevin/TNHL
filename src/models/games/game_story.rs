@@ -2,7 +2,9 @@ use serde::Deserialize;
 use std::fmt;
 
 use crate::models::{
-    TeamAbbrev, TeamAbbrevWrapper, games::games::{AssistInfo, GoalModifier, GoalStrength, PeriodDescriptor, PlayerName},
+    TeamAbbrev,
+    TeamAbbrevWrapper,
+    games::games::{AssistInfo, GoalModifier, GoalStrength, PeriodDescriptor, PlayerName},
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -55,7 +57,7 @@ pub struct LeaderCategory {
 pub struct Leader {
     pub name: PlayerName,
     pub sweater_number: Option<u16>,
-    pub position_code: String,
+    pub position_code: Position,
     pub value: i32,
 }
 

@@ -23,6 +23,12 @@ pub enum Action {
     GamesScrollDown,
     GamesPageUp,
     GamesPageDown,
+    TogglePlays,
+    ToggleGamesPane,
+    PlaysScrollUp,
+    PlaysScrollDown,
+    PlaysPageUp,
+    PlaysPageDown,
     BoxscoreUp,
     BoxscoreDown,
     BoxscorePageUp,
@@ -149,6 +155,26 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
 
         // In games content pane
         (PaneFocus::Content, MenuFocus::Games, _, _) => {
+            if state.games.focus != GamesFocus::Pregame {
+                match key_event.code {
+                    KeyCode::Char('p') => return Action::TogglePlays,
+                    KeyCode::Tab => return Action::ToggleGamesPane,
+                    _ => {}
+                }
+            }
+
+            if state.games.plays_focused && state.games.focus != GamesFocus::Pregame {
+                return match (key_event.code, key_event.modifiers) {
+                    (KeyCode::Left | KeyCode::Char('h'), _) => Action::PrevGame,
+                    (KeyCode::Right | KeyCode::Char('l'), _) => Action::NextGame,
+                    (KeyCode::Up | KeyCode::Char('K'), KeyModifiers::SHIFT) => Action::PlaysPageUp,
+                    (KeyCode::Down | KeyCode::Char('J'), KeyModifiers::SHIFT) => Action::PlaysPageDown,
+                    (KeyCode::Up | KeyCode::Char('k'), _) => Action::PlaysScrollUp,
+                    (KeyCode::Down | KeyCode::Char('j'), _) => Action::PlaysScrollDown,
+                    _ => Action::None,
+                };
+            }
+
             match (&state.games.focus, key_event.code, key_event.modifiers) {
                 (_, KeyCode::Left | KeyCode::Char('h'), _) => Action::PrevGame,
                 (_, KeyCode::Right | KeyCode::Char('l'), _) => Action::NextGame,
@@ -156,7 +182,7 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
                 (GamesFocus::Pregame, KeyCode::Char('<') | KeyCode::Char('>'), _) => Action::None,
                 (_, KeyCode::Char('<'), _) => Action::PrevGamesDisplay,
                 (_, KeyCode::Char('>'), _) => Action::NextGamesDisplay,
-                // Scoring / stats / pre-game scrolling
+                // Scoring / stats / pre-game scrolling (main pane)
                 (
                     GamesFocus::Scoring | GamesFocus::Stats | GamesFocus::Pregame,
                     KeyCode::Up | KeyCode::Char('K'),

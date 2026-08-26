@@ -5,7 +5,10 @@ use crate::models::games::games::{GameState, GamesResponse};
 use crate::sources::playoffs::series::SeriesCommand;
 use crate::sources::{
     AppEvent, FetchInterval,
-    games::{boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand},
+    games::{
+        boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
+        play_by_play::PlaysCommand,
+    },
     playoffs::bracket::BracketCommand,
     standings::StandingsCommand,
     teams_stats::TeamStatsCommand,
@@ -62,6 +65,7 @@ pub struct AppState {
     pub games_tx: Sender<GamesCommand>,
     pub standings_tx: Sender<StandingsCommand>,
     pub boxscore_tx: Sender<BoxscoreCommand>,
+    pub plays_tx: Sender<PlaysCommand>,
     pub game_story_tx: Sender<GameStoryCommand>,
     pub team_stats_tx: Sender<TeamStatsCommand>,
     pub bracket_tx: Sender<BracketCommand>,
@@ -87,6 +91,7 @@ impl AppState {
         games_tx: Sender<GamesCommand>,
         standings_tx: Sender<StandingsCommand>,
         boxscore_tx: Sender<BoxscoreCommand>,
+        plays_tx: Sender<PlaysCommand>,
         game_story_tx: Sender<GameStoryCommand>,
         team_stats_tx: Sender<TeamStatsCommand>,
         bracket_tx: Sender<BracketCommand>,
@@ -96,6 +101,7 @@ impl AppState {
             games_tx,
             standings_tx,
             boxscore_tx,
+            plays_tx,
             game_story_tx,
             team_stats_tx,
             bracket_tx,
@@ -147,6 +153,9 @@ impl AppState {
                 self.boxscore_tx
                     .try_send(BoxscoreCommand::SetGameIds(game_ids.clone()))
                     .ok();
+                self.plays_tx
+                    .try_send(PlaysCommand::SetGameIds(game_ids.clone()))
+                    .ok();
                 self.game_story_tx
                     .try_send(GameStoryCommand::SetGameIds(game_ids))
                     .ok();
@@ -157,6 +166,13 @@ impl AppState {
             } => {
                 log::debug!("Updating boxscore data for game {}", game_id);
                 self.games.boxscore_data.insert(game_id, parsed_boxscore);
+            }
+            AppEvent::PlaysUpdate {
+                game_id,
+                parsed_plays,
+            } => {
+                log::debug!("Updating plays data for game {}", game_id);
+                self.games.plays_data.insert(game_id, parsed_plays);
             }
             AppEvent::GameStoryUpdate {
                 game_id,
@@ -253,6 +269,12 @@ impl AppState {
                     .saturating_add(1)
                     .min(self.games.max_scroll);
             }
+            Action::TogglePlays => self.games.toggle_plays(),
+            Action::ToggleGamesPane => self.games.toggle_plays_focus(),
+            Action::PlaysScrollUp => self.games.plays_scroll_up(),
+            Action::PlaysScrollDown => self.games.plays_scroll_down(),
+            Action::PlaysPageUp => self.games.plays_page_up(),
+            Action::PlaysPageDown => self.games.plays_page_down(),
             Action::BoxscorePageUp => self.games.boxscore_page_up(),
             Action::BoxscorePageDown => self.games.boxscore_page_down(),
             Action::BoxscoreUp => self.games.boxscore_row_up(),
@@ -435,6 +457,7 @@ impl AppState {
             self.games.games_data = None;
             self.games.boxscore_data.clear();
             self.games.game_story_data.clear();
+            self.games.plays_data.clear();
             self.games.reset_state();
         }
         if let Err(e) = &standings_res {
@@ -531,6 +554,9 @@ impl AppState {
             .ok();
         self.boxscore_tx
             .try_send(BoxscoreCommand::SetInterval(info_interval.as_duration()))
+            .ok();
+        self.plays_tx
+            .try_send(PlaysCommand::SetInterval(games_interval.as_duration()))
             .ok();
         self.game_story_tx
             .try_send(GameStoryCommand::SetInterval(info_interval.as_duration()))

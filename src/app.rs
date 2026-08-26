@@ -1,6 +1,9 @@
 use crate::{
     sources::{
-        games::{boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand},
+        games::{
+            boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
+            play_by_play::PlaysCommand,
+        },
         playoffs::{bracket::BracketCommand, series::SeriesCommand},
         standings::StandingsCommand,
         teams_stats::TeamStatsCommand,
@@ -21,6 +24,7 @@ impl App {
         games_tx: Sender<GamesCommand>,
         standings_tx: Sender<StandingsCommand>,
         boxscore_tx: Sender<BoxscoreCommand>,
+        plays_tx: Sender<PlaysCommand>,
         game_story_tx: Sender<GameStoryCommand>,
         team_stats_tx: Sender<TeamStatsCommand>,
         bracket_tx: Sender<BracketCommand>,
@@ -31,6 +35,7 @@ impl App {
                 games_tx,
                 standings_tx,
                 boxscore_tx,
+                plays_tx,
                 game_story_tx,
                 team_stats_tx,
                 bracket_tx,
