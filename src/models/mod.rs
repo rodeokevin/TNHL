@@ -3,7 +3,6 @@ use strum_macros::{Display, EnumString};
 
 pub mod games;
 pub mod playoffs;
-pub mod plays;
 pub mod standings;
 pub mod team_stats;
 

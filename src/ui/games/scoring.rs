@@ -18,7 +18,7 @@ use ratatui::{
 };
 
 // Length of the middle chunk for scoring and stats
-pub const MIDDLE_LENGTH: u16 = 25;
+pub const MIDDLE_LENGTH: u16 = 15;
 
 pub fn render_scoring(
     game: &GameData,

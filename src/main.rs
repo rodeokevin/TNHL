@@ -15,6 +15,7 @@ use crate::{
             boxscore::{BoxscoreCommand, BoxscoreSource},
             game_story::{GameStoryCommand, GameStorySource},
             games::{GamesCommand, GamesSource},
+            play_by_play::{PlaysCommand, PlaysSource},
         },
         playoffs::{
             bracket::{BracketCommand, BracketSource},
@@ -64,6 +65,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let (games_cmd_tx, games_cmd_rx) = tokio::sync::mpsc::channel(8);
     let (standings_cmd_tx, standings_cmd_rx) = tokio::sync::mpsc::channel(8);
     let (boxscore_cmd_tx, boxscore_cmd_rx) = tokio::sync::mpsc::channel(8);
+    let (plays_cmd_tx, plays_cmd_rx) = tokio::sync::mpsc::channel(8);
     let (game_story_tx, game_story_rx) = tokio::sync::mpsc::channel(8);
     let (team_stats_tx, team_stats_rx) = tokio::sync::mpsc::channel(8);
     let (bracket_tx, bracket_rx) = tokio::sync::mpsc::channel(8);
@@ -75,6 +77,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         games_cmd_tx.clone(),
         standings_cmd_tx.clone(),
         boxscore_cmd_tx.clone(),
+        plays_cmd_tx.clone(),
         game_story_tx.clone(),
         team_stats_tx.clone(),
         bracket_tx.clone(),
@@ -88,6 +91,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         games_cmd_rx,
         standings_cmd_rx,
         boxscore_cmd_rx,
+        plays_cmd_rx,
         game_story_rx,
         team_stats_rx,
         bracket_rx,
@@ -114,6 +118,7 @@ async fn run_app<B: Backend>(
     games_rx: Receiver<GamesCommand>,
     standings_rx: Receiver<StandingsCommand>,
     boxscore_rx: Receiver<BoxscoreCommand>,
+    plays_rx: Receiver<PlaysCommand>,
     game_story_rx: Receiver<GameStoryCommand>,
     team_stats_rx: Receiver<TeamStatsCommand>,
     bracket_rx: Receiver<BracketCommand>,
@@ -159,6 +164,14 @@ where
         Box::new(boxscore_source)
             .run(boxscore_tx, boxscore_cancel)
             .await;
+    });
+
+    // Spawn play-by-play source
+    let plays_source = PlaysSource::new(client.clone(), plays_rx);
+    let plays_tx = tx.clone();
+    let plays_cancel = cancel.clone();
+    tokio::spawn(async move {
+        Box::new(plays_source).run(plays_tx, plays_cancel).await;
     });
 
     // Spawn game story source
