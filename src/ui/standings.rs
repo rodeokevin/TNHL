@@ -283,11 +283,9 @@ impl StandingsRenderer {
                 } else {
                     team.team_name.default.clone()
                 };
-                // `team.team_abbrev` is the standings-model struct (a `{ default: String }`),
-                // distinct from the `TeamAbbrev` enum. Compare via the string code.
                 let is_favorite = self
                     .favorite
-                    .is_some_and(|fav| fav.to_string() == team.team_abbrev.default);
+                    .is_some_and(|fav| fav == team.team_abbrev.default);
                 let row = Row::new(vec![
                     sort_key(team).to_string(),
                     team_name,

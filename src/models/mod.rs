@@ -83,3 +83,8 @@ pub enum TeamAbbrev {
     WPG,
     WSH,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TeamAbbrevWrapper {
+    pub default: TeamAbbrev,
+}

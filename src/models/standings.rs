@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::models::TeamName;
+use crate::models::{TeamAbbrevWrapper, TeamName};
 
 #[derive(Debug, Deserialize)]
 pub struct StandingsResponse {
@@ -11,7 +11,7 @@ pub struct StandingsResponse {
 #[serde(rename_all = "camelCase")]
 pub struct TeamData {
     pub team_name: TeamName,
-    pub team_abbrev: TeamAbbrev,
+    pub team_abbrev: TeamAbbrevWrapper,
     pub season_id: u32,
     pub clinch_indicator: Option<String>,
     pub conference_abbrev: String,
@@ -43,11 +43,6 @@ pub struct TeamData {
     pub l10_losses: u8,
     pub streak_code: String,
     pub streak_count: u8,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct TeamAbbrev {
-    pub default: String,
 }
 
 impl StandingsResponse {

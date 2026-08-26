@@ -1,7 +1,9 @@
 use serde::Deserialize;
 use std::fmt;
 
-use crate::models::{games::games::PlayerName, standings::TeamAbbrev};
+use crate::models::{
+    TeamAbbrev, TeamAbbrevWrapper, games::games::{AssistInfo, GoalModifier, GoalStrength, PeriodDescriptor, PlayerName},
+};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,7 +24,7 @@ impl GameStoryResponse {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StoryTeam {
-    pub abbrev: Option<String>,
+    pub abbrev: Option<TeamAbbrev>,
     pub record: Option<String>,
 }
 
@@ -100,8 +102,32 @@ pub struct TeamSeasonStat {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Summary {
+    pub scoring: Vec<PeriodScore>,
     pub shootout: Vec<ShootoutAttempt>,
     pub team_game_stats: Vec<TeamGameStats>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PeriodScore {
+    pub period_descriptor: PeriodDescriptor,
+    pub goals: Vec<StoryGoalData>,
+}
+
+// Essentially the same as games::GoalData but the team_abbrev field has an
+// extra `default` field in it
+#[derive(Clone, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct StoryGoalData {
+    pub time_in_period: String,
+    pub player_id: u32,
+    pub first_name: PlayerName,
+    pub last_name: PlayerName,
+    pub goal_modifier: GoalModifier,
+    pub assists: Vec<AssistInfo>,
+    pub team_abbrev: TeamAbbrevWrapper,
+    pub goals_to_date: Option<u16>,
+    pub strength: GoalStrength,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -109,7 +135,7 @@ pub struct Summary {
 pub struct ShootoutAttempt {
     pub sequence: usize,
     pub player_id: u32,
-    pub team_abbrev: TeamAbbrev,
+    pub team_abbrev: TeamAbbrevWrapper,
     pub first_name: PlayerName,
     pub last_name: PlayerName,
     pub result: ShootoutAttemptResult,
@@ -218,8 +244,8 @@ mod tests {
             Some("29-39-14".to_string())
         );
         assert_eq!(
-            resp.away_team.as_ref().and_then(|t| t.abbrev.clone()),
-            Some("CHI".to_string())
+            resp.away_team.as_ref().and_then(|t| t.abbrev),
+            Some(TeamAbbrev::CHI)
         );
         let matchup = resp.pre_game_matchup.expect("has matchup");
 

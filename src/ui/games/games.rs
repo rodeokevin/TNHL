@@ -215,7 +215,6 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 }
                 GamesFocus::Scoring => {
                     scoring::render_scoring(
-                        game,
                         app.state.games.game_story_data.get(&game.id),
                         frame,
                         lower_info_chunks[2],

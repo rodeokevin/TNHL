@@ -254,9 +254,9 @@ fn build_goalies(
     // Only include goalies who have actually played this season.
     let played = |g: &&GoalieCompare| g.games_played.unwrap_or(0) > 0;
 
-    let team_abbrev = |t: Option<&StoryTeam>| {
-        t.and_then(|t| t.abbrev.clone())
-            .unwrap_or_else(|| "?".to_string())
+    let team_abbrev = |t: Option<&StoryTeam>| match t.and_then(|team| team.abbrev) {
+        Some(abbrev) => abbrev.to_string(),
+        None => "?".to_string(),
     };
 
     // Away team goalies, then home team goalies, centered

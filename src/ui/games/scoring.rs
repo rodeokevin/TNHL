@@ -1,11 +1,10 @@
 use crate::models::games::{
     game_story::{GameStoryResponse, ShootoutAttemptResult},
-    games::{
-        AssistInfo, GameData, GameState, GoalModifier, GoalStrength, PeriodDescriptor, PeriodType,
-    },
+    games::{AssistInfo, GoalModifier, GoalStrength, PeriodType},
 };
 use crate::ui::{
-    games::games::{BIG_SCORE_COLOR, render_scroll_frame, split_info_left_middle_right},
+    games::games::get_period_title,
+    games::games::{BIG_SCORE_COLOR, render_scroll_frame},
     games::stats::AWAY_BAR_COLOR,
     render::border_style,
 };
@@ -18,10 +17,9 @@ use ratatui::{
 };
 
 // Length of the middle chunk for scoring and stats
-pub const MIDDLE_LENGTH: u16 = 25;
+pub const MIDDLE_LENGTH: u16 = 50;
 
 pub fn render_scoring(
-    game: &GameData,
     maybe_game_story: Option<&GameStoryResponse>,
     frame: &mut Frame,
     area: Rect,
@@ -29,160 +27,162 @@ pub fn render_scoring(
     max_scroll: &mut usize,
     visible_rows: &mut usize,
 ) {
-    let away_team_abbrev = &game.away_team.abbrev;
-    let home_team_abbrev = &game.home_team.abbrev;
+    let Some(story) = maybe_game_story else {
+        *max_scroll = 0;
+        *visible_rows = 0;
+        frame.render_widget(Line::from("Loading scoring...").centered(), area);
+        return;
+    };
+
+    let away_team_abbrev = story.away_team.as_ref().and_then(|team| team.abbrev);
+    let home_team_abbrev = story.home_team.as_ref().and_then(|team| team.abbrev);
 
     let mut away_lines = vec![];
     let mut middle_lines = vec![];
     let mut home_lines = vec![];
 
-    // Add scoring lines
-    if let Some(goals) = &game.goals
-        && !goals.is_empty()
-    {
-        let mut current_period = 0;
-        for (i, goal) in goals.iter().enumerate() {
-            if matches!(goal.period_descriptor.period_type, PeriodType::SO) {
-                continue;
-            }
-            // Period
-            if goal.period_descriptor.number > current_period {
+    if let Some(summary) = &story.summary {
+        // No goals yet
+        if summary.scoring.is_empty() && summary.shootout.is_empty() {
+            middle_lines.push(
+                Line::from("\"No goals.\" - Juuse Saros").style(Style::new().fg(Color::DarkGray)),
+            );
+        } else {
+            for period_score in summary.scoring.iter() {
+                if matches!(period_score.period_descriptor.period_type, PeriodType::SO) {
+                    continue;
+                }
+                if period_score.goals.is_empty() {
+                    continue;
+                }
                 away_lines.push(Line::default());
-                home_lines.push(Line::default());
                 middle_lines.push(
-                    Line::from(get_period_title(&goal.period_descriptor))
+                    Line::from(get_period_title(&period_score.period_descriptor))
                         .centered()
                         .style(border_style()),
                 );
-                current_period = goal.period_descriptor.number;
-            }
-            let goals_to_date = goal
-                .goals_to_date
-                .map(|n| format!(" ({})", n))
-                .unwrap_or_default();
-            let mut strengths = vec![];
-            match goal.strength {
-                GoalStrength::PP => strengths.push("PPG"),
-                GoalStrength::SH => strengths.push("SHG"),
-                GoalStrength::EV => {}
-                _ => {}
-            }
-            match goal.goal_modifier {
-                GoalModifier::EmptyNet => strengths.push("ENG"),
-                GoalModifier::PenaltyShot => strengths.push("Penalty shot"),
-                _ => {}
-            }
-
-            if goal.team_abbrev == *away_team_abbrev.to_string() {
-                let mut away_spans = vec![];
-
-                if !strengths.is_empty() {
-                    let label = strengths.join(", ");
-                    away_spans.push(Span::styled(
-                        format!("[{}] ", label),
-                        Style::new().fg(AWAY_BAR_COLOR).bold(),
-                    ));
-                }
-
-                away_spans.push(Span::raw(format!(
-                    "[{}] {} {}{}",
-                    goal.time_in_period, goal.first_name, goal.last_name, goals_to_date
-                )));
-
-                away_lines.push(Line::from(away_spans).right_aligned());
                 home_lines.push(Line::default());
-                middle_lines.push(Line::default());
+                for (i, goal) in period_score.goals.iter().enumerate() {
+                    let goals_to_date = goal
+                        .goals_to_date
+                        .map(|n| format!(" ({})", n))
+                        .unwrap_or_default();
 
-                // Add a line for assists (or display unassisted)
-                away_lines.push(get_assists_line(&goal.assists, Alignment::Right));
+                    let mut strengths = vec![];
+                    match goal.strength {
+                        GoalStrength::PP => strengths.push("PPG"),
+                        GoalStrength::SH => strengths.push("SHG"),
+                        GoalStrength::EV => {}
+                        _ => {}
+                    }
+
+                    match goal.goal_modifier {
+                        GoalModifier::EmptyNet => strengths.push("ENG"),
+                        GoalModifier::PenaltyShot => strengths.push("Penalty shot"),
+                        _ => {}
+                    }
+                    // Away team goal
+                    if Some(goal.team_abbrev.default) == away_team_abbrev {
+                        let mut away_spans = vec![];
+
+                        if !strengths.is_empty() {
+                            let label = strengths.join(", ");
+                            away_spans.push(Span::styled(
+                                format!("{} ", label),
+                                Style::new().fg(AWAY_BAR_COLOR).bold(),
+                            ));
+                        }
+
+                        away_spans.push(Span::raw(format!(
+                            "{} {} {}{}",
+                            goal.time_in_period, goal.first_name, goal.last_name, goals_to_date
+                        )));
+
+                        away_lines.push(Line::default());
+                        middle_lines.push(Line::from(away_spans).left_aligned());
+                        home_lines.push(Line::default());
+
+                        // Add a line for assists (or display unassisted)
+                        away_lines.push(Line::default());
+                        middle_lines.push(get_assists_line(&goal.assists, Alignment::Left));
+                        home_lines.push(Line::default());
+                    }
+                    // Home team goal
+                    else if Some(goal.team_abbrev.default) == home_team_abbrev {
+                        let mut home_spans = vec![Span::raw(format!(
+                            "{} {}{} {}",
+                            goal.first_name, goal.last_name, goals_to_date, goal.time_in_period
+                        ))];
+
+                        if !strengths.is_empty() {
+                            let label = strengths.join(", ");
+                            home_spans.push(Span::styled(
+                                format!(" {}", label),
+                                Style::new().fg(AWAY_BAR_COLOR).bold(),
+                            ));
+                        }
+                        away_lines.push(Line::default());
+                        middle_lines.push(Line::from(home_spans).right_aligned());
+                        home_lines.push(Line::default());
+
+                        away_lines.push(Line::default());
+                        middle_lines.push(get_assists_line(&goal.assists, Alignment::Right));
+                        home_lines.push(Line::default());
+                    }
+                    // Add spacing between goals in the same period.
+                    if period_score.goals.get(i + 1).is_some() {
+                        away_lines.push(Line::default());
+                        middle_lines.push(Line::default());
+                        home_lines.push(Line::default());
+                    }
+                }
+            }
+            // Add shootout attempts if there are any
+            if !summary.shootout.is_empty() {
+                // Add shootout lines
+                away_lines.push(Line::default());
+                middle_lines.push(Line::from("Shootout").centered().style(border_style()));
                 home_lines.push(Line::default());
-                middle_lines.push(Line::default());
-            } else if goal.team_abbrev == *home_team_abbrev.to_string() {
-                let mut home_spans = vec![Span::raw(format!(
-                    "{} {}{} [{}]",
-                    goal.first_name, goal.last_name, goals_to_date, goal.time_in_period
-                ))];
+                for shootout_attempt in &summary.shootout {
+                    let (attempt_symbol, attempt_color) =
+                        if matches!(shootout_attempt.result, ShootoutAttemptResult::Goal) {
+                            ("[✓]", BIG_SCORE_COLOR)
+                        } else {
+                            ("[✗]", AWAY_BAR_COLOR)
+                        };
 
-                if !strengths.is_empty() {
-                    let label = strengths.join(", ");
-                    home_spans.push(Span::styled(
-                        format!(" [{}]", label),
-                        Style::new().fg(AWAY_BAR_COLOR).bold(),
-                    ));
-                }
+                    let attempt_span = Span::styled(attempt_symbol, Style::new().fg(attempt_color));
 
-                away_lines.push(Line::default());
-                home_lines.push(Line::from(home_spans));
-                middle_lines.push(Line::default());
-
-                home_lines.push(get_assists_line(&goal.assists, Alignment::Left));
-                away_lines.push(Line::default());
-                middle_lines.push(Line::default());
-            }
-            // Add spacing if next goal is in the same period
-            if let Some(next_goal) = goals.get(i + 1) {
-                if next_goal.period_descriptor.number == goal.period_descriptor.number {
-                    home_lines.push(Line::default());
-                    away_lines.push(Line::default());
-                    middle_lines.push(Line::default());
-                }
-            }
-        }
-        // Add shootout attempts if there are any
-        if let Some(game_story) = maybe_game_story
-            && let Some(summary) = &game_story.summary
-            && !summary.shootout.is_empty()
-        {
-            // Add shootout lines
-            away_lines.push(Line::default());
-            middle_lines.push(Line::from("Shootout").centered().style(border_style()));
-            home_lines.push(Line::default());
-            for shootout_attempt in &summary.shootout {
-                let (attempt_symbol, attempt_color) =
-                    if matches!(shootout_attempt.result, ShootoutAttemptResult::Goal) {
-                        ("[✓]", BIG_SCORE_COLOR)
+                    if Some(shootout_attempt.team_abbrev.default) == away_team_abbrev {
+                        middle_lines.push(
+                            Line::from(vec![
+                                Span::raw(format!(
+                                    "{} {}",
+                                    shootout_attempt.first_name, shootout_attempt.last_name
+                                )),
+                                attempt_span,
+                            ])
+                            .right_aligned(),
+                        );
+                        away_lines.push(Line::default());
+                        home_lines.push(Line::default());
                     } else {
-                        ("[✗]", AWAY_BAR_COLOR)
-                    };
-
-                let attempt_span = Span::styled(attempt_symbol, Style::new().fg(attempt_color));
-
-                if shootout_attempt.team_abbrev.default == *away_team_abbrev.to_string() {
-                    away_lines.push(
-                        Line::from(vec![
-                            Span::raw(format!(
-                                "{} {} ",
-                                shootout_attempt.first_name, shootout_attempt.last_name
-                            )),
-                            attempt_span,
-                        ])
-                        .right_aligned(),
-                    );
-                    middle_lines.push(Line::default());
-                    home_lines.push(Line::default());
-                } else {
-                    home_lines.push(
-                        Line::from(vec![
-                            attempt_span,
-                            Span::raw(format!(
-                                " {} {}",
-                                shootout_attempt.first_name, shootout_attempt.last_name
-                            )),
-                        ])
-                        .left_aligned(),
-                    );
-                    middle_lines.push(Line::default());
-                    away_lines.push(Line::default());
+                        away_lines.push(Line::default());
+                        home_lines.push(Line::default());
+                        middle_lines.push(
+                            Line::from(vec![
+                                attempt_span,
+                                Span::raw(format!(
+                                    "{} {}",
+                                    shootout_attempt.first_name, shootout_attempt.last_name
+                                )),
+                            ])
+                            .left_aligned(),
+                        );
+                    }
                 }
             }
         }
-    } else if matches!(game.game_state, GameState::LIVE | GameState::CRIT) {
-        // No goals yet but game is live (but not shootout)
-        middle_lines.push(
-            Line::from("\"No goals.\" - Juuse Saros").style(Style::new().fg(Color::DarkGray)),
-        );
-        home_lines.push(Line::default());
-        away_lines.push(Line::default());
     }
 
     // Reserve indicator rows, compute the visible window, and render ▲/▼.
@@ -195,16 +195,14 @@ pub fn render_scoring(
         visible_rows,
     );
 
-    let visible_away: Vec<Line> = away_lines[view.range.clone()].to_vec();
-    let visible_home: Vec<Line> = home_lines[view.range.clone()].to_vec();
-    let visible_middle: Vec<Line> = middle_lines[view.range].to_vec();
+    let visible_away = away_lines[view.range.clone()].to_vec();
+    let visible_middle = middle_lines[view.range.clone()].to_vec();
+    let visible_home = home_lines[view.range].to_vec();
 
-    // Re-split the content area horizontally
-    let chunks = split_info_left_middle_right(view.content, MIDDLE_LENGTH);
-
-    frame.render_widget(Paragraph::new(visible_away), chunks[0]);
-    frame.render_widget(Paragraph::new(visible_middle), chunks[1]);
-    frame.render_widget(Paragraph::new(visible_home), chunks[2]);
+    let columns = crate::ui::games::games::split_info_left_middle_right(view.content, MIDDLE_LENGTH);
+    frame.render_widget(Paragraph::new(visible_away), columns[0]);
+    frame.render_widget(Paragraph::new(visible_middle), columns[1]);
+    frame.render_widget(Paragraph::new(visible_home), columns[2]);
 }
 
 fn get_assists_line(assists: &Vec<AssistInfo>, alignment: Alignment) -> Line<'static> {
@@ -216,7 +214,11 @@ fn get_assists_line(assists: &Vec<AssistInfo>, alignment: Alignment) -> Line<'st
         )
         .alignment(alignment)
     } else {
-        Line::styled("[Unassisted]", Style::new().fg(Color::DarkGray)).alignment(alignment)
+        Line::styled(
+            "[Unassisted]".to_string(),
+            Style::new().fg(Color::DarkGray),
+        )
+        .alignment(alignment)
     }
 }
 
@@ -232,23 +234,4 @@ fn get_assists_text(assists: &Vec<AssistInfo>) -> String {
         })
         .collect::<Vec<_>>()
         .join(", ")
-}
-
-fn get_period_title(period: &PeriodDescriptor) -> String {
-    match period.period_type {
-        PeriodType::REG => match period.number {
-            1 => "1st Period".to_string(),
-            2 => "2nd Period".to_string(),
-            3 => "3rd Period".to_string(),
-            _ => format!("{}th Period", period.number).to_string(),
-        },
-        PeriodType::OT => match period.ot_periods.unwrap_or(0) {
-            0 | 1 => "Overtime".to_string(),
-            2 => "2nd Overtime".to_string(),
-            3 => "3rd Overtime".to_string(),
-            _ => format!("{}th Overtime", period.ot_periods.unwrap_or(0)),
-        },
-        PeriodType::SO => "Shootout".to_string(),
-        _ => "Unknown Period".to_string(),
-    }
 }

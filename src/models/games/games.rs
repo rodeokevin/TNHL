@@ -72,7 +72,7 @@ pub struct SeriesStatus {
     pub game_number_of_series: usize,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub enum PeriodType {
     REG,
     OT,
@@ -99,7 +99,7 @@ pub struct Clock {
     pub in_intermission: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PeriodDescriptor {
     pub number: u8,
@@ -132,7 +132,7 @@ pub enum SituationDesc {
     Unknown,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GoalData {
     pub period_descriptor: PeriodDescriptor,
@@ -142,7 +142,7 @@ pub struct GoalData {
     pub last_name: PlayerName,
     pub goal_modifier: GoalModifier,
     pub assists: Vec<AssistInfo>,
-    pub team_abbrev: String,
+    pub team_abbrev: TeamAbbrev,
     pub goals_to_date: Option<u16>,
     pub strength: GoalStrength,
 }
@@ -157,7 +157,7 @@ impl fmt::Display for PlayerName {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum GoalModifier {
     None,
@@ -167,7 +167,7 @@ pub enum GoalModifier {
     Unknown,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AssistInfo {
     pub player_id: u32,
@@ -175,7 +175,7 @@ pub struct AssistInfo {
     pub assists_to_date: Option<u16>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GoalStrength {
     EV,
@@ -185,7 +185,7 @@ pub enum GoalStrength {
     Unknown,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GameOutcome {
     pub last_period_type: PeriodType,
