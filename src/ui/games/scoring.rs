@@ -16,7 +16,7 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-// Length of the middle chunk for scoring and stats
+// Length of the middle chunk for scoring
 pub const MIDDLE_LENGTH: u16 = 50;
 
 pub fn render_scoring(
@@ -157,12 +157,12 @@ pub fn render_scoring(
                         middle_lines.push(
                             Line::from(vec![
                                 Span::raw(format!(
-                                    "{} {}",
+                                    "{} {} ",
                                     shootout_attempt.first_name, shootout_attempt.last_name
                                 )),
                                 attempt_span,
                             ])
-                            .right_aligned(),
+                            .left_aligned(),
                         );
                         away_lines.push(Line::default());
                         home_lines.push(Line::default());
@@ -173,11 +173,11 @@ pub fn render_scoring(
                             Line::from(vec![
                                 attempt_span,
                                 Span::raw(format!(
-                                    "{} {}",
+                                    " {} {}",
                                     shootout_attempt.first_name, shootout_attempt.last_name
                                 )),
                             ])
-                            .left_aligned(),
+                            .right_aligned(),
                         );
                     }
                 }

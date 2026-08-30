@@ -4,8 +4,8 @@ use ratatui::{
     Frame,
     layout::{Constraint, Rect},
     style::{Color, Modifier, Style},
-    text::Line,
-    widgets::{Block, Row, Table},
+    text::{Line, Text},
+    widgets::{Block, Cell, Row, Table},
 };
 
 use crate::models::games::games::PeriodType;
@@ -22,6 +22,12 @@ const PLAYS_COLUMNS: [Constraint; 4] = [
     Constraint::Min(10),
 ];
 
+/// Sum of the three fixed-width columns' widths.
+const FIXED_COLUMNS_WIDTH: u16 = 3 + 5 + 3;
+/// Spacing between 4 columns (3 gaps).
+const COLUMN_SPACING: u16 = 1;
+const NUM_GAPS: u16 = 3;
+
 pub fn render_play_by_play(frame: &mut Frame, app: &mut App, area: Rect) {
     let block = Block::bordered()
         .title(" Play-by-Play ")
@@ -33,7 +39,7 @@ pub fn render_play_by_play(frame: &mut Frame, app: &mut App, area: Rect) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    app.state.games.plays_visible_rows = inner.height.saturating_sub(1) as usize;
+    // app.state.games.plays_visible_rows = inner.height.saturating_sub(1) as usize;
 
     let plays = app
         .state
@@ -45,7 +51,7 @@ pub fn render_play_by_play(frame: &mut Frame, app: &mut App, area: Rect) {
         .and_then(|id| app.state.games.plays_data.get(&id));
 
     let Some(plays) = plays else {
-        app.state.games.plays_len = 0;
+        // app.state.games.plays_len = 0;
         frame.render_widget(Line::from("Loading play-by-play...").centered(), inner);
         return;
     };
@@ -57,29 +63,40 @@ pub fn render_play_by_play(frame: &mut Frame, app: &mut App, area: Rect) {
         .map(|r| (r.player_id, r))
         .collect();
 
+    // Width available to the "Event" column once fixed columns + spacing are subtracted.
+    let desc_width = event_column_width(inner.width);
+
     let rows: Vec<Row> = plays
         .plays
         .iter()
         .rev()
-        .map(|p| play_row(p, plays, &roster))
+        .map(|p| play_row(p, plays, &roster, desc_width))
         .collect();
-    app.state.games.plays_len = rows.len();
+    // app.state.games.plays_len = rows.len();
 
     let table = Table::new(rows, PLAYS_COLUMNS)
         .header(
             Row::new(vec!["", "", "", "Event"])
                 .style(Style::new().bold().add_modifier(Modifier::UNDERLINED)),
         )
-        .column_spacing(1)
+        .column_spacing(COLUMN_SPACING)
         .row_highlight_style(Style::new().fg(Color::Gray).bg(Color::DarkGray).bold())
         .highlight_symbol("");
     frame.render_stateful_widget(table, inner, &mut app.state.games.plays_table_state);
+}
+
+/// Compute how wide the `Min(10)` "Event" column will actually render at,
+/// given the total inner width, so we can wrap text to match.
+fn event_column_width(total_width: u16) -> usize {
+    let used = FIXED_COLUMNS_WIDTH + (COLUMN_SPACING * NUM_GAPS);
+    total_width.saturating_sub(used).max(10) as usize
 }
 
 fn play_row(
     play: &PlayData,
     plays: &PlaysResponse,
     roster: &HashMap<u32, &RosterPlayer>,
+    desc_width: usize,
 ) -> Row<'static> {
     let period = format_period(play, plays.game_type);
 
@@ -100,8 +117,25 @@ fn play_row(
 
     let desc = describe(play, roster);
 
-    Row::new(vec![period, play.time_remaining.clone(), team, desc])
-        .style(type_style(&play.type_desc_key))
+    // Wrap the description to the column's actual rendered width, and size
+    // the row to match how many lines that produced.
+    let wrapped_lines = textwrap::wrap(&desc, desc_width.max(1));
+    let height = wrapped_lines.len().max(1) as u16;
+    let desc_text = Text::from(
+        wrapped_lines
+            .into_iter()
+            .map(|l| Line::from(l.into_owned()))
+            .collect::<Vec<_>>(),
+    );
+
+    Row::new(vec![
+        Cell::from(period),
+        Cell::from(play.time_remaining.clone()),
+        Cell::from(team),
+        Cell::from(desc_text),
+    ])
+    .height(height)
+    .style(type_style(&play.type_desc_key))
 }
 
 /// Format the period column: `P1`/`P2`/`P3` in regulation, `OT`/`SO` otherwise.
@@ -125,7 +159,7 @@ fn format_period(play: &PlayData, game_type: u8) -> String {
     }
 }
 
-/// Resolve a player id to a short name, or a placeholder when unknown.
+/// Resolve a player id to a last name + sweater number, or a placeholder when unknown.
 fn name(roster: &HashMap<u32, &RosterPlayer>, id: Option<u32>) -> String {
     id.and_then(|id| roster.get(&id))
         .map(|p| p.short_name())

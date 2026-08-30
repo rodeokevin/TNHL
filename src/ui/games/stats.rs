@@ -3,7 +3,6 @@ use crate::models::games::game_story::{GameStatsCategory, StatValue, TeamGameSta
 use crate::ui::{
     games::{
         games::{render_scroll_frame, split_info_left_middle_right},
-        scoring::MIDDLE_LENGTH,
     },
     render::border_style,
 };
@@ -20,6 +19,9 @@ use ratatui::{
 
 pub const AWAY_BAR_COLOR: Color = Color::Rgb(220, 50, 47); // Red
 pub const HOME_BAR_COLOR: Color = Color::Rgb(38, 139, 210); // Blue
+
+// Length of the middle chunk for scoring
+pub const STATS_MIDDLE_LENGTH: u16 = 25;
 
 pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     let game_id = app
@@ -202,14 +204,14 @@ fn compute_middle_bar<'a>(away_value: &'a StatValue, home_value: &'a StatValue) 
     let mut home_length = 0;
     let (away_zero, home_zero) = (away_value.is_zero(), home_value.is_zero());
     if away_zero && home_zero {
-        away_length = (MIDDLE_LENGTH - 3) / 2;
-        home_length = (MIDDLE_LENGTH - 3) / 2;
+        away_length = (STATS_MIDDLE_LENGTH - 3) / 2;
+        home_length = (STATS_MIDDLE_LENGTH - 3) / 2;
     } else if away_zero {
-        home_length = MIDDLE_LENGTH - 2;
+        home_length = STATS_MIDDLE_LENGTH - 2;
     } else if home_zero {
-        away_length = MIDDLE_LENGTH - 2;
+        away_length = STATS_MIDDLE_LENGTH - 2;
     } else {
-        let total = (MIDDLE_LENGTH - 3) as f64;
+        let total = (STATS_MIDDLE_LENGTH - 3) as f64;
         let away = match away_value {
             StatValue::Int(v) => *v as f64,
             StatValue::Float(v) => *v,
@@ -222,7 +224,7 @@ fn compute_middle_bar<'a>(away_value: &'a StatValue, home_value: &'a StatValue) 
         };
         let sum = away + home;
         away_length = ((away / sum) * total).round().max(1.0) as u16;
-        home_length = MIDDLE_LENGTH - 3 - away_length;
+        home_length = STATS_MIDDLE_LENGTH - 3 - away_length;
     }
     let gap = std::iter::once(Span::raw(if away_zero ^ home_zero { "" } else { " " }));
     let away_spans: Vec<_> = std::iter::repeat(Span::styled("─", Style::new().fg(AWAY_BAR_COLOR)))

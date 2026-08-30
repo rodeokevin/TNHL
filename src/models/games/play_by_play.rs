@@ -199,12 +199,20 @@ pub struct RosterPlayer {
 }
 
 impl RosterPlayer {
-    /// Display name with sweater number
+    /// Display initial of first name, last name with sweater number
     pub fn short_name(&self) -> String {
         let initial = self.first_name.default.chars().next().unwrap_or(' ');
         format!(
             "{}. {} (#{})",
             initial, self.last_name.default, self.sweater_number
+        )
+    }
+
+    /// Display last name with sweater number
+    pub fn last_name(&self) -> String {
+        format!(
+            "{} (#{})",
+            self.last_name.default, self.sweater_number
         )
     }
 }

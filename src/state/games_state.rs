@@ -82,8 +82,8 @@ pub struct GamesState {
     pub plays_visible: bool,
     pub plays_focused: bool,
     pub plays_table_state: TableState,
-    pub plays_visible_rows: usize,
-    pub plays_len: usize,
+    // pub plays_visible_rows: usize,
+    // pub plays_len: usize,
 }
 
 impl Default for GamesState {
@@ -113,8 +113,8 @@ impl Default for GamesState {
             plays_visible: false,
             plays_focused: false,
             plays_table_state: table(),
-            plays_visible_rows: 0,
-            plays_len: 0,
+            // plays_visible_rows: 0,
+            // plays_len: 0,
         }
     }
 }
@@ -159,14 +159,16 @@ impl GamesState {
         self.plays_table_state.scroll_down_by(1);
     }
     pub fn plays_page_up(&mut self) {
-        table_page_up(self.plays_visible_rows, &mut self.plays_table_state);
+        self.plays_table_state.scroll_up_by(5);
+        // table_page_up(self.plays_visible_rows, &mut self.plays_table_state);
     }
     pub fn plays_page_down(&mut self) {
-        table_page_down(
-            self.plays_visible_rows,
-            self.plays_len,
-            &mut self.plays_table_state,
-        );
+        self.plays_table_state.scroll_down_by(5);
+        // table_page_down(
+        //     self.plays_visible_rows,
+        //     self.plays_len,
+        //     &mut self.plays_table_state,
+        // );
     }
     /// Reset all state in games to default
     pub fn reset_state(&mut self) {
@@ -213,6 +215,7 @@ impl GamesState {
         );
         if is_pregame {
             self.focus = GamesFocus::Pregame;
+            self.plays_focused = false;
         } else if self.focus == GamesFocus::Pregame {
             self.focus = GamesFocus::default();
         }

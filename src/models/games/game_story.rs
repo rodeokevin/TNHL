@@ -4,7 +4,10 @@ use std::fmt;
 use crate::models::{
     TeamAbbrev,
     TeamAbbrevWrapper,
-    games::games::{AssistInfo, GoalModifier, GoalStrength, PeriodDescriptor, PlayerName},
+    games::{
+        games::{AssistInfo, GoalModifier, GoalStrength, PeriodDescriptor, PlayerName},
+        Position,
+    }
 };
 
 #[derive(Debug, Clone, Deserialize)]
