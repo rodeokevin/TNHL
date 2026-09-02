@@ -21,6 +21,7 @@ impl GamesResponse {
 #[serde(rename_all = "camelCase")]
 pub struct GameData {
     pub id: u32,
+    pub game_type: u8,
     pub venue: Venue,
     #[serde(rename = "startTimeUTC")]
     pub start_time_utc: DateTime<Utc>,

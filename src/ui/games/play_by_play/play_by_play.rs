@@ -8,11 +8,11 @@ use ratatui::{
     widgets::{Block, Cell, Row, Table},
 };
 
+use crate::app::App;
 use crate::models::games::games::PeriodType;
 use crate::models::games::play_by_play::{
     DescKey, PlayData, PlayDetails, PlaysResponse, RosterPlayer, TypeDescKey,
 };
-use crate::app::App;
 use crate::ui::render::border_style;
 
 const PLAYS_COLUMNS: [Constraint; 4] = [
@@ -29,13 +29,14 @@ const COLUMN_SPACING: u16 = 1;
 const NUM_GAPS: u16 = 3;
 
 pub fn render_play_by_play(frame: &mut Frame, app: &mut App, area: Rect) {
-    let block = Block::bordered()
-        .title(" Play-by-Play ")
-        .border_style(if app.state.games.plays_focused {
-            border_style()
-        } else {
-            Style::new().fg(Color::DarkGray)
-        });
+    let block =
+        Block::bordered()
+            .title(" Play-by-Play ")
+            .border_style(if app.state.games.plays_focused {
+                border_style()
+            } else {
+                Style::new().fg(Color::DarkGray)
+            });
     let inner = block.inner(area);
     frame.render_widget(block, area);
 

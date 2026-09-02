@@ -199,7 +199,8 @@ pub fn render_scoring(
     let visible_middle = middle_lines[view.range.clone()].to_vec();
     let visible_home = home_lines[view.range].to_vec();
 
-    let columns = crate::ui::games::games::split_info_left_middle_right(view.content, MIDDLE_LENGTH);
+    let columns =
+        crate::ui::games::games::split_info_left_middle_right(view.content, MIDDLE_LENGTH);
     frame.render_widget(Paragraph::new(visible_away), columns[0]);
     frame.render_widget(Paragraph::new(visible_middle), columns[1]);
     frame.render_widget(Paragraph::new(visible_home), columns[2]);
@@ -214,11 +215,8 @@ fn get_assists_line(assists: &Vec<AssistInfo>, alignment: Alignment) -> Line<'st
         )
         .alignment(alignment)
     } else {
-        Line::styled(
-            "[Unassisted]".to_string(),
-            Style::new().fg(Color::DarkGray),
-        )
-        .alignment(alignment)
+        Line::styled("[Unassisted]".to_string(), Style::new().fg(Color::DarkGray))
+            .alignment(alignment)
     }
 }
 

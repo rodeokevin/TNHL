@@ -2,12 +2,11 @@ use serde::Deserialize;
 use std::fmt;
 
 use crate::models::{
-    TeamAbbrev,
-    TeamAbbrevWrapper,
+    TeamAbbrev, TeamAbbrevWrapper,
     games::{
-        games::{AssistInfo, GoalModifier, GoalStrength, PeriodDescriptor, PlayerName},
         Position,
-    }
+        games::{AssistInfo, GoalModifier, GoalStrength, PeriodDescriptor, PlayerName},
+    },
 };
 
 #[derive(Debug, Clone, Deserialize)]

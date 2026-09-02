@@ -168,7 +168,9 @@ pub fn map_key(key_event: KeyEvent, state: &mut AppState) -> Action {
                     (KeyCode::Left | KeyCode::Char('h'), _) => Action::PrevGame,
                     (KeyCode::Right | KeyCode::Char('l'), _) => Action::NextGame,
                     (KeyCode::Up | KeyCode::Char('K'), KeyModifiers::SHIFT) => Action::PlaysPageUp,
-                    (KeyCode::Down | KeyCode::Char('J'), KeyModifiers::SHIFT) => Action::PlaysPageDown,
+                    (KeyCode::Down | KeyCode::Char('J'), KeyModifiers::SHIFT) => {
+                        Action::PlaysPageDown
+                    }
                     (KeyCode::Up | KeyCode::Char('k'), _) => Action::PlaysScrollUp,
                     (KeyCode::Down | KeyCode::Char('j'), _) => Action::PlaysScrollDown,
                     _ => Action::None,

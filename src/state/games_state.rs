@@ -1,6 +1,6 @@
-use crate::models::games::play_by_play::PlaysResponse;
+use crate::models::games::play_by_play::{PlayData, PlaysResponse};
 use crate::models::games::{
-    boxscore::BoxscoreResponse, game_story::GameStoryResponse, games::GameState,
+    boxscore::BoxscoreResponse, game_story::GameStoryResponse, games::GameData, games::GameState,
     games::GamesResponse,
 };
 use crate::state::app_state::{table_page_down, table_page_up};
@@ -136,6 +136,10 @@ impl GamesState {
     }
 
     pub fn toggle_plays(&mut self) {
+        // Don't show if no game is selected
+        if self.current_game_id().is_none() {
+            return;
+        }
         self.plays_visible = !self.plays_visible;
         self.plays_focused = self.plays_visible;
         self.reset_plays_scroll();
@@ -174,6 +178,8 @@ impl GamesState {
     pub fn reset_state(&mut self) {
         self.reset_game_state();
         self.selected_game_index = 0;
+        self.plays_visible = false;
+        self.plays_focused = false;
     }
     /// Reset state when changing games
     pub fn reset_game_state(&mut self) {
@@ -251,12 +257,36 @@ impl GamesState {
             None => 0,
         }
     }
-    /// Return the current game id
-    pub fn current_game_id(&self) -> Option<u32> {
+    /// The currently selected game, if any.
+    pub fn selected_game(&self) -> Option<&GameData> {
         self.games_data
             .as_ref()
             .and_then(|g| g.games.get(self.selected_game_index))
-            .map(|g| g.id)
+    }
+    /// Whether the currently selected game is a playoff game.
+    pub fn is_playoff(&self) -> bool {
+        self.selected_game()
+            .is_some_and(|g| g.game_type == 3)
+    }
+    /// Return the current game id
+    pub fn current_game_id(&self) -> Option<u32> {
+        self.selected_game().map(|g| g.id)
+    }
+    /// The `PlayData` currently highlighted in the play-by-play table, if any
+    pub fn selected_play(&self) -> Option<&PlayData> {
+        let plays = self
+            .current_game_id()
+            .and_then(|id| self.plays_data.get(&id))?;
+        let selected = self.plays_table_state.selected()?;
+        plays.plays.iter().rev().nth(selected)
+    }
+
+    /// The `(x, y)` coordinates of the currently selected play
+    pub fn selected_play_coords(&self) -> Option<(f64, f64)> {
+        let details = self.selected_play()?.details.as_ref()?;
+        let x = details.x_coord? as f64;
+        let y = details.y_coord? as f64;
+        Some((x, y))
     }
     pub fn reset_boxscore_state(&mut self) {
         self.boxscore_selected_position = BoxscorePosition::default();

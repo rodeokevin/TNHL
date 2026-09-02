@@ -1,9 +1,7 @@
 use crate::App;
 use crate::models::games::game_story::{GameStatsCategory, StatValue, TeamGameStats};
 use crate::ui::{
-    games::{
-        games::{render_scroll_frame, split_info_left_middle_right},
-    },
+    games::games::{render_scroll_frame, split_info_left_middle_right},
     render::border_style,
 };
 use std::collections::HashMap;

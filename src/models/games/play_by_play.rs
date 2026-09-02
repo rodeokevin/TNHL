@@ -66,6 +66,9 @@ pub struct PlayDetails {
     // Stoppage
     pub reason: Option<String>,
     pub secondary_reason: Option<String>,
+    // Coordinates
+    pub x_coord: Option<i16>,
+    pub y_coord: Option<i16>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -210,10 +213,7 @@ impl RosterPlayer {
 
     /// Display last name with sweater number
     pub fn last_name(&self) -> String {
-        format!(
-            "{} (#{})",
-            self.last_name.default, self.sweater_number
-        )
+        format!("{} (#{})", self.last_name.default, self.sweater_number)
     }
 }
 

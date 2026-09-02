@@ -6,7 +6,11 @@ use crate::models::games::games::{
 use crate::state::games_state::GamesFocus;
 use crate::ui::games::stats::AWAY_BAR_COLOR;
 use crate::ui::{
-    games::{boxscore, play_by_play, pregame, scoring, stats},
+    games::{
+        boxscore,
+        play_by_play::{play_by_play, rink},
+        pregame, scoring, stats,
+    },
     layout::{split_area_horizontal, split_area_vertical, tabs_and_content},
     render::{BORDER_COLOR, border_style},
 };
@@ -26,6 +30,10 @@ use tui_big_text::{BigText, PixelSize};
 
 pub const MIDDLE_LENGTH: u16 = 10;
 pub const BIG_SCORE_COLOR: Color = Color::Rgb(35, 179, 16); // Green
+
+/// Minimum inner height required before the rink is shown, so small terminals
+/// don't get a cramped layout.
+const MIN_HEIGHT_FOR_RINK: u16 = 24;
 
 pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
@@ -136,15 +144,75 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     let inner = block.inner(tab_content_chunks[1]);
     frame.render_widget(block, tab_content_chunks[1]);
 
+    let show_rink = app.state.games.plays_visible
+        && inner.height >= MIN_HEIGHT_FOR_RINK;
 
-    let upper_score_lower = split_area_vertical(
+    // Coordinates of the selected play
+    let play_coords = if show_rink {
+        app.state.games.selected_play_coords()
+    } else {
+        None
+    };
+
+    // Whether the selected game is a playoff game to show series info
+    let is_playoff = app.state.games.is_playoff();
+
+    // Split the page into upper and lower regions
+    const UPPER_INFO_HEIGHT: u16 = 5;
+    const SCORE_HEIGHT: u16 = 4;
+    const SERIES_INFO_HEIGHT: u16 = 2; // playoff: series label + status
+    const MIN_LOWER_HEIGHT: u16 = 8;
+    let series_height = if is_playoff { SERIES_INFO_HEIGHT } else { 0 };
+
+    let left_height = UPPER_INFO_HEIGHT + SCORE_HEIGHT + series_height;
+
+    let upper_region_height = if show_rink {
+        // Right half width drives the aspect-correct rink height.
+        let rink_width = inner.width / 2;
+        let rink_height = rink::rows_for_width(rink_width);
+
+        let max_region = inner.height.saturating_sub(MIN_LOWER_HEIGHT);
+        rink_height.max(left_height).min(max_region)
+    } else {
+        left_height
+    };
+
+    let region_chunks = split_area_vertical(
         inner,
         [
-            Constraint::Length(5), // upper info (1 for spacing)
-            Constraint::Length(4), // score (big text)
-            Constraint::Fill(1),   // lower info
+            Constraint::Length(upper_region_height), // info + score + series + rink if toggled
+            Constraint::Fill(1),                     // lower info
         ],
     );
+
+    // Left half carries the info/score column; right half carries the rink.
+    let (upper_region, rink_area) = if show_rink {
+        let halves = split_area_horizontal(
+            region_chunks[0],
+            [Constraint::Percentage(50), Constraint::Percentage(50)],
+        );
+        (halves[0], Some(halves[1]))
+    } else {
+        (region_chunks[0], None)
+    };
+
+    // Sub-split the (left) upper region into: info band, score, and series info
+    let upper_score = split_area_vertical(
+        upper_region,
+        [
+            Constraint::Length(UPPER_INFO_HEIGHT), // upper info (1 for spacing)
+            Constraint::Length(SCORE_HEIGHT),      // score (big text)
+            Constraint::Length(series_height),     // playoff series info (0 if not playoffs)
+            Constraint::Min(0),
+        ],
+    );
+    let series_area = upper_score[2];
+
+    let upper_score_lower = [upper_score[0], upper_score[1], region_chunks[1]];
+
+    if let Some(rink_area) = rink_area {
+        rink::render_rink(frame, rink_area, play_coords);
+    }
 
     // Render game information
     if let Some(games_data) = &mut app.state.games.games_data {
@@ -174,7 +242,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 upper_info_chunks[1],
             );
             render_team_status(game, favorite, frame, upper_info_chunks[2]);
-            // Show record if pregame, sog if live
+            // Show record if pregame, sog if live or ended
             if app.state.games.focus == GamesFocus::Pregame {
                 render_season_records(
                     app.state.games.game_story_data.get(&game.id),
@@ -186,31 +254,31 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             }
             render_big_score(game, frame, upper_score_lower[1]);
 
-            // Lower info
-            let is_playoff = game.series_status.is_some();
-            let lower_info_chunks = split_area_vertical(
-                upper_score_lower[2],
-                [
-                    Constraint::Length(if is_playoff { 1 } else { 0 }), // Playoff information
-                    Constraint::Length(if is_playoff { 1 } else { 0 }), // Playoff status
-                    Constraint::Min(0),
-                ],
-            );
             if let Some(series) = &game.series_status {
-                render_series_info(series, frame, lower_info_chunks[0]);
-                render_series_status(series, frame, lower_info_chunks[1]);
+                let series_chunks = split_area_vertical(
+                    series_area,
+                    [
+                        Constraint::Length(1), // Playoff information
+                        Constraint::Length(1), // Playoff status
+                    ],
+                );
+                render_series_info(series, frame, series_chunks[0]);
+                render_series_status(series, frame, series_chunks[1]);
             }
+
+            // The lower region is the main content
+            let main_area = upper_score_lower[2];
 
             let show_plays =
                 app.state.games.plays_visible && app.state.games.focus != GamesFocus::Pregame;
             let (main_area, plays_area) = if show_plays {
                 let halves = split_area_horizontal(
-                    lower_info_chunks[2],
+                    main_area,
                     [Constraint::Percentage(50), Constraint::Percentage(50)],
                 );
                 (halves[0], Some(halves[1]))
             } else {
-                (lower_info_chunks[2], None)
+                (main_area, None)
             };
 
             let main_focused = !app.state.games.plays_focused;
@@ -258,7 +326,6 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
             if let Some(plays_area) = plays_area {
                 play_by_play::render_play_by_play(frame, app, plays_area);
             }
-
         }
     }
 }
