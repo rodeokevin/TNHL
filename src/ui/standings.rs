@@ -294,7 +294,8 @@ impl StandingsRenderer {
                     team.losses.to_string(),
                     team.ot_losses.to_string(),
                     team.points.to_string(),
-                    format!("{:.3}", team.point_pctg),
+                    team.point_pctg
+                        .map_or_else(|| "--".to_string(), |v| format!("{:.3}", v)),
                     team.regulation_wins.to_string(),
                     team.regulation_plus_ot_wins.to_string(),
                     team.goal_for.to_string(),
@@ -313,7 +314,13 @@ impl StandingsRenderer {
                         "{}-{}-{}",
                         team.l10_wins, team.l10_losses, team.l10_ot_losses
                     ),
-                    format!("{}{}", team.streak_code, team.streak_count),
+                    team.streak_code
+                        .as_ref()
+                        .zip(team.streak_count.as_ref())
+                        .map_or_else(
+                            || "--".to_string(),
+                            |(code, count)| format!("{}{}", code, count),
+                        ),
                 ]);
                 if is_favorite {
                     row.style(Style::new().fg(BORDER_COLOR).bold())

@@ -135,7 +135,8 @@ fn map_skater_rows(players: &[Skater]) -> Vec<Row<'static>> {
                 p.plus_minus
                     .map(|pm| pm.to_string())
                     .unwrap_or_else(|| "--".to_string()),
-                p.penalty_minutes.to_string(),
+                p.penalty_minutes.map(|pm| pm.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.power_play_goals
                     .map(|g| g.to_string())
                     .unwrap_or_else(|| "--".to_string()),
@@ -176,8 +177,10 @@ fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
                 name,
                 p.games_played.to_string(),
                 p.games_started.to_string(),
-                p.wins.to_string(),
-                p.losses.to_string(),
+                p.wins.map(|w| w.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
+                p.losses.map(|l| l.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.ties
                     .map(|ties| ties.to_string())
                     .unwrap_or_else(|| "--".to_string()),
@@ -199,7 +202,8 @@ fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
                 p.goals.to_string(),
                 p.assists.to_string(),
                 p.points.to_string(),
-                p.penalty_minutes.to_string(),
+                p.penalty_minutes.map(|pm| pm.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 toi,
             ])
         })

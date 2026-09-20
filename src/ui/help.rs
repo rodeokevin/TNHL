@@ -15,7 +15,7 @@ const GENERAL_DOCS: &[&[&str; 2]; 8] = &[
     &["Show/hide menu", "m"],
     &["Quit TNHL", "q/ctrl + c"],
 ];
-const GAMES_DOCS: &[&[&str; 2]; 10] = &[
+const GAMES_DOCS: &[&[&str; 2]; 12] = &[
     &["1.Games", " "],
     &["Next game", "l/→"],
     &["Previous game", "h/←"],
@@ -23,14 +23,16 @@ const GAMES_DOCS: &[&[&str; 2]; 10] = &[
     &["Scroll up", "k/↑"],
     &["Page down", "shift + j/↓"],
     &["Page up", "shift + k/↑"],
+    &["Toggle play-by-play", "p"],
+    &["Toggle play-by-play/info focus", "Tab"],
     &["Next info", "<"],
     &["Previous info", ">"],
     &["Select date", ":"],
 ];
 const STANDINGS_DOCS: &[&[&str; 2]; 10] = &[
     &["2.Standings", " "],
-    &["Next standings", "l/→"],
-    &["Previous standings", "h/←"],
+    &["Next standings type", "l/→"],
+    &["Previous standings type", "h/←"],
     &["Move down", "j/↓"],
     &["Move up", "k/↑"],
     &["Page down", "shift + j/↓"],
@@ -39,17 +41,19 @@ const STANDINGS_DOCS: &[&[&str; 2]; 10] = &[
     &["Previous division/conference", "<"],
     &["Select date", ":"],
 ];
-const TEAM_STATS_DOCS: &[&[&str; 2]; 8] = &[
+const TEAM_STATS_DOCS: &[&[&str; 2]; 10] = &[
     &["3.Team Stats", " "],
     &["Move down", "j/↓"],
     &["Move up", "k/↑"],
     &["Page down", "shift + j/↓"],
     &["Page up", "shift + k/↑"],
-    &["Toggle skaters/goalies", "</>"],
+    &["Show skaters", "s"],
+    &["Show goalies", "g"],
+    &["Toggle regular season/playoffs", "</>"],
     &["Select year", ":"],
     &["Select team", "t"],
 ];
-const PLAYOFFS_DOCS: &[&[&str; 2]; 11] = &[
+const PLAYOFFS_DOCS: &[&[&str; 2]; 12] = &[
     &["4.Playoffs", " "],
     &["Scroll down", "↓"],
     &["Scroll up", "↑"],
@@ -60,6 +64,7 @@ const PLAYOFFS_DOCS: &[&[&str; 2]; 11] = &[
     &["Page left", "shift + ←"],
     &["Page right", "shift + →"],
     &["Select series", "shift + series letter"],
+    &["Go back to playoff bracket", "esc"],
     &["Select year", ":"],
 ];
 const PLAYERS_DOCS: &[&[&str; 2]; 2] = &[&["Players", " "], &["To be implemented", ""]];
@@ -96,7 +101,7 @@ impl StatefulWidget for HelpWidget {
             };
             HelpRow {
                 row_type,
-                text: vec![format!("{:30}{:15}", r[0], r[1])],
+                text: vec![format!("{:40}{:15}", r[0], r[1])],
             }
         };
         let header_style = Style::new().bold().underlined();
@@ -119,7 +124,7 @@ impl StatefulWidget for HelpWidget {
                 RowType::Row => Row::new(item.text).style(help_menu_style),
             });
 
-        let [table, banner] = Layout::horizontal([Constraint::Length(50), Constraint::Length(15)])
+        let [table, banner] = Layout::horizontal([Constraint::Length(70), Constraint::Length(15)])
             .flex(Flex::Legacy)
             .margin(1)
             .horizontal_margin(2)

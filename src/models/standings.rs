@@ -25,7 +25,7 @@ pub struct TeamData {
     pub losses: u8,
     pub ot_losses: u8,
     pub points: u16,
-    pub point_pctg: f64,
+    pub point_pctg: Option<f64>,
     pub regulation_wins: u8,
     pub regulation_plus_ot_wins: u8,
     pub goal_for: u16,
@@ -41,8 +41,8 @@ pub struct TeamData {
     pub l10_wins: u8,
     pub l10_ot_losses: u8,
     pub l10_losses: u8,
-    pub streak_code: String,
-    pub streak_count: u8,
+    pub streak_code: Option<String>,
+    pub streak_count: Option<u8>,
 }
 
 impl StandingsResponse {

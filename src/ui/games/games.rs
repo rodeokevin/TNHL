@@ -144,8 +144,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     let inner = block.inner(tab_content_chunks[1]);
     frame.render_widget(block, tab_content_chunks[1]);
 
-    let show_rink = app.state.games.plays_visible
-        && inner.height >= MIN_HEIGHT_FOR_RINK;
+    let show_rink = app.state.games.plays_visible && inner.height >= MIN_HEIGHT_FOR_RINK;
 
     // Coordinates of the selected play
     let play_coords = if show_rink {

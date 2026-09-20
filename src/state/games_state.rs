@@ -265,8 +265,7 @@ impl GamesState {
     }
     /// Whether the currently selected game is a playoff game.
     pub fn is_playoff(&self) -> bool {
-        self.selected_game()
-            .is_some_and(|g| g.game_type == 3)
+        self.selected_game().is_some_and(|g| g.game_type == 3)
     }
     /// Return the current game id
     pub fn current_game_id(&self) -> Option<u32> {

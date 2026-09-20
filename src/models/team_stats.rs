@@ -19,7 +19,7 @@ pub struct Skater {
     pub assists: u16,
     pub points: u16,
     pub plus_minus: Option<i16>,
-    pub penalty_minutes: u16,
+    pub penalty_minutes: Option<u16>,
     pub power_play_goals: Option<u8>,
     pub shorthanded_goals: Option<u8>,
     pub game_winning_goals: u8,
@@ -38,8 +38,8 @@ pub struct Goalie {
     pub last_name: PlayerName,
     pub games_played: u8,
     pub games_started: u8,
-    pub wins: u8,
-    pub losses: u8,
+    pub wins: Option<u8>,
+    pub losses: Option<u8>,
     pub ties: Option<u8>,
     pub overtime_losses: Option<u8>,
     pub goals_against_average: f32,
@@ -51,7 +51,7 @@ pub struct Goalie {
     pub goals: u8,
     pub assists: u8,
     pub points: u8,
-    pub penalty_minutes: u16,
+    pub penalty_minutes: Option<u16>,
     pub time_on_ice: u32,
 }
 
