@@ -61,8 +61,8 @@ pub struct Forward {
     pub toi: Option<String>,
     pub blocked_shots: u8,
     pub shifts: u8,
-    pub giveaways: u8,
-    pub takeaways: u8,
+    pub giveaways: Option<u8>,
+    pub takeaways: Option<u8>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -83,8 +83,8 @@ pub struct Defenseman {
     pub toi: Option<String>,
     pub blocked_shots: u8,
     pub shifts: u8,
-    pub giveaways: u8,
-    pub takeaways: u8,
+    pub giveaways: Option<u8>,
+    pub takeaways: Option<u8>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -98,7 +98,7 @@ pub struct Goalie {
     pub even_strength_shots_against: String,
     pub power_play_shots_against: String,
     pub shorthanded_shots_against: String,
-    pub save_shots_against: String,
+    pub save_shots_against: Option<String>,
     pub save_pctg: Option<f32>,
     pub even_strength_goals_against: u8,
     pub power_play_goals_against: u8,
@@ -106,5 +106,5 @@ pub struct Goalie {
     pub goals_against: u8,
     pub toi: Option<String>,
     pub shots_against: u16,
-    pub saves: u16,
+    pub saves: Option<u16>,
 }

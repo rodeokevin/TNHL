@@ -295,7 +295,8 @@ impl StandingsRenderer {
                     team.ot_losses.to_string(),
                     team.points.to_string(),
                     team.point_pctg
-                        .map_or_else(|| "--".to_string(), |v| format!("{:.3}", v)),
+                        .map(|v| format!("{:.3}", v))
+                        .unwrap_or_else(|| "--".to_string()),
                     team.regulation_wins.to_string(),
                     team.regulation_plus_ot_wins.to_string(),
                     team.goal_for.to_string(),
@@ -317,10 +318,8 @@ impl StandingsRenderer {
                     team.streak_code
                         .as_ref()
                         .zip(team.streak_count.as_ref())
-                        .map_or_else(
-                            || "--".to_string(),
-                            |(code, count)| format!("{}{}", code, count),
-                        ),
+                        .map(|(code, count)| format!("{}{}", code, count))
+                        .unwrap_or_else(|| "--".to_string()),
                 ]);
                 if is_favorite {
                     row.style(Style::new().fg(BORDER_COLOR).bold())

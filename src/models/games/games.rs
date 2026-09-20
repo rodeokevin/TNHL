@@ -138,7 +138,7 @@ pub enum SituationDesc {
 pub struct GoalData {
     pub period_descriptor: PeriodDescriptor,
     pub time_in_period: String,
-    pub player_id: u32,
+    pub player_id: Option<u32>,
     pub first_name: PlayerName,
     pub last_name: PlayerName,
     pub goal_modifier: GoalModifier,
@@ -171,7 +171,7 @@ pub enum GoalModifier {
 #[derive(Clone, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AssistInfo {
-    pub player_id: u32,
+    pub player_id: Option<u32>,
     pub name: PlayerName,
     pub assists_to_date: Option<u16>,
 }

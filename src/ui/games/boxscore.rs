@@ -138,14 +138,21 @@ fn map_forwards_rows(players: &[Forward]) -> Vec<Row<'static>> {
                 p.points.to_string(),
                 p.plus_minus.to_string(),
                 p.pim.unwrap_or(0).to_string(),
-                p.toi.as_ref().map_or("--".to_string(), |t| t.clone()),
+                p.toi
+                    .as_ref()
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.shifts.to_string(),
                 p.power_play_goals.to_string(),
                 p.sog.to_string(),
                 p.blocked_shots.to_string(),
                 p.hits.to_string(),
-                p.giveaways.to_string(),
-                p.takeaways.to_string(),
+                p.giveaways
+                    .map(|g| g.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
+                p.takeaways
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.faceoff_winning_pctg
                     .filter(|f| *f > 0.0)
                     .map(|f| format!("{:.1}", f * 100.0))
@@ -168,14 +175,21 @@ fn map_defensemen_rows(players: &[Defenseman]) -> Vec<Row<'static>> {
                 p.points.to_string(),
                 p.plus_minus.to_string(),
                 p.pim.unwrap_or(0).to_string(),
-                p.toi.as_ref().map_or("--".to_string(), |t| t.clone()),
+                p.toi
+                    .as_ref()
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.shifts.to_string(),
                 p.power_play_goals.to_string(),
                 p.sog.to_string(),
                 p.blocked_shots.to_string(),
                 p.hits.to_string(),
-                p.giveaways.to_string(),
-                p.takeaways.to_string(),
+                p.giveaways
+                    .map(|g| g.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
+                p.takeaways
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
             ])
         })
         .collect()
@@ -189,7 +203,9 @@ fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
                 p.sweater_number.to_string(),
                 p.name.default.clone(),
                 p.shots_against.to_string(),
-                p.saves.to_string(),
+                p.saves.as_ref()
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.goals_against.to_string(),
                 p.even_strength_shots_against.clone(),
                 p.power_play_shots_against.clone(),
@@ -197,8 +213,14 @@ fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
                 p.save_pctg
                     .map(|f| format!("{:.4}", f))
                     .unwrap_or_else(|| "--".to_string()),
-                p.pim.as_ref().map_or("--".to_string(), |t| t.to_string()),
-                p.toi.as_ref().map_or("--".to_string(), |t| t.clone()),
+                p.pim
+                    .as_ref()
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
+                p.toi
+                    .as_ref()
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
             ])
         })
         .collect()
