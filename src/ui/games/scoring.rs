@@ -42,11 +42,21 @@ pub fn render_scoring(
     let mut home_lines = vec![];
 
     if let Some(summary) = &story.summary {
+        // Whether any non-shootout period actually contains goals.
+        let has_goals = summary.scoring.iter().any(|period_score| {
+            !matches!(period_score.period_descriptor.period_type, PeriodType::SO)
+                && !period_score.goals.is_empty()
+        });
         // No goals yet
-        if summary.scoring.is_empty() && summary.shootout.is_empty() {
+        if !has_goals && summary.shootout.is_empty() {
+            // Keep all three columns index-aligned
+            away_lines.push(Line::default());
             middle_lines.push(
-                Line::from("\"No goals.\" - Juuse Saros").style(Style::new().fg(Color::DarkGray)),
+                Line::from("\"No goals.\" - Juuse Saros")
+                    .centered()
+                    .style(Style::new().fg(Color::DarkGray)),
             );
+            home_lines.push(Line::default());
         } else {
             for period_score in summary.scoring.iter() {
                 if matches!(period_score.period_descriptor.period_type, PeriodType::SO) {

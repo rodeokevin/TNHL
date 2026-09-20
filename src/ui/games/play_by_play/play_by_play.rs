@@ -192,9 +192,13 @@ fn describe(play: &PlayData, roster: &HashMap<u32, &RosterPlayer>) -> String {
             n(details.hittee_player_id)
         ),
         TypeDescKey::ShotOnGoal => {
-            let shot = details.shot_type.as_deref().unwrap_or("shot");
+            let shot = details
+                .shot_type
+                .as_deref()
+                .map(|s| format!("{} shot", s))
+                .unwrap_or_else(|| "shot".to_string());
             format!(
-                "{} {} shot saved by {}",
+                "{} {} saved by {}",
                 n(details.shooting_player_id),
                 shot,
                 n(details.goalie_in_net_id)
@@ -206,8 +210,12 @@ fn describe(play: &PlayData, roster: &HashMap<u32, &RosterPlayer>) -> String {
             n(details.blocking_player_id)
         ),
         TypeDescKey::MissedShot => {
-            let shot = details.shot_type.as_deref().unwrap_or("shot");
-            format!("{} {} shot missed", n(details.shooting_player_id), shot)
+            let shot = details
+                .shot_type
+                .as_deref()
+                .map(|s| format!("{} shot", s))
+                .unwrap_or_else(|| "shot".to_string());
+            format!("{} {} missed", n(details.shooting_player_id), shot)
         }
         TypeDescKey::Goal => {
             let shot = details.shot_type.as_deref().unwrap_or("");
