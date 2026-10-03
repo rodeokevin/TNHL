@@ -103,6 +103,8 @@ pub fn render_series(frame: &mut Frame, app: &mut App, area: Rect) {
             &mut app.state.playoffs.vertical_max_scroll,
             &mut app.state.playoffs.visible_rows,
         );
+    } else {
+        frame.render_widget(Line::from("Loading series...").centered(), inner);
     }
 }
 

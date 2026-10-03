@@ -77,6 +77,8 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
             v_off,
         );
         render_scroll_indicators(frame, inner, &app.state.playoffs);
+    } else {
+        frame.render_widget(Line::from("Loading bracket...").centered(), inner);
     };
 }
 

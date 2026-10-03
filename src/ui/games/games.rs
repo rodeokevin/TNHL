@@ -111,7 +111,17 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         visible_matchups.insert(0, Line::from("<"));
     }
 
-    if num_matchups == 0 && app.state.games.games_data.is_some() {
+    if app.state.games.games_data.is_none() {
+        let tabs = Tabs::new(vec!["Loading games..."])
+            .block(
+                Block::bordered()
+                    .border_style(border_style())
+                    .title(app.state.date_state.format_date_border_title()),
+            )
+            .highlight_style(Style::default());
+
+        frame.render_widget(tabs, tab_content_chunks[0]);
+    } else if num_matchups == 0 {
         let tabs = Tabs::new(vec!["No games today :("])
             .block(
                 Block::bordered()

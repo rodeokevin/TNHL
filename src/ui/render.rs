@@ -2,11 +2,13 @@ use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
+    text::Line,
     widgets::{Block, Clear, List, ListItem, ListState, Paragraph},
 };
 
 use crate::state::{
     app_state::{MenuFocus, PaneFocus},
+    games_state::GamesFocus,
     playoffs_state::PlayoffsFocus,
 };
 use crate::ui::{
@@ -17,6 +19,9 @@ use crate::ui::{
 use crate::{app::App, ui::team_stats::team_stats};
 
 pub const BORDER_COLOR: Color = Color::Rgb(247, 194, 0); // Orange-yellowish
+
+const MENU_WIDTH: u16 = 19;
+
 pub fn border_style() -> Style {
     Style::new().fg(BORDER_COLOR).bold()
 }
@@ -25,12 +30,17 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     match app.state.focus {
         PaneFocus::Help => render_help(frame, frame.area(), app),
         _ => {
-            // Split main area into menu + main content
+            // Split main area into menu + main content. The menu uses a fixed
+            // width so context hint text isn't cut off.
             let content_menu_chunks = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([
-                    Constraint::Percentage(if app.state.display_menu { 15 } else { 0 }), // menu
-                    Constraint::Percentage(if app.state.display_menu { 85 } else { 100 }), // content
+                    Constraint::Length(if app.state.display_menu {
+                        MENU_WIDTH
+                    } else {
+                        0
+                    }), // menu
+                    Constraint::Min(0), // content
                 ])
                 .split(frame.area());
             render_menu(frame, app, content_menu_chunks[0]);
@@ -71,9 +81,17 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
 
     let inner = block.inner(area);
 
+    // Context-sensitive key hints shown at the bottom of the menu panel,
+    // just above the "Help: ?" line. Each entry is a "Label  key" pair.
+    let hints: Vec<(&str, &str)> = context_hints(app);
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(4), Constraint::Length(1)])
+        .constraints([
+            Constraint::Min(4),                     // menu list
+            Constraint::Length(hints.len() as u16), // context hints
+            Constraint::Length(1),                  // "Help: ?"
+        ])
         .split(inner);
 
     let menu_items = vec![
@@ -92,9 +110,47 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
 
     frame.render_stateful_widget(list, chunks[0], &mut state);
 
+    if !hints.is_empty() {
+        let hint_lines: Vec<Line> = hints
+            .iter()
+            .map(|(label, key)| Line::from(format!("{label}: {key}")))
+            .collect();
+        let hints_widget = Paragraph::new(hint_lines).style(Style::new().fg(Color::DarkGray));
+        frame.render_widget(hints_widget, chunks[1]);
+    }
+
     let help = Paragraph::new("Help: ?").style(Style::new().fg(Color::DarkGray));
 
-    frame.render_widget(help, chunks[1]);
+    frame.render_widget(help, chunks[2]);
+}
+
+/// Build the list of context-sensitive key hints to show at the bottom of the
+/// menu panel for the current page/focus. Returns `(label, key)` pairs.
+fn context_hints(app: &App) -> Vec<(&'static str, &'static str)> {
+    match app.state.selected_menu {
+        MenuFocus::Games => {
+            let mut hints = Vec::new();
+            // Play-by-play toggle is available on all game views except pre-game.
+            if app.state.games.focus != GamesFocus::Pregame {
+                hints.push(("Play-by-play", "p"));
+            }
+            // When the play-by-play pane is open, Tab switches focus between it
+            // and the info pane.
+            if app.state.games.plays_visible && app.state.games.focus != GamesFocus::Pregame {
+                hints.push(("Toggle focus", "tab"));
+            }
+            if app.state.games.focus == GamesFocus::Boxscore {
+                hints.extend([
+                    ("Forwards", "f"),
+                    ("Defense", "d"),
+                    ("Goalies", "g"),
+                    ("Switch team", "t"),
+                ]);
+            }
+            hints
+        }
+        _ => vec![],
+    }
 }
 
 fn render_date_picker(f: &mut Frame, app: &mut App, rect: Rect) {

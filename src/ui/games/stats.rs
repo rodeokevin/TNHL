@@ -31,12 +31,18 @@ pub fn render_stats(frame: &mut Frame, app: &mut App, area: Rect) {
         .map(|g| g.id);
     let game_story = game_id.and_then(|id| app.state.games.game_story_data.get(&id));
 
+    let Some(game_story) = game_story else {
+        app.state.games.max_scroll = 0;
+        app.state.games.visible_rows = 0;
+        frame.render_widget(Line::from("Loading stats...").centered(), area);
+        return;
+    };
+
     let mut away_lines = vec![];
     let mut middle_lines = vec![];
     let mut home_lines = vec![];
 
-    if let Some(game_story) = game_story
-        && let Some(summary) = &game_story.summary
+    if let Some(summary) = &game_story.summary
         && !summary.team_game_stats.is_empty()
     {
         let stats_map: HashMap<_, _> = summary

@@ -125,6 +125,11 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
                 );
             }
         };
+    } else {
+        frame.render_widget(
+            Line::from("Loading standings...").centered(),
+            tab_content_chunks[1],
+        );
     }
 }
 

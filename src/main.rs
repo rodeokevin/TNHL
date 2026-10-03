@@ -46,6 +46,52 @@ use tokio_util::sync::CancellationToken;
 
 use futures::StreamExt;
 
+/// Resolve the current game day from the NHL endpoint and fallback to system date
+async fn resolve_today_from_api(app: &mut App) {
+    use crate::models::games::score_now::ScoreNowResponse;
+    use chrono::NaiveDate;
+
+    let client = reqwest::Client::new();
+    let url = "https://api-web.nhle.com/v1/score/now";
+
+    let resolved = match client.get(url).send().await {
+        Ok(resp) => match resp.text().await {
+            Ok(body) => match ScoreNowResponse::from_json(&body) {
+                Ok(parsed) => match NaiveDate::parse_from_str(&parsed.current_date, "%Y-%m-%d") {
+                    Ok(date) => Some(date),
+                    Err(e) => {
+                        log::warn!("Could not parse score/now currentDate: {}", e);
+                        None
+                    }
+                },
+                Err(e) => {
+                    log::warn!("Failed to parse score/now response: {}", e);
+                    None
+                }
+            },
+            Err(e) => {
+                log::warn!("Failed to read score/now body: {}", e);
+                None
+            }
+        },
+        Err(e) => {
+            log::warn!("Failed to fetch score/now: {}", e);
+            None
+        }
+    };
+
+    match resolved {
+        Some(date) => {
+            log::debug!("Resolved current game day from API: {}", date);
+            app.state.date_state.date = date;
+        }
+        None => log::warn!(
+            "Falling back to local date {} for current game day",
+            app.state.date_state.date
+        ),
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // setup terminal
@@ -84,6 +130,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         series_tx.clone(),
     );
     let cancel = CancellationToken::new();
+
+    resolve_today_from_api(&mut app).await;
+
     let _ = run_app(
         &mut terminal,
         &mut app,

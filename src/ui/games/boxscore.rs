@@ -7,6 +7,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Rect},
     style::{Color, Modifier, Style},
+    text::Line,
     widgets::{Block, Row, Table},
 };
 
@@ -121,6 +122,8 @@ pub fn render_boxscore(frame: &mut Frame, app: &mut App, area: Rect) {
             };
         let table = create_table(rows, get_boxscore_title(is_home, boxscore), widths, header);
         frame.render_stateful_widget(table, area, &mut app.state.games.boxscore_table_state);
+    } else {
+        frame.render_widget(Line::from("Loading boxscore...").centered(), area);
     }
 }
 
@@ -203,7 +206,8 @@ fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
                 p.sweater_number.to_string(),
                 p.name.default.clone(),
                 p.shots_against.to_string(),
-                p.saves.as_ref()
+                p.saves
+                    .as_ref()
                     .map(|t| t.to_string())
                     .unwrap_or_else(|| "--".to_string()),
                 p.goals_against.to_string(),

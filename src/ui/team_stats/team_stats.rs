@@ -7,6 +7,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Rect},
     style::{Color, Modifier, Style},
+    text::Line,
     widgets::{Block, Row, Table},
 };
 
@@ -117,6 +118,8 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
             .highlight_symbol(">> ");
 
         frame.render_stateful_widget(table, inner, &mut app.state.team_stats.table_state);
+    } else {
+        frame.render_widget(Line::from("Loading team stats...").centered(), inner);
     }
 }
 

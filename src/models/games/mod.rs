@@ -5,6 +5,7 @@ pub mod boxscore;
 pub mod game_story;
 pub mod games;
 pub mod play_by_play;
+pub mod score_now;
 
 #[derive(Debug, Clone, Deserialize)]
 pub enum Position {
