@@ -126,10 +126,12 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
             }
         };
     } else {
-        frame.render_widget(
-            Line::from("Loading standings...").centered(),
-            tab_content_chunks[1],
-        );
+        let block = Block::bordered()
+            .title(" Standings ")
+            .border_style(border_style());
+        let inner = block.inner(tab_content_chunks[1]);
+        frame.render_widget(block, tab_content_chunks[1]);
+        frame.render_widget(Line::from("Loading standings...").centered(), inner);
     }
 }
 
