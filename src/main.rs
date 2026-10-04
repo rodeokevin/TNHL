@@ -51,7 +51,16 @@ async fn resolve_today_from_api(app: &mut App) {
     use crate::models::games::score_now::ScoreNowResponse;
     use chrono::NaiveDate;
 
-    let client = reqwest::Client::new();
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            log::warn!("Failed to build HTTP client for score/now: {}", e);
+            return;
+        }
+    };
     let url = "https://api-web.nhle.com/v1/score/now";
 
     let resolved = match client.get(url).send().await {

@@ -147,7 +147,7 @@ impl AppState {
                 game_ids,
                 parsed_games,
             } => {
-                self.set_fetch_interval(self.is_games_live(&parsed_games));
+                self.set_fetch_interval(self.should_poll_fast_games(&parsed_games));
                 log::debug!("Updating games data");
                 self.games.games_data = Some(parsed_games);
                 self.boxscore_tx
@@ -569,11 +569,14 @@ impl AppState {
             .ok();
     }
 
-    fn is_games_live(&self, parsed_games: &GamesResponse) -> bool {
-        parsed_games
-            .games
-            .iter()
-            .any(|g| matches!(g.game_state, GameState::LIVE | GameState::CRIT))
+    /// If games are in the PRE/LIVE/CRIT states, we should use the short fetch interval
+    fn should_poll_fast_games(&self, parsed_games: &GamesResponse) -> bool {
+        parsed_games.games.iter().any(|g| {
+            matches!(
+                g.game_state,
+                GameState::LIVE | GameState::CRIT | GameState::PRE
+            )
+        })
     }
 }
 
