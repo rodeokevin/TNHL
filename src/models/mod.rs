@@ -1,3 +1,10 @@
+//! Data models for NHL API responses.
+//!
+//! These structs mirror the shape of the public NHL Web API JSON. Many fields
+//! are parsed for completeness/documentation even when the UI does not yet read
+//! them, so `dead_code` is allowed across this module tree.
+#![allow(dead_code)]
+
 use serde::Deserialize;
 use strum_macros::{Display, EnumString};
 

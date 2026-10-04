@@ -103,6 +103,25 @@ async fn resolve_today_from_api(app: &mut App) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    // Initialize logging before entering the alternate screen so any warning
+    // printed to stderr lands on the normal terminal rather than corrupting the
+    // TUI. File logging is best-effort: if we can't resolve a data dir or
+    // create the log file, warn and continue without it rather than preventing
+    // the app from starting.
+    let settings = crate::state::app_settings::AppSettings::load_from_file();
+    let log_level = settings.log_level.unwrap_or(LevelFilter::Error);
+    match config::ConfigFile::get_log_location() {
+        Some(path) => match File::create(&path) {
+            Ok(log_file) => {
+                if let Err(err) = WriteLogger::init(log_level, Config::default(), log_file) {
+                    eprintln!("could not initialize logger: {err}");
+                }
+            }
+            Err(err) => eprintln!("could not create log file at {path:?}: {err}"),
+        },
+        None => eprintln!("could not resolve a log file location; file logging disabled"),
+    }
+
     // setup terminal
     enable_raw_mode()?;
     let mut stderr = io::stderr();
@@ -110,11 +129,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = Terminal::new(backend)?;
 
-    let log_file = File::create("app.log")?;
-    // Resolve the log level from config before initializing the logger
-    let settings = crate::state::app_settings::AppSettings::load_from_file();
-    let log_level = settings.log_level.unwrap_or(LevelFilter::Error);
-    WriteLogger::init(log_level, Config::default(), log_file)?;
 
     // create app and run it
     let (games_cmd_tx, games_cmd_rx) = tokio::sync::mpsc::channel(8);

@@ -70,6 +70,7 @@ static CONFIG_FILE_LOCATION: OnceLock<Option<PathBuf>> = OnceLock::new();
 impl ConfigFile {
     const DEFAULT_TIMEZONE: Tz = chrono_tz::America::Montreal;
     const CONFIG_FILE_NAME: &'static str = "tnhl.toml";
+    const LOG_FILE_NAME: &'static str = "tnhl.log";
 
     pub fn load_from_file() -> anyhow::Result<ConfigFile> {
         if let Some(path) = Self::get_config_location() {
@@ -140,6 +141,22 @@ impl ConfigFile {
                 }
             })
             .clone()
+    }
+
+    /// Generate the path of the log file for the current operating system:
+    /// * Linux:   /home/alice/.local/share/tnhl/tnhl.log
+    /// * Windows: C:\Users\Alice\AppData\Roaming\tnhl\data\tnhl.log
+    /// * macOS:   /Users/Alice/Library/Application Support/tnhl/tnhl.log
+    pub fn get_log_location() -> Option<PathBuf> {
+        let proj_dirs = ProjectDirs::from("", "", "tnhl")?;
+        let dir = proj_dirs.data_dir();
+        if !dir.exists()
+            && let Err(err) = std::fs::create_dir_all(dir)
+        {
+            error!("could not create data dir for log file: {err:?}");
+            return None;
+        }
+        Some(dir.join(Self::LOG_FILE_NAME))
     }
 
     fn generate_config_file(path: &PathBuf) -> anyhow::Result<()> {
