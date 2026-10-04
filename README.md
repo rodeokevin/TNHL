@@ -6,12 +6,16 @@ TNHL is a terminal-based NHL data dashboard built with Rust. It provides an inte
 
 ## Features
 
-- View daily NHL games (scoring, stats, boxscore)
-- Real-time tracking for live games
-- Browse league standings
-- Explore team scoring and goalie stats
+- View daily NHL games: live scoring, boxscores, and team stat comparisons
+- Play-by-play feed with an on-ice rink diagram showing where events happened
+- Pre-game matchups: team and goalie head-to-head comparisons
+- Real-time tracking for live games with adaptive refresh
+- Browse league, conference, division, and wild-card standings
+- Explore team skater and goalie stats, for the regular season or playoffs
 - Display playoff brackets and series details
-- Change dates and/or teams directly in the UI
+- Browse past seasons by date or year
+- Highlight your favorite team across standings and today's matchups
+- Built-in help/keymap screen (press `?`)
 
 ## Installation
 
@@ -45,7 +49,7 @@ Available keys:
 | --------------- | ------ | ------------------ | ---------------------------------------------------------------------------------------------------- |
 | `timezone`      | string | `America/Montreal` | Timezone for displayed game start times. Any [IANA tz name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (e.g. `US/Eastern`). |
 | `favorite_team` | string | none               | Your team's 3-letter code (e.g. `MTL`, case-insensitive). Becomes the default team on the Team Stats page and is highlighted in the standings and today's matchups. |
-| `log_level`     | string | `error`            | Logging verbosity written to `app.log`: `off`, `trace`, `debug`, `info`, `warn`, or `error`.         |
+| `log_level`     | string | `error`            | Logging verbosity written to `tnhl.log` in your OS data directory: `off`, `trace`, `debug`, `info`, `warn`, or `error`.         |
 
 Example:
 
@@ -54,3 +58,9 @@ timezone = "US/Eastern"
 favorite_team = "TOR"
 log_level = "info"
 ```
+
+## Acknowledgements
+
+TNHL was inspired by [mlbt](https://github.com/mlb-rs/mlbt), a terminal-based
+MLB scoreboard also built with Rust and `ratatui`. Thanks to that project for
+showing how great a TUI sports dashboard can be.
