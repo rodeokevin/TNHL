@@ -212,7 +212,9 @@ fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
                     .as_ref()
                     .map(|t| t.to_string())
                     .unwrap_or_else(|| "--".to_string()),
-                p.goals_against.to_string(),
+                p.goals_against
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.even_strength_shots_against
                     .clone()
                     .unwrap_or_else(|| "--".to_string()),

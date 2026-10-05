@@ -34,7 +34,9 @@ pub enum TeamAbbrev {
     BRK, // Brooklyn Americans (defunct)
     BUF,
     CAR,
+    CAT, // Calgary Tigers (WCHL, defunct)
     CBJ,
+    CBN, // Cleveland Barons (defunct)
     CGS, // Bay Area Seals/California Golden Seals (Defunct)
     CGY,
     CHI,
@@ -45,6 +47,7 @@ pub enum TeamAbbrev {
     DCG, // Detroit Cougars (defunct)
     DET,
     DFL, // Detroit Falcons (defunct)
+    EDE, // Edmonton Eskimos (WCHL, defunct)
     EDM,
     FLA,
     HAM, // Hamilton Tigers (defunct)
@@ -78,13 +81,16 @@ pub enum TeamAbbrev {
     SMT,
     STL,
     TAN, // Toronto Hockey Club/Toronto Arenas (defunct)
-    TBD, // To be determined (used in playoff series)
+    TBD, // To be determined
     TBL,
     TOR,
     TSP, // Toronto St. Patricks (defunct)
     UTA,
     VAN,
     VGK,
+    VIC, // Victoria Cougars (WCHL/WHL, defunct)
+    VMI, // Vancouver Millionaires (defunct)
+    VMA, // Montreal Maroons (defunct)
     WIN, // Winnipeg Jets (original)
     WPG,
     WSH,

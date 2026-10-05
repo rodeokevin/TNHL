@@ -74,7 +74,7 @@ impl SeriesGame {
 pub struct SeriesTeam {
     pub id: u32,
     pub common_name: TeamName,
-    pub place_name: PlaceName,
+    pub place_name: Option<PlaceName>,
     pub abbrev: TeamAbbrev,
     pub score: Option<u8>,
 }
