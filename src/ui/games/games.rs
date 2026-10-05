@@ -111,7 +111,17 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         visible_matchups.insert(0, Line::from("<"));
     }
 
-    if app.state.games.games_data.is_none() {
+    if let Some(hint) = &app.state.games.out_of_range {
+        let tabs = Tabs::new(vec![Line::from(hint.clone()).style(Style::new().fg(Color::DarkGray))])
+            .block(
+                Block::bordered()
+                    .border_style(border_style())
+                    .title(app.state.date_state.format_date_border_title()),
+            )
+            .highlight_style(Style::new().fg(Color::DarkGray));
+
+        frame.render_widget(tabs, tab_content_chunks[0]);
+    } else if app.state.games.games_data.is_none() {
         let tabs = Tabs::new(vec!["Loading games..."])
             .block(
                 Block::bordered()

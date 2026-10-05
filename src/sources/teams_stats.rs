@@ -4,6 +4,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
 use crate::models::TeamAbbrev;
+use crate::models::standings::{SeasonBounds, YearResolution, resolve_year};
 use crate::models::team_stats::TeamStatsResponse;
 use crate::sources::FetchInterval;
 
@@ -11,6 +12,7 @@ pub enum TeamStatsCommand {
     SetTeam(TeamAbbrev),
     SetYear(i32),
     SetInterval(Duration),
+    SetSeasonBounds(Vec<SeasonBounds>),
 }
 
 pub struct TeamStatsSource {
@@ -19,6 +21,7 @@ pub struct TeamStatsSource {
     current_team: TeamAbbrev,
     current_year: i32,
     fetch_interval: Duration,
+    seasons: Option<Vec<SeasonBounds>>,
 }
 impl TeamStatsSource {
     pub fn new(
@@ -33,14 +36,49 @@ impl TeamStatsSource {
             current_team,
             current_year,
             fetch_interval: FetchInterval::InfoShortInterval.as_duration(),
+            seasons: None,
         }
     }
 
     async fn fetch(&self, tx: &Sender<AppEvent>) {
-        // Skip until the current season has been resolved (year set via SetYear).
+        // Skip until the current season has been resolved
         if self.current_year <= 0 {
             return;
         }
+
+        if let Some(seasons) = self.seasons.as_deref() {
+            match resolve_year(self.current_year, seasons) {
+                Some(YearResolution::AfterLatest(latest)) => {
+                    let msg = format!(
+                        "No stats for this season yet. Latest available: {}-{}.",
+                        latest - 1,
+                        latest
+                    );
+                    log::debug!("Requested team-stats year is after latest season: {}", msg);
+                    let _ = tx
+                        .send(AppEvent::TeamStatsOutOfRange { message: msg })
+                        .await;
+                    return;
+                }
+                Some(YearResolution::BeforeEarliest(earliest)) => {
+                    let msg = format!(
+                        "No stats for this season. Earliest available: {}-{}.",
+                        earliest - 1,
+                        earliest
+                    );
+                    log::debug!(
+                        "Requested team-stats year is before earliest season: {}",
+                        msg
+                    );
+                    let _ = tx
+                        .send(AppEvent::TeamStatsOutOfRange { message: msg })
+                        .await;
+                    return;
+                }
+                _ => {}
+            }
+        }
+
         let regular_season_url = format!(
             "https://api-web.nhle.com/v1/club-stats/{}/{}{}/2",
             self.current_team.to_string(),
@@ -50,6 +88,21 @@ impl TeamStatsSource {
 
         match self.client.get(&regular_season_url).send().await {
             Ok(resp) => {
+                // A 404 on the regular-season endpoint means the team didn't
+                // play that season
+                if resp.status() == reqwest::StatusCode::NOT_FOUND {
+                    let msg = format!(
+                        "{} did not play in the {}-{} season.",
+                        self.current_team.to_string(),
+                        self.current_year - 1,
+                        self.current_year,
+                    );
+                    log::debug!("Team stats 404: {}", msg);
+                    let _ = tx
+                        .send(AppEvent::TeamStatsOutOfRange { message: msg })
+                        .await;
+                    return;
+                }
                 if let Ok(body) = resp.text().await {
                     // Parse the JSON
                     match TeamStatsResponse::from_json(&body) {
@@ -140,6 +193,12 @@ impl Source for TeamStatsSource {
                                 interval = tokio::time::interval(self.fetch_interval);
                                 interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
                             }
+                        }
+                        // Bounds are resolved exactly once by SeasonSource
+                        TeamStatsCommand::SetSeasonBounds(seasons) => {
+                            self.seasons = Some(seasons);
+                            self.fetch(&tx).await;
+                            interval.reset();
                         }
                     }
                 },

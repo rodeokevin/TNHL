@@ -138,10 +138,30 @@ impl AppState {
                 // Fetch team stats / playoffs for the resolved season.
                 self.handle_year_change();
             }
+            AppEvent::SeasonBoundsResolved { seasons } => {
+                log::debug!("Season bounds resolved ({} seasons)", seasons.len());
+                self.games_tx
+                    .try_send(GamesCommand::SetSeasonBounds(seasons.clone()))
+                    .ok();
+                self.standings_tx
+                    .try_send(StandingsCommand::SetSeasonBounds(seasons.clone()))
+                    .ok();
+                self.team_stats_tx
+                    .try_send(TeamStatsCommand::SetSeasonBounds(seasons))
+                    .ok();
+            }
             AppEvent::StandingsUpdate { standings, season } => {
                 log::debug!("Updating standings data");
                 self.standings.standings_data = Some(standings);
                 self.standings.season = season;
+                self.standings.out_of_range = None;
+            }
+            AppEvent::StandingsOutOfRange { message } => {
+                log::debug!("Standings date out of range: {}", message);
+                // Clear stale data
+                self.standings.standings_data = None;
+                self.standings.season = None;
+                self.standings.out_of_range = Some(message);
             }
             AppEvent::GamesUpdate {
                 game_ids,
@@ -150,6 +170,7 @@ impl AppState {
                 self.set_fetch_interval(self.should_poll_fast_games(&parsed_games));
                 log::debug!("Updating games data");
                 self.games.games_data = Some(parsed_games);
+                self.games.out_of_range = None;
                 self.boxscore_tx
                     .try_send(BoxscoreCommand::SetGameIds(game_ids.clone()))
                     .ok();
@@ -159,6 +180,13 @@ impl AppState {
                 self.game_story_tx
                     .try_send(GameStoryCommand::SetGameIds(game_ids))
                     .ok();
+            }
+            AppEvent::GamesOutOfRange { message } => {
+                log::debug!("Games date out of range: {}", message);
+                // Clear stale data so we don't show games for a different date
+                // than the one requested.
+                self.games.games_data = None;
+                self.games.out_of_range = Some(message);
             }
             AppEvent::BoxscoreUpdate {
                 game_id,
@@ -186,10 +214,20 @@ impl AppState {
             AppEvent::TeamStatsRegularSeasonUpdate(parsed_team_stats) => {
                 log::debug!("Updating regular season team stats data");
                 self.team_stats.regular_season_team_stats_data = Some(parsed_team_stats);
+                self.team_stats.out_of_range = None;
             }
             AppEvent::TeamStatsPlayoffsUpdate(parsed_team_stats) => {
                 log::debug!("Updating playoffs team stats data");
                 self.team_stats.playoffs_team_stats_data = Some(parsed_team_stats);
+                self.team_stats.out_of_range = None;
+            }
+            AppEvent::TeamStatsOutOfRange { message } => {
+                log::debug!("Team stats year out of range: {}", message);
+                // Clear stale data so we don't show stats for a different season
+                // than the one requested.
+                self.team_stats.regular_season_team_stats_data = None;
+                self.team_stats.playoffs_team_stats_data = None;
+                self.team_stats.out_of_range = Some(message);
             }
             AppEvent::BracketUpdate(parsed_bracket) => {
                 log::debug!("Updating playoff bracket data");
@@ -455,6 +493,7 @@ impl AppState {
             // Clear current data and reset all state in games since new data is
             // incoming.
             self.games.games_data = None;
+            self.games.out_of_range = None;
             self.games.boxscore_data.clear();
             self.games.game_story_data.clear();
             self.games.plays_data.clear();
@@ -463,7 +502,9 @@ impl AppState {
         if let Err(e) = &standings_res {
             log::error!("Failed to send StandingsCommand::SetDate: {:?}", e);
         } else {
-            // Reset standings state since new data is incoming
+            // Clear current data/hint and reset state since new data is incoming
+            self.standings.standings_data = None;
+            self.standings.out_of_range = None;
             self.standings.reset_state();
         }
     }
@@ -496,6 +537,7 @@ impl AppState {
             // Clear old data and reset state
             self.team_stats.regular_season_team_stats_data = None;
             self.team_stats.playoffs_team_stats_data = None;
+            self.team_stats.out_of_range = None;
             self.team_stats.reset_state();
         }
     }
@@ -515,6 +557,10 @@ impl AppState {
         if let Err(e) = &res {
             log::error!("Failed to send TeamStatsCommand::SetTeam: {:?}", e);
         } else {
+            // Clear old data/hint since new data is incoming for the new team
+            self.team_stats.regular_season_team_stats_data = None;
+            self.team_stats.playoffs_team_stats_data = None;
+            self.team_stats.out_of_range = None;
             self.team_stats.reset_state();
         }
     }

@@ -131,7 +131,11 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
             .border_style(border_style());
         let inner = block.inner(tab_content_chunks[1]);
         frame.render_widget(block, tab_content_chunks[1]);
-        frame.render_widget(Line::from("Loading standings...").centered(), inner);
+        let message = match &app.state.standings.out_of_range {
+            Some(hint) => Line::from(hint.clone()).style(Style::new().fg(Color::DarkGray)),
+            None => Line::from("Loading standings..."),
+        };
+        frame.render_widget(message.centered(), inner);
     }
 }
 
@@ -172,7 +176,7 @@ impl StandingsRenderer {
             table_state,
             area,
             teams,
-            |team| team.conference_abbrev == abbrev,
+            |team| team.conference_abbrev.as_deref() == Some(abbrev),
             |team| team.conference_sequence,
             title.to_string(),
         );
@@ -198,7 +202,7 @@ impl StandingsRenderer {
             table_state,
             area,
             teams,
-            |team| team.division_abbrev == abbrev,
+            |team| team.division_abbrev.as_deref() == Some(abbrev),
             |team| team.division_sequence,
             title.to_string(),
         );
@@ -237,7 +241,7 @@ impl StandingsRenderer {
         ]);
         rows.extend(self.map_rows(
             teams,
-            |t| t.division_abbrev == div1_abbr,
+            |t| t.division_abbrev.as_deref() == Some(div1_abbr),
             |t| t.division_sequence,
             Some(3),
         ));
@@ -246,7 +250,7 @@ impl StandingsRenderer {
         ]);
         rows.extend(self.map_rows(
             teams,
-            |t| t.division_abbrev == div2_abbr,
+            |t| t.division_abbrev.as_deref() == Some(div2_abbr),
             |t| t.division_sequence,
             Some(3),
         ));
@@ -255,7 +259,7 @@ impl StandingsRenderer {
         ]);
         rows.extend(self.map_rows(
             teams,
-            |t| t.conference_abbrev == conf && t.wildcard_sequence != 0,
+            |t| t.conference_abbrev.as_deref() == Some(conf) && t.wildcard_sequence != 0,
             |t| t.wildcard_sequence,
             None,
         ));

@@ -31,6 +31,7 @@ impl GameType {
 pub struct TeamStatsState {
     pub regular_season_team_stats_data: Option<TeamStatsResponse>,
     pub playoffs_team_stats_data: Option<TeamStatsResponse>,
+    pub out_of_range: Option<String>,
     pub table_state: TableState,
     /// Number of visible rows in the table, updated during render
     pub visible_rows: usize,
@@ -51,6 +52,7 @@ impl Default for TeamStatsState {
         Self {
             regular_season_team_stats_data: None,
             playoffs_team_stats_data: None,
+            out_of_range: None,
             table_state: table(),
             visible_rows: 0,
             player_type: PlayerType::default(),

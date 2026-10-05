@@ -68,6 +68,8 @@ pub struct GamesState {
     pub visible_rows: usize,
 
     pub games_data: Option<GamesResponse>,
+    /// Set when the requested date is outside the available season range
+    pub out_of_range: Option<String>,
     pub boxscore_data: HashMap<u32, BoxscoreResponse>,
     pub game_story_data: HashMap<u32, GameStoryResponse>,
     pub plays_data: HashMap<u32, PlaysResponse>,
@@ -102,6 +104,7 @@ impl Default for GamesState {
             visible_rows: 0,
 
             games_data: None,
+            out_of_range: None,
             boxscore_data: HashMap::new(),
             game_story_data: HashMap::new(),
             plays_data: HashMap::new(),
@@ -189,6 +192,7 @@ impl GamesState {
         self.boxscore_table_state.select(Some(0));
         self.reset_scoring_scroll();
         self.reset_plays_scroll();
+        self.sync_focus_to_game_state();
     }
     /// Cycle between games display (Scoring, boxscore, stats, etc.)
     pub fn cycle_display(&mut self, forward: bool) {
@@ -211,15 +215,19 @@ impl GamesState {
             .map(|g| g.game_state)
     }
 
+    /// Whether the currently selected game is in a pre-game state (`FUT`/`PRE`)
+    pub fn is_pregame(&self) -> bool {
+        matches!(
+            self.current_game_state(),
+            Some(GameState::FUT | GameState::PRE)
+        )
+    }
+
     /// Keep `focus` consistent with the selected game's state: pre-game games
     /// use the `Pregame` focus; once a game is live/final, fall back to a normal
     /// tab. Called each render so transitions are handled.
     pub fn sync_focus_to_game_state(&mut self) {
-        let is_pregame = matches!(
-            self.current_game_state(),
-            Some(GameState::FUT | GameState::PRE)
-        );
-        if is_pregame {
+        if self.is_pregame() {
             self.focus = GamesFocus::Pregame;
             self.plays_focused = false;
         } else if self.focus == GamesFocus::Pregame {

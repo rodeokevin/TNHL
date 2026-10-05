@@ -14,8 +14,8 @@ pub struct TeamData {
     pub team_abbrev: TeamAbbrevWrapper,
     pub season_id: u32,
     pub clinch_indicator: Option<String>,
-    pub conference_abbrev: String,
-    pub division_abbrev: String,
+    pub conference_abbrev: Option<String>,
+    pub division_abbrev: Option<String>,
     pub conference_sequence: u8,
     pub wildcard_sequence: u8,
     pub division_sequence: u8,
@@ -60,6 +60,7 @@ pub struct StandingsSeasonResponse {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SeasonBounds {
+    pub id: u32,
     pub standings_start: String,
     pub standings_end: String,
 }
@@ -79,6 +80,9 @@ impl SeasonBounds {
     pub fn end(&self) -> Option<chrono::NaiveDate> {
         chrono::NaiveDate::parse_from_str(&self.standings_end, "%Y-%m-%d").ok()
     }
+    pub fn end_year(&self) -> i32 {
+        (self.id % 10000) as i32
+    }
 }
 
 /// Resolve the NHL "season end year" for a given date from the season bounds.
@@ -90,34 +94,125 @@ impl SeasonBounds {
 ///   recent completed season's end year
 /// - if `date` is before the earliest season, the earliest season's end year.
 ///
-/// Returns `None` only if the season list is empty or has unparseable dates.
 pub fn season_end_year_for_date(date: chrono::NaiveDate, seasons: &[SeasonBounds]) -> Option<i32> {
-    use chrono::Datelike;
-
     // Season containing the date.
     if let Some(s) = seasons.iter().find(|s| match (s.start(), s.end()) {
         (Some(start), Some(end)) => date >= start && date <= end,
         _ => false,
     }) {
-        return s.end().map(|e| e.year());
+        return Some(s.end_year());
     }
 
     // Otherwise the most recent season that ended before the date.
-    if let Some(end) = seasons
+    if let Some(s) = seasons
         .iter()
-        .filter_map(|s| s.end())
-        .filter(|&end| end < date)
-        .max()
+        .filter(|s| s.end().is_some_and(|end| end < date))
+        .max_by_key(|s| s.end())
     {
-        return Some(end.year());
+        return Some(s.end_year());
     }
 
     // Otherwise (date before any season) the earliest season's end year.
     seasons
         .iter()
+        .filter(|s| s.end().is_some())
+        .min_by_key(|s| s.end())
+        .map(|s| s.end_year())
+}
+
+/// Classification of a requested standings date relative to the known seasons.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DateResolution {
+    /// Date falls within a season
+    InSeason(chrono::NaiveDate),
+    /// Date is in an offseason gap between two seasons so show the most recent
+    /// completed season by fetching its end date
+    OffseasonGap(chrono::NaiveDate),
+    /// Date is after the latest known season end
+    AfterLatest(chrono::NaiveDate),
+    /// Date is before the earliest known season start
+    BeforeEarliest(chrono::NaiveDate),
+}
+
+/// The earliest standings start date across all seasons, if any.
+pub fn earliest_start(seasons: &[SeasonBounds]) -> Option<chrono::NaiveDate> {
+    seasons.iter().filter_map(|s| s.start()).min()
+}
+
+/// The latest standings end date across all seasons, if any.
+pub fn latest_end(seasons: &[SeasonBounds]) -> Option<chrono::NaiveDate> {
+    seasons.iter().filter_map(|s| s.end()).max()
+}
+
+/// Classify a requested date against the known seasons.
+/// Returns `None` only if the season list is empty.
+pub fn resolve_date(
+    requested: chrono::NaiveDate,
+    seasons: &[SeasonBounds],
+) -> Option<DateResolution> {
+    // In-season: use the requested date as-is.
+    let in_season = seasons.iter().any(|s| match (s.start(), s.end()) {
+        (Some(start), Some(end)) => requested >= start && requested <= end,
+        _ => false,
+    });
+    if in_season {
+        return Some(DateResolution::InSeason(requested));
+    }
+
+    let earliest = earliest_start(seasons)?;
+    let latest = latest_end(seasons)?;
+
+    if requested < earliest {
+        return Some(DateResolution::BeforeEarliest(earliest));
+    }
+    if requested > latest {
+        return Some(DateResolution::AfterLatest(latest));
+    }
+
+    // Offseason gap
+    let prev_end = seasons
+        .iter()
         .filter_map(|s| s.end())
-        .min()
-        .map(|e| e.year())
+        .filter(|&end| end < requested)
+        .max()
+        .unwrap_or(earliest);
+    Some(DateResolution::OffseasonGap(prev_end))
+}
+
+/// Classification of a requested season end year relative to the known seasons.
+/// Used by the year-based team stats page.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum YearResolution {
+    /// Year is within the available range; fetch stats for it.
+    InRange,
+    /// Year is after the latest available season end year. Carries that year.
+    AfterLatest(i32),
+    /// Year is before the earliest available season end year. Carries that year.
+    BeforeEarliest(i32),
+}
+
+/// The earliest season end year across all seasons, if any.
+pub fn earliest_end_year(seasons: &[SeasonBounds]) -> Option<i32> {
+    seasons.iter().map(|s| s.end_year()).min()
+}
+
+/// The latest season end year across all seasons, if any.
+pub fn latest_end_year(seasons: &[SeasonBounds]) -> Option<i32> {
+    seasons.iter().map(|s| s.end_year()).max()
+}
+
+/// Classify a requested season end year against the known seasons.
+/// Returns `None` only if the season list is empty.
+pub fn resolve_year(year: i32, seasons: &[SeasonBounds]) -> Option<YearResolution> {
+    let earliest = earliest_end_year(seasons)?;
+    let latest = latest_end_year(seasons)?;
+    if year < earliest {
+        Some(YearResolution::BeforeEarliest(earliest))
+    } else if year > latest {
+        Some(YearResolution::AfterLatest(latest))
+    } else {
+        Some(YearResolution::InRange)
+    }
 }
 
 #[cfg(test)]
@@ -130,7 +225,16 @@ mod tests {
     }
 
     fn season(start: &str, end: &str) -> SeasonBounds {
+        // Derive the season id from the start year
+        let start_year = NaiveDate::parse_from_str(start, "%Y-%m-%d")
+            .unwrap()
+            .format("%Y")
+            .to_string()
+            .parse::<u32>()
+            .unwrap();
+        let id = start_year * 10000 + (start_year + 1);
         SeasonBounds {
+            id,
             standings_start: start.to_string(),
             standings_end: end.to_string(),
         }
@@ -142,6 +246,22 @@ mod tests {
             season("2025-10-07", "2026-04-17"),
             season("2026-09-29", "2027-04-10"),
         ]
+    }
+
+    #[test]
+    fn end_year_uses_season_id_not_standings_end_year() {
+        let in_progress = vec![
+            season("2025-10-07", "2026-04-17"),
+            SeasonBounds {
+                id: 20262027,
+                standings_start: "2026-09-29".to_string(),
+                standings_end: "2026-10-04".to_string(),
+            },
+        ];
+        assert_eq!(
+            season_end_year_for_date(d("2026-10-04"), &in_progress),
+            Some(2027)
+        );
     }
 
     #[test]
@@ -182,5 +302,100 @@ mod tests {
     #[test]
     fn end_year_empty_is_none() {
         assert_eq!(season_end_year_for_date(d("2026-10-29"), &[]), None);
+    }
+
+    #[test]
+    fn resolve_in_season() {
+        assert_eq!(
+            resolve_date(d("2025-12-01"), &seasons()),
+            Some(DateResolution::InSeason(d("2025-12-01")))
+        );
+        // Inclusive boundaries.
+        assert_eq!(
+            resolve_date(d("2026-09-29"), &seasons()),
+            Some(DateResolution::InSeason(d("2026-09-29")))
+        );
+        assert_eq!(
+            resolve_date(d("2027-04-10"), &seasons()),
+            Some(DateResolution::InSeason(d("2027-04-10")))
+        );
+    }
+
+    #[test]
+    fn resolve_offseason_gap_uses_previous_end() {
+        // Between 2025-26 (ends 04-17) and 2026-27 (starts 09-29).
+        assert_eq!(
+            resolve_date(d("2026-08-24"), &seasons()),
+            Some(DateResolution::OffseasonGap(d("2026-04-17")))
+        );
+    }
+
+    #[test]
+    fn resolve_after_latest_is_out_of_range() {
+        // Latest season ends 2027-04-10.
+        assert_eq!(
+            resolve_date(d("2300-10-01"), &seasons()),
+            Some(DateResolution::AfterLatest(d("2027-04-10")))
+        );
+        // Day after the latest end is already out of range.
+        assert_eq!(
+            resolve_date(d("2027-04-11"), &seasons()),
+            Some(DateResolution::AfterLatest(d("2027-04-10")))
+        );
+    }
+
+    #[test]
+    fn resolve_before_earliest_is_out_of_range() {
+        // Earliest season starts 2024-10-04.
+        assert_eq!(
+            resolve_date(d("2000-01-01"), &seasons()),
+            Some(DateResolution::BeforeEarliest(d("2024-10-04")))
+        );
+        assert_eq!(
+            resolve_date(d("2024-10-03"), &seasons()),
+            Some(DateResolution::BeforeEarliest(d("2024-10-04")))
+        );
+    }
+
+    #[test]
+    fn resolve_empty_is_none() {
+        assert_eq!(resolve_date(d("2026-10-29"), &[]), None);
+    }
+
+    #[test]
+    fn resolve_year_in_range() {
+        // seasons() end years: 2025, 2026, 2027.
+        assert_eq!(resolve_year(2025, &seasons()), Some(YearResolution::InRange));
+        assert_eq!(resolve_year(2026, &seasons()), Some(YearResolution::InRange));
+        assert_eq!(resolve_year(2027, &seasons()), Some(YearResolution::InRange));
+    }
+
+    #[test]
+    fn resolve_year_after_latest() {
+        assert_eq!(
+            resolve_year(2030, &seasons()),
+            Some(YearResolution::AfterLatest(2027))
+        );
+        assert_eq!(
+            resolve_year(2028, &seasons()),
+            Some(YearResolution::AfterLatest(2027))
+        );
+    }
+
+    #[test]
+    fn resolve_year_before_earliest() {
+        assert_eq!(
+            resolve_year(1950, &seasons()),
+            Some(YearResolution::BeforeEarliest(2025))
+        );
+        assert_eq!(
+            resolve_year(2024, &seasons()),
+            Some(YearResolution::BeforeEarliest(2025))
+        );
+    }
+
+    #[test]
+    fn resolve_year_empty_is_none() {
+        assert_eq!(resolve_year(2026, &[]), None);
     }
 }

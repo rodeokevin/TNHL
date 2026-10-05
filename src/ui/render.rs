@@ -81,8 +81,6 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
 
     let inner = block.inner(area);
 
-    // Context-sensitive key hints shown at the bottom of the menu panel,
-    // just above the "Help: ?" line. Each entry is a "Label  key" pair.
     let hints: Vec<(&str, &str)> = context_hints(app);
 
     let chunks = Layout::default()
@@ -124,19 +122,21 @@ fn render_menu(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(help, chunks[2]);
 }
 
-/// Build the list of context-sensitive key hints to show at the bottom of the
-/// menu panel for the current page/focus. Returns `(label, key)` pairs.
+/// Build the list of context-sensitive key hints to show at the bottom
 fn context_hints(app: &App) -> Vec<(&'static str, &'static str)> {
     match app.state.selected_menu {
         MenuFocus::Games => {
             let mut hints = Vec::new();
+            // No game selected
+            if app.state.games.current_game_id().is_none() {
+                return hints;
+            }
+            let is_pregame = app.state.games.is_pregame();
             // Play-by-play toggle is available on all game views except pre-game.
-            if app.state.games.focus != GamesFocus::Pregame {
+            if !is_pregame {
                 hints.push(("Play-by-play", "p"));
             }
-            // When the play-by-play pane is open, Tab switches focus between it
-            // and the info pane.
-            if app.state.games.plays_visible && app.state.games.focus != GamesFocus::Pregame {
+            if app.state.games.plays_visible && !is_pregame {
                 hints.push(("Toggle focus", "tab"));
             }
             if app.state.games.focus == GamesFocus::Boxscore {
@@ -181,12 +181,6 @@ fn render_team_picker(f: &mut Frame, app: &mut App, rect: Rect) {
 
 fn render_help(frame: &mut Frame, area: Rect, app: &mut App) {
     frame.render_widget(Clear, area);
-
-    // if app.state.show_logs {
-    //     draw_border(f, rect, Color::White);
-    //     f.render_widget(LogWidget {}, rect);
-    //     return;
-    // }
 
     let block = Block::bordered()
         .title(" Help ")

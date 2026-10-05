@@ -84,8 +84,10 @@ impl DivisionFocus {
 
 pub struct StandingsState {
     pub standings_data: Option<StandingsResponse>,
-    /// Bounds of the season currently displayed (for the tabs header).
+    /// Bounds of the season currently displayed
     pub season: Option<SeasonBounds>,
+    /// Set when the requested date is outside the available season range
+    pub out_of_range: Option<String>,
     pub table_state: TableState,
     /// Number of visible rows in the table, updated during render
     pub visible_rows: usize,
@@ -107,6 +109,7 @@ impl Default for StandingsState {
         Self {
             standings_data: None,
             season: None,
+            out_of_range: None,
             table_state: table(),
             visible_rows: 0,
 

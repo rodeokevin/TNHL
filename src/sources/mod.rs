@@ -40,15 +40,27 @@ pub enum AppEvent {
     SeasonResolved {
         year: i32,
     },
+    SeasonBoundsResolved {
+        seasons: Vec<SeasonBounds>,
+    },
     StandingsUpdate {
         standings: StandingsResponse,
         season: Option<SeasonBounds>,
     },
+    StandingsOutOfRange {
+        message: String,
+    },
     TeamStatsRegularSeasonUpdate(TeamStatsResponse),
     TeamStatsPlayoffsUpdate(TeamStatsResponse),
+    TeamStatsOutOfRange {
+        message: String,
+    },
     GamesUpdate {
         game_ids: Vec<u32>,
         parsed_games: GamesResponse,
+    },
+    GamesOutOfRange {
+        message: String,
     },
     BoxscoreUpdate {
         game_id: u32,

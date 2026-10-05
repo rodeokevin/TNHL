@@ -118,6 +118,13 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
             .highlight_symbol(">> ");
 
         frame.render_stateful_widget(table, inner, &mut app.state.team_stats.table_state);
+    } else if let Some(hint) = &app.state.team_stats.out_of_range {
+        frame.render_widget(
+            Line::from(hint.clone())
+                .style(Style::new().fg(Color::DarkGray))
+                .centered(),
+            inner,
+        );
     } else {
         frame.render_widget(Line::from("Loading team stats...").centered(), inner);
     }

@@ -205,15 +205,23 @@ fn map_goalie_rows(players: &[Goalie]) -> Vec<Row<'static>> {
             Row::new(vec![
                 p.sweater_number.to_string(),
                 p.name.default.clone(),
-                p.shots_against.to_string(),
+                p.shots_against
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| "--".to_string()),
                 p.saves
                     .as_ref()
                     .map(|t| t.to_string())
                     .unwrap_or_else(|| "--".to_string()),
                 p.goals_against.to_string(),
-                p.even_strength_shots_against.clone(),
-                p.power_play_shots_against.clone(),
-                p.shorthanded_shots_against.clone(),
+                p.even_strength_shots_against
+                    .clone()
+                    .unwrap_or_else(|| "--".to_string()),
+                p.power_play_shots_against
+                    .clone()
+                    .unwrap_or_else(|| "--".to_string()),
+                p.shorthanded_shots_against
+                    .clone()
+                    .unwrap_or_else(|| "--".to_string()),
                 p.save_pctg
                     .map(|f| format!("{:.4}", f))
                     .unwrap_or_else(|| "--".to_string()),
