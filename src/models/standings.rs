@@ -15,7 +15,9 @@ pub struct TeamData {
     pub season_id: u32,
     pub clinch_indicator: Option<String>,
     pub conference_abbrev: Option<String>,
+    pub conference_name: Option<String>,
     pub division_abbrev: Option<String>,
+    pub division_name: Option<String>,
     pub conference_sequence: u8,
     pub wildcard_sequence: u8,
     pub division_sequence: u8,
@@ -49,6 +51,70 @@ impl StandingsResponse {
     pub fn from_json(data: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(data)
     }
+
+    pub fn divisions(&self) -> Vec<Grouping> {
+        self.groupings(
+            |t| t.division_abbrev.as_deref(),
+            |t| t.division_name.as_deref(),
+        )
+    }
+
+    pub fn conferences(&self) -> Vec<Grouping> {
+        self.groupings(
+            |t| t.conference_abbrev.as_deref(),
+            |t| t.conference_name.as_deref(),
+        )
+    }
+
+    pub fn has_wildcard(&self) -> bool {
+        self.standings.iter().any(|t| t.wildcard_sequence != 0)
+    }
+
+    pub fn divisions_in_conference(&self, conference_abbrev: &str) -> Vec<Grouping> {
+        let mut seen: Vec<Grouping> = Vec::new();
+        for team in &self.standings {
+            if team.conference_abbrev.as_deref() != Some(conference_abbrev) {
+                continue;
+            }
+            let Some(code) = team.division_abbrev.as_deref() else {
+                continue;
+            };
+            if seen.iter().any(|g| g.abbrev == code) {
+                continue;
+            }
+            seen.push(Grouping {
+                abbrev: code.to_string(),
+                name: team.division_name.as_deref().unwrap_or(code).to_string(),
+            });
+        }
+        seen
+    }
+
+    fn groupings<'a>(
+        &'a self,
+        abbrev: impl Fn(&'a TeamData) -> Option<&'a str>,
+        name: impl Fn(&'a TeamData) -> Option<&'a str>,
+    ) -> Vec<Grouping> {
+        let mut seen: Vec<Grouping> = Vec::new();
+        for team in &self.standings {
+            let Some(code) = abbrev(team) else { continue };
+            if seen.iter().any(|g| g.abbrev == code) {
+                continue;
+            }
+            seen.push(Grouping {
+                abbrev: code.to_string(),
+                // Fall back to the abbrev if the name is missing.
+                name: name(team).unwrap_or(code).to_string(),
+            });
+        }
+        seen
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Grouping {
+    pub abbrev: String,
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -142,6 +208,24 @@ pub fn earliest_start(seasons: &[SeasonBounds]) -> Option<chrono::NaiveDate> {
 /// The latest standings end date across all seasons, if any.
 pub fn latest_end(seasons: &[SeasonBounds]) -> Option<chrono::NaiveDate> {
     seasons.iter().filter_map(|s| s.end()).max()
+}
+
+/// The season that ended most recently before `date` (the previous season for
+/// an offseason-gap date), if any.
+pub fn season_ending_before(date: chrono::NaiveDate, seasons: &[SeasonBounds]) -> Option<&SeasonBounds> {
+    seasons
+        .iter()
+        .filter(|s| s.end().is_some_and(|end| end < date))
+        .max_by_key(|s| s.end())
+}
+
+/// The season that starts soonest after `date` (the upcoming season for an
+/// offseason-gap date), if any.
+pub fn season_starting_after(date: chrono::NaiveDate, seasons: &[SeasonBounds]) -> Option<&SeasonBounds> {
+    seasons
+        .iter()
+        .filter(|s| s.start().is_some_and(|start| start > date))
+        .min_by_key(|s| s.start())
 }
 
 /// Classify a requested date against the known seasons.

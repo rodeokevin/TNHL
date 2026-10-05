@@ -1,7 +1,7 @@
 use crate::app::App;
 use crate::models::TeamAbbrev;
-use crate::models::standings::{StandingsResponse, TeamData};
-use crate::state::standings_state::{ConferenceFocus, DivisionFocus, StandingsFocus};
+use crate::models::standings::{Grouping, StandingsResponse, TeamData};
+use crate::state::standings_state::StandingsFocus;
 use crate::ui::layout::tabs_and_content;
 use crate::ui::render::{BORDER_COLOR, border_style};
 
@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Constraint, Rect},
     style::{Color, Modifier, Style},
     text::Line,
-    widgets::{Block, Row, Table, TableState, Tabs},
+    widgets::{Block, Paragraph, Row, Table, TableState, Tabs},
 };
 
 const STANDINGS_COLUMNS_NAMES: [&str; 18] = [
@@ -39,6 +39,16 @@ const STANDINGS_COLUMN_WIDTHS: [Constraint; 18] = [
     Constraint::Length(5),
 ];
 
+/// The label shown on a standings tab.
+fn tab_label(focus: StandingsFocus) -> &'static str {
+    match focus {
+        StandingsFocus::WildCard => "Wild Card",
+        StandingsFocus::Division => "Division",
+        StandingsFocus::Conference => "Conference",
+        StandingsFocus::League => "League",
+    }
+}
+
 pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
     let tab_content_chunks = tabs_and_content(area);
@@ -46,17 +56,16 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     // Pass visible rows to standings state
     app.state.standings.visible_rows = tab_content_chunks[1].height.saturating_sub(3) as usize;
 
-    let titles = ["Wild Card", "Division", "Conference", "League"]
+    // Build the tab list from what the current season actually supports.
+    let available = app.state.standings.available_tabs();
+    let titles = available
         .iter()
-        .map(|t| Line::from(*t))
+        .map(|t| Line::from(tab_label(*t)))
         .collect::<Vec<_>>();
-
-    let selected_standings_index = match app.state.standings.selected_standings {
-        StandingsFocus::WildCard => 0,
-        StandingsFocus::Division => 1,
-        StandingsFocus::Conference => 2,
-        StandingsFocus::League => 3,
-    };
+    let selected_standings_index = available
+        .iter()
+        .position(|t| *t == app.state.standings.selected_standings)
+        .unwrap_or(0);
 
     let highlight_style = Style::new().fg(BORDER_COLOR).bold().underlined();
 
@@ -85,36 +94,48 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(tabs, tab_content_chunks[0]);
 
     if let Some(data) = &app.state.standings.standings_data {
+        if data.standings.is_empty() {
+            render_message(frame, tab_content_chunks[1], "No standings for this season.");
+            return;
+        }
         let renderer = StandingsRenderer {
             favorite: app.settings.favorite_team,
         };
         match app.state.standings.selected_standings {
             StandingsFocus::WildCard => {
-                renderer.render_wildcard(
-                    frame,
-                    &mut app.state.standings.table_state,
-                    &app.state.standings.selected_wildcard,
-                    tab_content_chunks[1],
-                    data,
-                );
+                if let Some(conf) = app.state.standings.current_conference().cloned() {
+                    renderer.render_wildcard(
+                        frame,
+                        &mut app.state.standings.table_state,
+                        &conf,
+                        tab_content_chunks[1],
+                        data,
+                    );
+                }
             }
             StandingsFocus::Division => {
-                renderer.render_division(
-                    frame,
-                    &mut app.state.standings.table_state,
-                    &app.state.standings.selected_division,
-                    tab_content_chunks[1],
-                    data,
-                );
+                if let Some(div) = app.state.standings.current_division().cloned() {
+                    renderer.render_grouping(
+                        frame,
+                        &mut app.state.standings.table_state,
+                        tab_content_chunks[1],
+                        data,
+                        GroupKind::Division,
+                        &div,
+                    );
+                }
             }
             StandingsFocus::Conference => {
-                renderer.render_conference(
-                    frame,
-                    &mut app.state.standings.table_state,
-                    &app.state.standings.selected_conference,
-                    tab_content_chunks[1],
-                    data,
-                );
+                if let Some(conf) = app.state.standings.current_conference().cloned() {
+                    renderer.render_grouping(
+                        frame,
+                        &mut app.state.standings.table_state,
+                        tab_content_chunks[1],
+                        data,
+                        GroupKind::Conference,
+                        &conf,
+                    );
+                }
             }
             StandingsFocus::League => {
                 renderer.render_league(
@@ -126,17 +147,38 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
             }
         };
     } else {
-        let block = Block::bordered()
-            .title(" Standings ")
-            .border_style(border_style());
-        let inner = block.inner(tab_content_chunks[1]);
-        frame.render_widget(block, tab_content_chunks[1]);
-        let message = match &app.state.standings.out_of_range {
-            Some(hint) => Line::from(hint.clone()).style(Style::new().fg(Color::DarkGray)),
-            None => Line::from("Loading standings..."),
-        };
-        frame.render_widget(message.centered(), inner);
+        let message = app
+            .state
+            .standings
+            .out_of_range
+            .clone()
+            .unwrap_or_else(|| "Loading standings...".to_string());
+        render_message(frame, tab_content_chunks[1], &message);
     }
+}
+
+fn render_message(frame: &mut Frame, area: Rect, message: &str) {
+    let block = Block::bordered()
+        .title(" Standings ")
+        .border_style(border_style());
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let lines: Vec<Line> = message.lines().map(Line::from).collect();
+
+    frame.render_widget(
+        Paragraph::new(lines)
+            .style(Style::new().fg(Color::DarkGray))
+            .centered(),
+        inner,
+    );
+}
+
+/// Which grouping a generic table render targets.
+#[derive(Clone, Copy)]
+enum GroupKind {
+    Division,
+    Conference,
 }
 
 /// Groups the read-only context needed to render the standings tables so the
@@ -158,113 +200,72 @@ impl StandingsRenderer {
         frame.render_stateful_widget(table, area, table_state);
     }
 
-    fn render_conference(
+    /// Render a single division or conference-filtered table
+    fn render_grouping(
         &self,
         frame: &mut Frame,
         table_state: &mut TableState,
-        selected_conference: &ConferenceFocus,
         area: Rect,
         teams: &StandingsResponse,
+        kind: GroupKind,
+        group: &Grouping,
     ) {
-        let (abbrev, title) = match selected_conference {
-            ConferenceFocus::Eastern => ("E", " Eastern Conference Standings "),
-            ConferenceFocus::Western => ("W", " Western Conference Standings "),
+        let abbrev = group.abbrev.clone();
+        let (filter, sort_key, suffix): (
+            Box<dyn Fn(&TeamData) -> bool>,
+            Box<dyn Fn(&TeamData) -> u8>,
+            &str,
+        ) = match kind {
+            GroupKind::Division => (
+                Box::new(move |t: &TeamData| t.division_abbrev.as_deref() == Some(&abbrev)),
+                Box::new(|t: &TeamData| t.division_sequence),
+                "Division",
+            ),
+            GroupKind::Conference => (
+                Box::new(move |t: &TeamData| t.conference_abbrev.as_deref() == Some(&abbrev)),
+                Box::new(|t: &TeamData| t.conference_sequence),
+                "Conference",
+            ),
         };
-
-        self.render_standings_table(
-            frame,
-            table_state,
-            area,
-            teams,
-            |team| team.conference_abbrev.as_deref() == Some(abbrev),
-            |team| team.conference_sequence,
-            title.to_string(),
-        );
-    }
-
-    fn render_division(
-        &self,
-        frame: &mut Frame,
-        table_state: &mut TableState,
-        selected_division: &DivisionFocus,
-        area: Rect,
-        teams: &StandingsResponse,
-    ) {
-        let (abbrev, title) = match selected_division {
-            DivisionFocus::Atlantic => ("A", " Atlantic Division Standings "),
-            DivisionFocus::Metropolitan => ("M", " Metropolitan Division Standings "),
-            DivisionFocus::Central => ("C", " Central Division Standings "),
-            DivisionFocus::Pacific => ("P", " Pacific Division Standings "),
-        };
-
-        self.render_standings_table(
-            frame,
-            table_state,
-            area,
-            teams,
-            |team| team.division_abbrev.as_deref() == Some(abbrev),
-            |team| team.division_sequence,
-            title.to_string(),
-        );
+        let title = format!(" {} {} Standings ", group.name, suffix);
+        self.render_standings_table(frame, table_state, area, teams, filter, sort_key, title);
     }
 
     fn render_wildcard(
         &self,
         frame: &mut Frame,
         table_state: &mut TableState,
-        selected_wildcard: &ConferenceFocus,
+        conference: &Grouping,
         area: Rect,
         teams: &StandingsResponse,
     ) {
-        let (div1_abbr, div1_full, div2_abbr, div2_full, conf, title) = match selected_wildcard {
-            ConferenceFocus::Eastern => (
-                "A",
-                "Atlantic",
-                "M",
-                "Metropolitan",
-                "E",
-                " Eastern Wildcard Standings ",
-            ),
-            ConferenceFocus::Western => (
-                "C",
-                "Central",
-                "P",
-                "Pacific",
-                "W",
-                " Western Wildcard Standings ",
-            ),
-        };
         let division_conference_rows_style = Style::new().fg(BORDER_COLOR).underlined();
         let mut rows = Vec::new();
-        rows.extend(vec![
-            Row::new(vec!["", div1_full]).style(division_conference_rows_style),
-        ]);
+
+        // Each division within this conference: top 3 teams by division rank.
+        for div in teams.divisions_in_conference(&conference.abbrev) {
+            rows.push(Row::new(vec!["".to_string(), div.name.clone()]).style(division_conference_rows_style));
+            let abbrev = div.abbrev.clone();
+            rows.extend(self.map_rows(
+                teams,
+                move |t| t.division_abbrev.as_deref() == Some(&abbrev),
+                |t| t.division_sequence,
+                Some(3),
+            ));
+        }
+
+        // Wildcard teams for this conference (ranked by wildcard sequence).
+        rows.push(Row::new(vec!["".to_string(), "Wildcard".to_string()]).style(division_conference_rows_style));
+        let conf_abbrev = conference.abbrev.clone();
         rows.extend(self.map_rows(
             teams,
-            |t| t.division_abbrev.as_deref() == Some(div1_abbr),
-            |t| t.division_sequence,
-            Some(3),
-        ));
-        rows.extend(vec![
-            Row::new(vec!["", div2_full]).style(division_conference_rows_style),
-        ]);
-        rows.extend(self.map_rows(
-            teams,
-            |t| t.division_abbrev.as_deref() == Some(div2_abbr),
-            |t| t.division_sequence,
-            Some(3),
-        ));
-        rows.extend(vec![
-            Row::new(vec!["", "Wildcard"]).style(division_conference_rows_style),
-        ]);
-        rows.extend(self.map_rows(
-            teams,
-            |t| t.conference_abbrev.as_deref() == Some(conf) && t.wildcard_sequence != 0,
+            move |t| t.conference_abbrev.as_deref() == Some(&conf_abbrev) && t.wildcard_sequence != 0,
             |t| t.wildcard_sequence,
             None,
         ));
 
-        let table = create_table(rows, title.to_string());
+        let title = format!(" {} Wildcard Standings ", conference.name);
+        let table = create_table(rows, title);
         frame.render_stateful_widget(table, area, table_state);
     }
 

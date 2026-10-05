@@ -1,85 +1,14 @@
 use ratatui::widgets::TableState;
 
-use crate::models::standings::{SeasonBounds, StandingsResponse};
+use crate::models::standings::{Grouping, SeasonBounds, StandingsResponse};
 use crate::state::app_state::{table_page_down, table_page_up};
 
-const LEAGUE_NUM_TEAMS: usize = 32;
-const CONFERENCE_NUM_TEAMS: usize = 16;
-const DIVISION_NUM_TEAMS: usize = 8;
-const WILDCARD_NUM_TEAMS: usize = 16 + 3; // + 3 for the division/conference name rows
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StandingsFocus {
-    #[default]
     WildCard,
     Division,
     Conference,
     League,
-}
-
-impl StandingsFocus {
-    pub fn next(self) -> Self {
-        match self {
-            StandingsFocus::WildCard => StandingsFocus::Division,
-            StandingsFocus::Division => StandingsFocus::Conference,
-            StandingsFocus::Conference => StandingsFocus::League,
-            StandingsFocus::League => StandingsFocus::League,
-        }
-    }
-
-    pub fn prev(self) -> Self {
-        match self {
-            StandingsFocus::WildCard => StandingsFocus::WildCard,
-            StandingsFocus::Division => StandingsFocus::WildCard,
-            StandingsFocus::Conference => StandingsFocus::Division,
-            StandingsFocus::League => StandingsFocus::Conference,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum ConferenceFocus {
-    #[default]
-    Eastern,
-    Western,
-}
-
-impl ConferenceFocus {
-    pub fn toggle(self) -> Self {
-        match self {
-            ConferenceFocus::Eastern => ConferenceFocus::Western,
-            ConferenceFocus::Western => ConferenceFocus::Eastern,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum DivisionFocus {
-    #[default]
-    Atlantic,
-    Metropolitan,
-    Central,
-    Pacific,
-}
-
-impl DivisionFocus {
-    pub fn next(self) -> Self {
-        match self {
-            DivisionFocus::Atlantic => DivisionFocus::Metropolitan,
-            DivisionFocus::Metropolitan => DivisionFocus::Central,
-            DivisionFocus::Central => DivisionFocus::Pacific,
-            DivisionFocus::Pacific => DivisionFocus::Atlantic,
-        }
-    }
-
-    pub fn prev(self) -> Self {
-        match self {
-            DivisionFocus::Atlantic => DivisionFocus::Pacific,
-            DivisionFocus::Metropolitan => DivisionFocus::Atlantic,
-            DivisionFocus::Central => DivisionFocus::Metropolitan,
-            DivisionFocus::Pacific => DivisionFocus::Central,
-        }
-    }
 }
 
 pub struct StandingsState {
@@ -93,9 +22,12 @@ pub struct StandingsState {
     pub visible_rows: usize,
 
     pub selected_standings: StandingsFocus,
-    pub selected_conference: ConferenceFocus,
-    pub selected_division: DivisionFocus,
-    pub selected_wildcard: ConferenceFocus,
+    pub selected_division: usize,
+    pub selected_conference: usize,
+
+    pub divisions: Vec<Grouping>,
+    pub conferences: Vec<Grouping>,
+    pub has_wildcard: bool,
 }
 
 impl Default for StandingsState {
@@ -113,24 +45,105 @@ impl Default for StandingsState {
             table_state: table(),
             visible_rows: 0,
 
-            selected_standings: StandingsFocus::default(),
-            selected_conference: ConferenceFocus::default(),
-            selected_division: DivisionFocus::default(),
-            selected_wildcard: ConferenceFocus::default(),
+            selected_standings: StandingsFocus::League,
+            selected_division: 0,
+            selected_conference: 0,
+
+            divisions: Vec::new(),
+            conferences: Vec::new(),
+            has_wildcard: false,
         }
     }
 }
 
 impl StandingsState {
-    /// Return the length of the active standings table
-    pub fn current_table_len(&self) -> usize {
-        match self.selected_standings {
-            StandingsFocus::League => LEAGUE_NUM_TEAMS,
-            StandingsFocus::Conference => CONFERENCE_NUM_TEAMS,
-            StandingsFocus::Division => DIVISION_NUM_TEAMS,
-            StandingsFocus::WildCard => WILDCARD_NUM_TEAMS,
+    pub fn set_data(&mut self, data: StandingsResponse) {
+        self.divisions = data.divisions();
+        self.conferences = data.conferences();
+        self.has_wildcard = data.has_wildcard();
+        self.standings_data = Some(data);
+
+        if self.selected_division >= self.divisions.len() {
+            self.selected_division = 0;
+        }
+        if self.selected_conference >= self.conferences.len() {
+            self.selected_conference = 0;
+        }
+        // If the current tab isn't available this season, fall back to League.
+        if !self.available_tabs().contains(&self.selected_standings) {
+            self.selected_standings = StandingsFocus::League;
+        }
+        self.clamp_selected_row();
+    }
+
+    /// Keep the selected row within the current table's bounds without snapping
+    /// to the top, so periodic refreshes don't disturb the user's selection.
+    fn clamp_selected_row(&mut self) {
+        let len = self.current_table_len();
+        let max = len.saturating_sub(1);
+        match self.table_state.selected() {
+            Some(sel) if sel > max => self.table_state.select(Some(max)),
+            Some(_) => {}
+            None => self.table_state.select(Some(0)),
         }
     }
+
+    /// The standings tabs available for the current season, in display order.
+    /// League is always present; the others depend on the data.
+    pub fn available_tabs(&self) -> Vec<StandingsFocus> {
+        let mut tabs = Vec::new();
+        if self.has_wildcard && !self.conferences.is_empty() {
+            tabs.push(StandingsFocus::WildCard);
+        }
+        if !self.divisions.is_empty() {
+            tabs.push(StandingsFocus::Division);
+        }
+        if !self.conferences.is_empty() {
+            tabs.push(StandingsFocus::Conference);
+        }
+        tabs.push(StandingsFocus::League);
+        tabs
+    }
+
+    /// The currently selected division grouping, if any.
+    pub fn current_division(&self) -> Option<&Grouping> {
+        self.divisions.get(self.selected_division)
+    }
+    /// The currently selected conference grouping, if any.
+    pub fn current_conference(&self) -> Option<&Grouping> {
+        self.conferences.get(self.selected_conference)
+    }
+
+    pub fn current_table_len(&self) -> usize {
+        match self.selected_standings {
+            StandingsFocus::League => self.standings_data.as_ref().map_or(0, |d| d.standings.len()),
+            StandingsFocus::Conference => self.count_in_conference(),
+            StandingsFocus::Division => self.count_in_division(),
+            // Conference + 3 label rows.
+            StandingsFocus::WildCard => self.count_in_conference() + 3,
+        }
+    }
+
+    fn count_in_division(&self) -> usize {
+        let (Some(div), Some(data)) = (self.current_division(), &self.standings_data) else {
+            return 0;
+        };
+        data.standings
+            .iter()
+            .filter(|t| t.division_abbrev.as_deref() == Some(div.abbrev.as_str()))
+            .count()
+    }
+
+    fn count_in_conference(&self) -> usize {
+        let (Some(conf), Some(data)) = (self.current_conference(), &self.standings_data) else {
+            return 0;
+        };
+        data.standings
+            .iter()
+            .filter(|t| t.conference_abbrev.as_deref() == Some(conf.abbrev.as_str()))
+            .count()
+    }
+
     /// Select a new row in the standings table
     pub fn row_down(&mut self) {
         self.table_state.scroll_down_by(1);
@@ -148,42 +161,72 @@ impl StandingsState {
             &mut self.table_state,
         );
     }
-    /// Next/PrevStandings
-    pub fn shift_standings_type(&mut self, next: bool) {
-        self.selected_standings = if next {
-            self.selected_standings.next()
-        } else {
-            self.selected_standings.prev()
+
+    pub fn shift_standings_type(&mut self, next: bool) -> bool {
+        let tabs = self.available_tabs();
+        let Some(pos) = tabs.iter().position(|t| *t == self.selected_standings) else {
+            self.selected_standings = StandingsFocus::League;
+            return true;
         };
+        let new_pos = if next {
+            (pos + 1).min(tabs.len() - 1)
+        } else {
+            pos.saturating_sub(1)
+        };
+        if new_pos == pos {
+            return false;
+        }
+        self.selected_standings = tabs[new_pos];
+        true
     }
-    /// Cycle within a selected standings (e.g. change division in division standings)
-    pub fn cycle_display(&mut self, next: bool) {
+
+    pub fn has_cyclable_subtype(&self) -> bool {
         match self.selected_standings {
-            StandingsFocus::Conference => {
-                self.selected_conference = self.selected_conference.toggle()
-            }
-            StandingsFocus::Division => {
-                self.selected_division = if next {
-                    self.selected_division.next()
-                } else {
-                    self.selected_division.prev()
-                };
-            }
-            StandingsFocus::WildCard => self.selected_wildcard = self.selected_wildcard.toggle(),
-            StandingsFocus::League => {}
+            StandingsFocus::Conference | StandingsFocus::WildCard => self.conferences.len() > 1,
+            StandingsFocus::Division => self.divisions.len() > 1,
+            StandingsFocus::League => false,
         }
     }
+    
+    pub fn cycle_display(&mut self, next: bool) -> bool {
+        if !self.has_cyclable_subtype() {
+            return false;
+        }
+        match self.selected_standings {
+            StandingsFocus::Conference | StandingsFocus::WildCard => {
+                self.selected_conference =
+                    cycle_index(self.selected_conference, self.conferences.len(), next);
+            }
+            StandingsFocus::Division => {
+                self.selected_division =
+                    cycle_index(self.selected_division, self.divisions.len(), next);
+            }
+            StandingsFocus::League => {}
+        }
+        true
+    }
+
     /// Reset standings to default state
     pub fn reset_state(&mut self) {
         self.reset_table_state();
-
-        self.selected_standings = StandingsFocus::default();
-        self.selected_conference = ConferenceFocus::default();
-        self.selected_division = DivisionFocus::default();
-        self.selected_wildcard = ConferenceFocus::default();
+        self.selected_standings = StandingsFocus::League;
+        self.selected_conference = 0;
+        self.selected_division = 0;
     }
     /// Reset selected row in table
     pub fn reset_table_state(&mut self) {
         self.table_state.select(Some(0));
+    }
+}
+
+/// Wrap an index forward/backward within `len` (no-op if `len` is 0).
+fn cycle_index(current: usize, len: usize, next: bool) -> usize {
+    if len == 0 {
+        return 0;
+    }
+    if next {
+        (current + 1) % len
+    } else {
+        (current + len - 1) % len
     }
 }

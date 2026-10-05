@@ -152,7 +152,7 @@ impl AppState {
             }
             AppEvent::StandingsUpdate { standings, season } => {
                 log::debug!("Updating standings data");
-                self.standings.standings_data = Some(standings);
+                self.standings.set_data(standings);
                 self.standings.season = season;
                 self.standings.out_of_range = None;
             }
@@ -340,20 +340,24 @@ impl AppState {
             Action::StandingsPageUp => self.standings.page_up(),
             Action::StandingsPageDown => self.standings.page_down(),
             Action::StandingsLeft => {
-                self.standings.shift_standings_type(false);
-                self.standings.reset_table_state();
+                if self.standings.shift_standings_type(false) {
+                    self.standings.reset_table_state();
+                }
             }
             Action::StandingsRight => {
-                self.standings.shift_standings_type(true);
-                self.standings.reset_table_state();
+                if self.standings.shift_standings_type(true) {
+                    self.standings.reset_table_state();
+                }
             }
             Action::PrevStandingsDisplay => {
-                self.standings.cycle_display(false);
-                self.standings.reset_table_state();
+                if self.standings.cycle_display(false) {
+                    self.standings.reset_table_state();
+                }
             }
             Action::NextStandingsDisplay => {
-                self.standings.cycle_display(true);
-                self.standings.reset_table_state();
+                if self.standings.cycle_display(true) {
+                    self.standings.reset_table_state();
+                }
             }
             // Team stats page actions
             Action::TeamStatsUp => self.team_stats.row_up(),

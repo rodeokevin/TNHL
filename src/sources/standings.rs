@@ -4,7 +4,9 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use super::{AppEvent, Source};
-use crate::models::standings::{DateResolution, SeasonBounds, resolve_date};
+use crate::models::standings::{
+    DateResolution, SeasonBounds, resolve_date, season_ending_before, season_starting_after,
+};
 use crate::sources::{FetchInterval, StandingsResponse};
 
 pub enum StandingsCommand {
@@ -44,12 +46,45 @@ impl StandingsSource {
         resolve_date(requested, seasons)
     }
 
+    fn unavailable_message(&self) -> String {
+        let fmt = |s: &SeasonBounds| -> String {
+            match (s.start(), s.end()) {
+                (Some(start), Some(end)) => format!(
+                    "{} - {}",
+                    start.format("%B %d, %Y"),
+                    end.format("%B %d, %Y")
+                ),
+                // Fall back to the raw strings if either doesn't parse.
+                _ => format!("{} - {}", s.standings_start, s.standings_end),
+            }
+        };
+
+        let mut lines = vec!["No standings available.".to_string()];
+        if let (Some(seasons), Ok(requested)) = (
+            self.seasons.as_deref(),
+            chrono::NaiveDate::parse_from_str(&self.current_date, "%Y-%m-%d"),
+        ) {
+            if let Some(prev) = season_ending_before(requested, seasons) {
+                lines.push(format!("Previous season: {}.", fmt(prev)));
+            }
+            if let Some(next) = season_starting_after(requested, seasons) {
+                lines.push(format!("Next season: {}.", fmt(next)));
+            }
+        }
+        lines.join("\n")
+    }
+
     async fn fetch(&mut self, tx: &Sender<AppEvent>) {
-        // Determine the date to fetch, or report that the requested date is
-        // outside the available range\
         let date = match self.resolved() {
-            Some(DateResolution::InSeason(d)) | Some(DateResolution::OffseasonGap(d)) => {
-                d.format("%Y-%m-%d").to_string()
+            Some(DateResolution::InSeason(d)) => d.format("%Y-%m-%d").to_string(),
+            Some(DateResolution::OffseasonGap(_)) => {
+                // The requested date falls between two seasons
+                let _ = tx
+                    .send(AppEvent::StandingsOutOfRange {
+                        message: self.unavailable_message(),
+                    })
+                    .await;
+                return;
             }
             Some(DateResolution::AfterLatest(latest)) => {
                 let msg = format!(
@@ -203,11 +238,34 @@ mod tests {
     }
 
     #[test]
-    fn offseason_gap_fetches_previous_season_end() {
+    fn offseason_gap_resolves_to_previous_season_end() {
+        // resolve_date still classifies gap dates as OffseasonGap; the standings
+        // source now turns that into an out-of-range hint rather than fetching.
         assert_eq!(
             resolve_date(d("2026-08-24"), &seasons()),
             Some(DateResolution::OffseasonGap(d("2026-04-17")))
         );
+    }
+
+    #[test]
+    fn surrounding_seasons_for_offseason_gap() {
+        use crate::models::standings::{season_ending_before, season_starting_after};
+        let s = seasons();
+        // Aug 24 2026 is between 2025-26 (ends Apr 17 2026) and 2026-27
+        // (starts Sep 29 2026).
+        let prev = season_ending_before(d("2026-08-24"), &s).unwrap();
+        let next = season_starting_after(d("2026-08-24"), &s).unwrap();
+        assert_eq!(prev.standings_end, "2026-04-17");
+        assert_eq!(next.standings_start, "2026-09-29");
+    }
+
+    #[test]
+    fn surrounding_seasons_after_last_has_no_next() {
+        use crate::models::standings::{season_ending_before, season_starting_after};
+        let s = seasons();
+        // A date after the final season: previous exists, next does not.
+        assert!(season_ending_before(d("2027-06-01"), &s).is_some());
+        assert!(season_starting_after(d("2027-06-01"), &s).is_none());
     }
 
     #[test]
