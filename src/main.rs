@@ -16,9 +16,11 @@ use crate::{
             game_story::{GameStoryCommand, GameStorySource},
             games::{GamesCommand, GamesSource},
             play_by_play::{PlaysCommand, PlaysSource},
+            total_goals::{TotalGoalsCommand, TotalGoalsSource},
         },
         playoffs::{
             bracket::{BracketCommand, BracketSource},
+            bracket_series::{BracketSeriesCommand, BracketSeriesSource},
             series::{SeriesCommand, SeriesSource},
         },
         season::SeasonSource,
@@ -139,6 +141,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let (team_stats_tx, team_stats_rx) = tokio::sync::mpsc::channel(8);
     let (bracket_tx, bracket_rx) = tokio::sync::mpsc::channel(8);
     let (series_tx, series_rx) = tokio::sync::mpsc::channel(8);
+    let (total_goals_tx, total_goals_rx) = tokio::sync::mpsc::channel(8);
+    let (bracket_series_tx, bracket_series_rx) = tokio::sync::mpsc::channel(8);
 
     // Date is configured in here
     let mut app = App::new(
@@ -151,6 +155,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         team_stats_tx.clone(),
         bracket_tx.clone(),
         series_tx.clone(),
+        total_goals_tx.clone(),
+        bracket_series_tx.clone(),
     );
     let cancel = CancellationToken::new();
 
@@ -168,6 +174,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         team_stats_rx,
         bracket_rx,
         series_rx,
+        total_goals_rx,
+        bracket_series_rx,
     )
     .await;
 
@@ -195,6 +203,8 @@ async fn run_app<B: Backend>(
     team_stats_rx: Receiver<TeamStatsCommand>,
     bracket_rx: Receiver<BracketCommand>,
     series_rx: Receiver<SeriesCommand>,
+    total_goals_rx: Receiver<TotalGoalsCommand>,
+    bracket_series_rx: Receiver<BracketSeriesCommand>,
 ) -> io::Result<()>
 where
     io::Error: From<B::Error>,
@@ -290,6 +300,26 @@ where
     tokio::spawn(async move {
         Box::new(playoff_bracket_source)
             .run(playoff_bracket_tx, playoff_bracket_cancel)
+            .await;
+    });
+
+    // Spawn total-goals series source
+    let total_goals_source = TotalGoalsSource::new(client.clone(), total_goals_rx);
+    let total_goals_tx = tx.clone();
+    let total_goals_cancel = cancel.clone();
+    tokio::spawn(async move {
+        Box::new(total_goals_source)
+            .run(total_goals_tx, total_goals_cancel)
+            .await;
+    });
+
+    // Spawn bracket series source
+    let bracket_series_source = BracketSeriesSource::new(client.clone(), bracket_series_rx);
+    let bracket_series_tx = tx.clone();
+    let bracket_series_cancel = cancel.clone();
+    tokio::spawn(async move {
+        Box::new(bracket_series_source)
+            .run(bracket_series_tx, bracket_series_cancel)
             .await;
     });
 

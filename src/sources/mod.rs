@@ -76,6 +76,14 @@ pub enum AppEvent {
     },
     BracketUpdate(BracketResponse),
     SeriesUpdate(SeriesResponse),
+    TotalGoalsUpdate {
+        game_id: u32,
+        parsed_series: SeriesResponse,
+    },
+    BracketSeriesUpdate {
+        letter: String,
+        parsed_series: SeriesResponse,
+    },
     Input(crossterm::event::KeyEvent),
     /// Periodic tick to refresh UI
     Tick,

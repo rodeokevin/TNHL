@@ -1,5 +1,6 @@
 use crate::models::playoffs::bracket::BracketResponse;
 use crate::models::playoffs::series::SeriesResponse;
+use std::collections::HashMap;
 
 /// Cells moved per arrow-key scroll in the bracket.
 const BRACKET_SCROLL_STEP: usize = 2;
@@ -16,6 +17,7 @@ pub struct PlayoffsState {
     // The letter representing the series. If None, the ui displays the bracket
     pub selected_series: Option<char>,
     pub series_data: Option<SeriesResponse>,
+    pub bracket_series_data: HashMap<String, SeriesResponse>,
     pub horizontal_scroll_offset: usize,
     /// Max horizontal scroll updated at render
     pub horizontal_max_scroll: usize,
@@ -34,6 +36,7 @@ impl Default for PlayoffsState {
 
             selected_series: None,
             series_data: None,
+            bracket_series_data: HashMap::new(),
 
             horizontal_scroll_offset: 0,
             horizontal_max_scroll: 0,
@@ -50,11 +53,12 @@ impl PlayoffsState {
         self.vertical_scroll_offset = 0;
         self.vertical_max_scroll = 0;
     }
-    /// Reset all state to default
+    /// Reset all state to default.
     pub fn reset_state(&mut self) {
         self.reset_scoring_scroll();
         self.selected_series = None;
         self.series_data = None;
+        self.bracket_series_data.clear();
         self.focus = PlayoffsFocus::default();
     }
     /// Scroll the bracket by a fixed step.

@@ -3,6 +3,7 @@ use crate::models::games::{
     boxscore::BoxscoreResponse, game_story::GameStoryResponse, games::GameData, games::GameState,
     games::GamesResponse,
 };
+use crate::models::playoffs::series::SeriesResponse;
 use crate::state::app_state::{table_page_down, table_page_up};
 use ratatui::widgets::TableState;
 use std::collections::HashMap;
@@ -73,6 +74,7 @@ pub struct GamesState {
     pub boxscore_data: HashMap<u32, BoxscoreResponse>,
     pub game_story_data: HashMap<u32, GameStoryResponse>,
     pub plays_data: HashMap<u32, PlaysResponse>,
+    pub total_goals_data: HashMap<u32, SeriesResponse>,
     pub selected_game_index: usize,
     // For the dynamic display bar under the time remaining
     pub sweeping_status_offset: usize,
@@ -108,6 +110,7 @@ impl Default for GamesState {
             boxscore_data: HashMap::new(),
             game_story_data: HashMap::new(),
             plays_data: HashMap::new(),
+            total_goals_data: HashMap::new(),
             selected_game_index: 0,
             sweeping_status_offset: 0,
             scroll_offset: 0,

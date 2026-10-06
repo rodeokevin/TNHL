@@ -111,18 +111,56 @@ pub fn render_series(frame: &mut Frame, app: &mut App, area: Rect) {
 fn render_big_series_score(series: &SeriesResponse, frame: &mut Frame, area: Rect) {
     let chunks = split_info_left_middle_right(area, MIDDLE_LENGTH);
 
-    let bottom_seed_score = build_big_text(
-        series.bottom_seed_team.series_wins.to_string(),
-        Alignment::Right,
-    );
+    let is_total_goals = series.needed_to_win == 0;
+    let (bottom_value, top_value) = if is_total_goals {
+        let (top_goals, bottom_goals) = aggregate_series_goals(series);
+        (bottom_goals.to_string(), top_goals.to_string())
+    } else {
+        (
+            series.bottom_seed_team.series_wins.to_string(),
+            series.top_seed_team.series_wins.to_string(),
+        )
+    };
+
+    let bottom_seed_score = build_big_text(bottom_value, Alignment::Right);
     frame.render_widget(bottom_seed_score, chunks[0]);
     let dash = build_big_text("-".to_string(), Alignment::Center);
     frame.render_widget(dash, chunks[1]);
-    let top_seed_score = build_big_text(
-        series.top_seed_team.series_wins.to_string(),
-        Alignment::Left,
-    );
+    let top_seed_score = build_big_text(top_value, Alignment::Left);
     frame.render_widget(top_seed_score, chunks[2]);
+
+    if is_total_goals && area.height > 3 {
+        let label_area = Rect {
+            x: area.x,
+            y: area.y + 3,
+            width: area.width,
+            height: 1,
+        };
+        frame.render_widget(
+            Line::from("(aggregate)")
+                .centered()
+                .style(Style::new().fg(Color::DarkGray)),
+            label_area,
+        );
+    }
+}
+
+pub fn aggregate_series_goals(series: &SeriesResponse) -> (u32, u32) {
+    let top_abbrev = series.top_seed_team.abbrev;
+    let bottom_abbrev = series.bottom_seed_team.abbrev;
+    let mut top_goals: u32 = 0;
+    let mut bottom_goals: u32 = 0;
+    for g in &series.games {
+        for team in [&g.home_team, &g.away_team] {
+            let score = team.score.unwrap_or(0) as u32;
+            if team.abbrev == top_abbrev {
+                top_goals += score;
+            } else if team.abbrev == bottom_abbrev {
+                bottom_goals += score;
+            }
+        }
+    }
+    (top_goals, bottom_goals)
 }
 
 fn build_big_text(text: String, alignment: Alignment) -> BigText<'static> {
@@ -343,11 +381,11 @@ fn render_schedule(
         Constraint::Fill(1),
         Constraint::Length(1), // For spacing
         Constraint::Length(9),
-        Constraint::Length(14),
+        Constraint::Length(15),
         Constraint::Length(3),
         Constraint::Length(16),
         Constraint::Length(3),
-        Constraint::Length(17),
+        Constraint::Length(18),
         Constraint::Fill(1),
     ];
 

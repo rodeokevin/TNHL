@@ -2,9 +2,9 @@ use crate::{
     sources::{
         games::{
             boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
-            play_by_play::PlaysCommand,
+            play_by_play::PlaysCommand, total_goals::TotalGoalsCommand,
         },
-        playoffs::{bracket::BracketCommand, series::SeriesCommand},
+        playoffs::{bracket::BracketCommand, bracket_series::BracketSeriesCommand, series::SeriesCommand},
         standings::StandingsCommand,
         teams_stats::TeamStatsCommand,
     },
@@ -29,6 +29,8 @@ impl App {
         team_stats_tx: Sender<TeamStatsCommand>,
         bracket_tx: Sender<BracketCommand>,
         series_tx: Sender<SeriesCommand>,
+        total_goals_tx: Sender<TotalGoalsCommand>,
+        bracket_series_tx: Sender<BracketSeriesCommand>,
     ) -> Self {
         let mut app = Self {
             state: AppState::new(
@@ -40,6 +42,8 @@ impl App {
                 team_stats_tx,
                 bracket_tx,
                 series_tx,
+                total_goals_tx,
+                bracket_series_tx,
             ),
             settings,
         };

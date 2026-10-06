@@ -8,8 +8,10 @@ use crate::sources::{
     games::{
         boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
         play_by_play::PlaysCommand,
+        total_goals::{TotalGoalsCommand, TotalGoalsTarget},
     },
     playoffs::bracket::BracketCommand,
+    playoffs::bracket_series::{BracketSeriesCommand, BracketSeriesTarget},
     standings::StandingsCommand,
     teams_stats::TeamStatsCommand,
 };
@@ -70,6 +72,8 @@ pub struct AppState {
     pub team_stats_tx: Sender<TeamStatsCommand>,
     pub bracket_tx: Sender<BracketCommand>,
     pub series_tx: Sender<SeriesCommand>,
+    pub total_goals_tx: Sender<TotalGoalsCommand>,
+    pub bracket_series_tx: Sender<BracketSeriesCommand>,
 
     pub selected_menu: MenuFocus,
     pub display_menu: bool,
@@ -96,6 +100,8 @@ impl AppState {
         team_stats_tx: Sender<TeamStatsCommand>,
         bracket_tx: Sender<BracketCommand>,
         series_tx: Sender<SeriesCommand>,
+        total_goals_tx: Sender<TotalGoalsCommand>,
+        bracket_series_tx: Sender<BracketSeriesCommand>,
     ) -> Self {
         Self {
             games_tx,
@@ -106,6 +112,8 @@ impl AppState {
             team_stats_tx,
             bracket_tx,
             series_tx,
+            total_goals_tx,
+            bracket_series_tx,
 
             date_state: DateState::default(),
             timezone: Tz::default(),
@@ -169,6 +177,22 @@ impl AppState {
             } => {
                 self.set_fetch_interval(self.should_poll_fast_games(&parsed_games));
                 log::debug!("Updating games data");
+                let total_goals_targets: Vec<TotalGoalsTarget> = parsed_games
+                    .games
+                    .iter()
+                    .filter_map(|g| {
+                        g.series_status.as_ref().and_then(|s| {
+                            (s.needed_to_win == 0 && !s.series_letter.is_empty()).then(|| {
+                                let start_year = g.id / 1_000_000;
+                                TotalGoalsTarget {
+                                    game_id: g.id,
+                                    season: format!("{}{}", start_year, start_year + 1),
+                                    letter: s.series_letter.clone(),
+                                }
+                            })
+                        })
+                    })
+                    .collect();
                 self.games.games_data = Some(parsed_games);
                 self.games.out_of_range = None;
                 self.boxscore_tx
@@ -179,6 +203,9 @@ impl AppState {
                     .ok();
                 self.game_story_tx
                     .try_send(GameStoryCommand::SetGameIds(game_ids))
+                    .ok();
+                self.total_goals_tx
+                    .try_send(TotalGoalsCommand::SetTargets(total_goals_targets))
                     .ok();
             }
             AppEvent::GamesOutOfRange { message } => {
@@ -231,11 +258,48 @@ impl AppState {
             }
             AppEvent::BracketUpdate(parsed_bracket) => {
                 log::debug!("Updating playoff bracket data");
+                
+                const LAST_TOTAL_GOALS_YEAR: i32 = 1936;
+                let bracket_targets: Vec<BracketSeriesTarget> =
+                    if self.date_state.year <= LAST_TOTAL_GOALS_YEAR {
+                        let season =
+                            format!("{}{}", self.date_state.year - 1, self.date_state.year);
+                        parsed_bracket
+                            .series
+                            .iter()
+                            .filter(|s| !s.series_letter.is_empty())
+                            .map(|s| BracketSeriesTarget {
+                                season: season.clone(),
+                                letter: s.series_letter.clone(),
+                            })
+                            .collect()
+                    } else {
+                        Vec::new()
+                    };
                 self.playoffs.bracket_data = Some(parsed_bracket);
+                self.bracket_series_tx
+                    .try_send(BracketSeriesCommand::SetTargets(bracket_targets))
+                    .ok();
             }
             AppEvent::SeriesUpdate(parsed_series) => {
                 log::debug!("Updating series data");
                 self.playoffs.series_data = Some(parsed_series);
+            }
+            AppEvent::TotalGoalsUpdate {
+                game_id,
+                parsed_series,
+            } => {
+                log::debug!("Updating Games total-goals series for game {}", game_id);
+                self.games.total_goals_data.insert(game_id, parsed_series);
+            }
+            AppEvent::BracketSeriesUpdate {
+                letter,
+                parsed_series,
+            } => {
+                log::debug!("Updating bracket series for {}", letter);
+                self.playoffs
+                    .bracket_series_data
+                    .insert(letter, parsed_series);
             }
             AppEvent::Input(key_event) => {
                 log::trace!("Key event detected: {:?}", key_event);
@@ -501,6 +565,7 @@ impl AppState {
             self.games.boxscore_data.clear();
             self.games.game_story_data.clear();
             self.games.plays_data.clear();
+            self.games.total_goals_data.clear();
             self.games.reset_state();
         }
         if let Err(e) = &standings_res {
@@ -616,6 +681,14 @@ impl AppState {
             .ok();
         self.team_stats_tx
             .try_send(TeamStatsCommand::SetInterval(info_interval.as_duration()))
+            .ok();
+        self.total_goals_tx
+            .try_send(TotalGoalsCommand::SetInterval(info_interval.as_duration()))
+            .ok();
+        self.bracket_series_tx
+            .try_send(BracketSeriesCommand::SetInterval(
+                info_interval.as_duration(),
+            ))
             .ok();
     }
 

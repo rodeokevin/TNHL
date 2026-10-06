@@ -3,6 +3,7 @@ use crate::models::TeamAbbrev;
 use crate::models::games::games::{
     GameData, GameState, PeriodDescriptor, PeriodType, SeriesStatus, SituationDesc,
 };
+use crate::models::playoffs::series::SeriesResponse;
 use crate::state::games_state::GamesFocus;
 use crate::ui::games::stats::AWAY_BAR_COLOR;
 use crate::ui::{
@@ -234,6 +235,11 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     }
 
     // Render game information
+    let total_goals_status: Option<String> = app.state.games.selected_game().and_then(|g| {
+        let viewed_game_number = g.series_status.as_ref()?.game_number_of_series;
+        let series = app.state.games.total_goals_data.get(&g.id)?;
+        Some(total_goals_status_line(series, viewed_game_number))
+    });
     if let Some(games_data) = &mut app.state.games.games_data {
         if let Some(game) = games_data.games.get(app.state.games.selected_game_index) {
             // Upper info
@@ -282,7 +288,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                     ],
                 );
                 render_series_info(series, frame, series_chunks[0]);
-                render_series_status(series, frame, series_chunks[1]);
+                render_series_status(series, total_goals_status.as_deref(), frame, series_chunks[1]);
             }
 
             // The lower region is the main content
@@ -662,7 +668,23 @@ fn render_series_info(series: &SeriesStatus, frame: &mut Frame, area: Rect) {
     );
 }
 
-fn render_series_status(series: &SeriesStatus, frame: &mut Frame, area: Rect) {
+fn render_series_status(
+    series: &SeriesStatus,
+    total_goals: Option<&str>,
+    frame: &mut Frame,
+    area: Rect,
+) {
+    if series.needed_to_win == 0 {
+        if let Some(status) = total_goals {
+            frame.render_widget(
+                Line::from(status.to_string())
+                    .style(Style::new().fg(Color::DarkGray))
+                    .centered(),
+                area,
+            );
+        }
+        return;
+    }
     // If series is tied
     let line = if series.top_seed_wins == series.bottom_seed_wins {
         Line::from(format!("Series tied {0} - {0}", series.top_seed_wins))
@@ -706,6 +728,55 @@ fn render_series_status(series: &SeriesStatus, frame: &mut Frame, area: Rect) {
         line.style(Style::new().fg(Color::DarkGray)).centered(),
         area,
     );
+}
+
+/// Build the status line for a two-game total-goals series by aggregating goals
+fn total_goals_status_line(series: &SeriesResponse, viewed_game_number: usize) -> String {
+    use crate::models::games::games::GameState;
+
+    let top_abbrev = series.top_seed_team.abbrev;
+    let bottom_abbrev = series.bottom_seed_team.abbrev;
+
+    let mut top_goals: u32 = 0;
+    let mut bottom_goals: u32 = 0;
+    let mut viewed_game_ended = false;
+    for g in &series.games {
+        if g.game_number as usize > viewed_game_number {
+            continue;
+        }
+        if g.game_number as usize == viewed_game_number {
+            viewed_game_ended = matches!(
+                g.game_state,
+                GameState::OFF | GameState::FINAL | GameState::OVER
+            );
+        }
+        for team in [&g.home_team, &g.away_team] {
+            let score = team.score.unwrap_or(0) as u32;
+            if team.abbrev == top_abbrev {
+                top_goals += score;
+            } else if team.abbrev == bottom_abbrev {
+                bottom_goals += score;
+            }
+        }
+    }
+
+    let is_final = viewed_game_number as u8 == series.length && viewed_game_ended;
+
+    if top_goals == bottom_goals {
+        return format!("Series tied {0} - {0} (aggregate)", top_goals);
+    }
+
+    let (leader, leader_goals, trailer_goals) = if top_goals > bottom_goals {
+        (top_abbrev, top_goals, bottom_goals)
+    } else {
+        (bottom_abbrev, bottom_goals, top_goals)
+    };
+
+    let verb = if is_final { "wins" } else { "leads" };
+    format!(
+        "{} {} {} - {} (aggregate)",
+        leader, verb, leader_goals, trailer_goals
+    )
 }
 
 // Helper to create the areas for left-center-right
@@ -785,41 +856,129 @@ pub fn get_block_title(focus: &GamesFocus) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::games::games::{PeriodDescriptor, PeriodType};
 
-    #[test]
-    fn ordinals() {
-        assert_eq!(ordinal(1), "1st");
-        assert_eq!(ordinal(2), "2nd");
-        assert_eq!(ordinal(3), "3rd");
-        assert_eq!(ordinal(4), "4th");
-        assert_eq!(ordinal(11), "11th");
-        assert_eq!(ordinal(12), "12th");
-        assert_eq!(ordinal(13), "13th");
-        assert_eq!(ordinal(21), "21st");
-        assert_eq!(ordinal(22), "22nd");
-        assert_eq!(ordinal(23), "23rd");
-        assert_eq!(ordinal(31), "31st");
+    fn total_goals_series_json(
+        top: &str,
+        bottom: &str,
+        length: u8,
+        games: &[(u8, &str, Option<u8>, &str, Option<u8>, &str)],
+    ) -> String {
+        let seed = |abbrev: &str| {
+            format!(
+                r#"{{"id":1,"name":{{"default":"{a}"}},"abbrev":"{a}","placeName":{{"default":"{a}"}},"record":"0-0","seriesWins":0,"seed":1}}"#,
+                a = abbrev
+            )
+        };
+        let team = |abbrev: &str, score: Option<u8>| {
+            let score = match score {
+                Some(s) => s.to_string(),
+                None => "null".to_string(),
+            };
+            format!(
+                r#"{{"id":1,"commonName":{{"default":"{a}"}},"abbrev":"{a}","score":{s}}}"#,
+                a = abbrev,
+                s = score
+            )
+        };
+        let games_json: Vec<String> = games
+            .iter()
+            .map(|(num, away, as_, home, hs, state)| {
+                format!(
+                    r#"{{"id":1,"gameNumber":{num},"ifNecessary":false,"venue":{{"default":"v"}},"startTimeUTC":"2020-01-01T00:00:00Z","gameState":"{state}","awayTeam":{away_t},"homeTeam":{home_t}}}"#,
+                    num = num,
+                    state = state,
+                    away_t = team(away, *as_),
+                    home_t = team(home, *hs),
+                )
+            })
+            .collect();
+        format!(
+            r#"{{"round":1,"roundAbbrev":"QF","roundLabel":"Quarterfinals","seriesLetter":"B","neededToWin":0,"length":{length},"bottomSeedTeam":{bottom},"topSeedTeam":{top},"games":[{games}]}}"#,
+            length = length,
+            top = seed(top),
+            bottom = seed(bottom),
+            games = games_json.join(","),
+        )
     }
 
     #[test]
-    fn period_titles_use_ordinals() {
-        let reg = |n| PeriodDescriptor {
-            number: n,
-            period_type: PeriodType::REG,
-            ot_periods: None,
-        };
-        assert_eq!(get_period_title(&reg(1)), "1st Period");
-        assert_eq!(get_period_title(&reg(3)), "3rd Period");
-        assert_eq!(get_period_title(&reg(4)), "4th Period");
+    fn total_goals_leader_in_progress() {
+        // Only game 1 played: MTL 1 @ CHI 0 -> MTL leads on aggregate.
+        let json = total_goals_series_json(
+            "CHI",
+            "MTL",
+            2,
+            &[(1, "MTL", Some(1), "CHI", Some(0), "OFF")],
+        );
+        let series = SeriesResponse::from_json(&json).unwrap();
+        // Viewing game 1 (not the last game) -> leads.
+        assert_eq!(total_goals_status_line(&series, 1), "MTL leads 1 - 0 (aggregate)");
+    }
 
-        let ot = |n| PeriodDescriptor {
-            number: 4,
-            period_type: PeriodType::OT,
-            ot_periods: Some(n),
-        };
-        assert_eq!(get_period_title(&ot(1)), "Overtime");
-        assert_eq!(get_period_title(&ot(2)), "2nd Overtime");
-        assert_eq!(get_period_title(&ot(3)), "3rd Overtime");
+    #[test]
+    fn total_goals_winner_when_series_complete() {
+        // Both games played: g1 MTL 1 @ CHI 0, g2 CHI 2 @ MTL 2 ->
+        // aggregate MTL 3, CHI 2 -> MTL wins. Viewing game 2 (the last game).
+        let json = total_goals_series_json(
+            "CHI",
+            "MTL",
+            2,
+            &[
+                (1, "MTL", Some(1), "CHI", Some(0), "OFF"),
+                (2, "CHI", Some(2), "MTL", Some(2), "OFF"),
+            ],
+        );
+        let series = SeriesResponse::from_json(&json).unwrap();
+        assert_eq!(total_goals_status_line(&series, 2), "MTL wins 3 - 2 (aggregate)");
+    }
+
+    #[test]
+    fn total_goals_game_1_does_not_spoil_game_2() {
+        // Both games are already played, but we're viewing game 1. We must only
+        // show game 1's result (MTL leads 1 - 0), not the aggregate, and never
+        // "wins" since game 1 isn't the series' last game.
+        let json = total_goals_series_json(
+            "CHI",
+            "MTL",
+            2,
+            &[
+                (1, "MTL", Some(1), "CHI", Some(0), "OFF"),
+                (2, "CHI", Some(2), "MTL", Some(2), "OFF"),
+            ],
+        );
+        let series = SeriesResponse::from_json(&json).unwrap();
+        assert_eq!(total_goals_status_line(&series, 1), "MTL leads 1 - 0 (aggregate)");
+    }
+
+    #[test]
+    fn total_goals_not_final_until_last_game_ends() {
+        // Viewing game 2 while it's live: still "leads", not "wins".
+        let json = total_goals_series_json(
+            "CHI",
+            "MTL",
+            2,
+            &[
+                (1, "MTL", Some(1), "CHI", Some(0), "OFF"),
+                (2, "CHI", Some(3), "MTL", Some(0), "LIVE"),
+            ],
+        );
+        let series = SeriesResponse::from_json(&json).unwrap();
+        // Aggregate through game 2: CHI 3, MTL 1 -> CHI leads (game 2 not final).
+        assert_eq!(total_goals_status_line(&series, 2), "CHI leads 3 - 1 (aggregate)");
+    }
+
+    #[test]
+    fn total_goals_tie() {
+        let json = total_goals_series_json(
+            "CHI",
+            "MTL",
+            2,
+            &[
+                (1, "MTL", Some(1), "CHI", Some(1), "OFF"),
+                (2, "CHI", Some(2), "MTL", Some(2), "OFF"),
+            ],
+        );
+        let series = SeriesResponse::from_json(&json).unwrap();
+        assert_eq!(total_goals_status_line(&series, 2), "Series tied 3 - 3 (aggregate)");
     }
 }

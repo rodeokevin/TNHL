@@ -8,12 +8,15 @@ use ratatui::{
 };
 
 use crate::models::playoffs::bracket::Series;
+use crate::models::playoffs::series::SeriesResponse;
+use crate::ui::playoffs::series::aggregate_series_goals;
 use crate::ui::render::{BORDER_COLOR, border_style};
 use crate::{app::App, state::playoffs_state::PlayoffsState};
+use std::collections::HashMap;
 use tui_big_text::{BigText, PixelSize};
 
 // Base card width used for most brackets.
-const CARD_WIDTH: u16 = 18;
+const CARD_WIDTH: u16 = 19;
 // Wider card width used for division-era brackets that show a seed prefix
 // (e.g. "WC1 ") on round-1 cards. Uniform across the whole bracket.
 const WIDE_CARD_WIDTH: u16 = 22;
@@ -72,6 +75,7 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
             frame,
             bracket_area,
             &playoff_bracket.series,
+            &app.state.playoffs.bracket_series_data,
             year,
             h_off,
             v_off,
@@ -160,6 +164,7 @@ fn render_bracket(
     frame: &mut Frame,
     area: Rect,
     series_list: &[Series],
+    bracket_series_data: &HashMap<String, SeriesResponse>,
     year: i32,
     h_off: u16,
     v_off: u16,
@@ -183,7 +188,10 @@ fn render_bracket(
         };
         let (vx, vy) = card_virtual_pos(col, row, cw);
         let series = series_list.iter().find(|s| s.series_letter == letter);
-        render_series_card(frame, area, series, year, cw, vx, vy, h_off, v_off);
+        // The full series (with per-game scores) for two-game total-goals
+        // series, used to show aggregate goal totals on the card.
+        let cached = bracket_series_data.get(letter);
+        render_series_card(frame, area, series, cached, year, cw, vx, vy, h_off, v_off);
     }
 
     // Connectors
@@ -322,10 +330,12 @@ fn draw_round_label(
 
 /// Render the series card
 /// Computes actual positions based on scrolling offsets
+#[allow(clippy::too_many_arguments)]
 fn render_series_card(
     frame: &mut Frame,
     area: Rect,
     series: Option<&Series>,
+    cached: Option<&SeriesResponse>,
     year: i32,
     cw: u16,
     vx: u16,
@@ -442,11 +452,29 @@ fn render_series_card(
         _ => (Style::default(), Style::default()),
     };
 
-    let (top_seed_wins, bottom_seed_wins) =
-        if series.top_seed_team.is_some() && series.bottom_seed_team.is_some() {
-            (Some(series.top_seed_wins), Some(series.bottom_seed_wins))
-        } else {
-            (None, None)
+    let (top_seed_wins, bottom_seed_wins): (Option<String>, Option<String>) =
+        match cached.filter(|c| c.needed_to_win == 0) {
+            Some(c) if series.top_seed_team.is_some() && series.bottom_seed_team.is_some() => {
+                // Map aggregate goals to the bracket's top/bottom seed by abbrev.
+                let (cached_top_goals, cached_bottom_goals) = aggregate_series_goals(c);
+                let goals_for = |abbrev| {
+                    if c.top_seed_team.abbrev == abbrev {
+                        cached_top_goals
+                    } else if c.bottom_seed_team.abbrev == abbrev {
+                        cached_bottom_goals
+                    } else {
+                        0
+                    }
+                };
+                let top = series.top_seed_team.as_ref().map(|t| goals_for(t.abbrev));
+                let bottom = series.bottom_seed_team.as_ref().map(|t| goals_for(t.abbrev));
+                (top.map(|g| g.to_string()), bottom.map(|g| g.to_string()))
+            }
+            _ if series.top_seed_team.is_some() && series.bottom_seed_team.is_some() => (
+                Some(series.top_seed_wins.to_string()),
+                Some(series.bottom_seed_wins.to_string()),
+            ),
+            _ => (None, None),
         };
 
     // Seeding labels are only shown for round 1 (division/conference seeding).
@@ -469,6 +497,29 @@ fn render_series_card(
         (None, None)
     };
 
+    let is_total_goals = cached.is_some_and(|c| c.needed_to_win == 0);
+    let letter = series.series_letter.clone();
+    let middle_line = if is_total_goals {
+        const MARKER: &str = "(agg.)";
+        let w = inner_w as usize;
+        let letter_len = letter.chars().count();
+        let left_pad = w.saturating_sub(letter_len) / 2;
+        let used = left_pad + letter_len;
+        // Space between the letter and the right-aligned marker.
+        let gap = w.saturating_sub(used + MARKER.len());
+        Line::from(vec![
+            Span::raw(" ".repeat(left_pad)),
+            Span::raw(letter),
+            Span::raw(" ".repeat(gap)),
+            Span::raw(MARKER),
+        ])
+        .style(Style::new().fg(Color::DarkGray))
+    } else {
+        Line::from(letter)
+            .centered()
+            .style(Style::new().fg(Color::DarkGray))
+    };
+
     let all_lines = vec![
         build_team_line(
             &top_team,
@@ -477,9 +528,7 @@ fn render_series_card(
             inner_w,
             top_style,
         ),
-        Line::from(series.series_letter.clone())
-            .centered()
-            .style(Style::new().fg(Color::DarkGray)),
+        middle_line,
         build_team_line(
             &bottom_team,
             bottom_seed.as_deref(),
@@ -507,21 +556,21 @@ fn render_series_card(
 fn build_team_line<'a>(
     abbrev: &str,
     seed: Option<&str>,
-    wins: Option<u8>,
+    value: Option<String>,
     width: u16,
     style: Style,
 ) -> Line<'a> {
-    let wins_str = wins.map(|w| format!("{}", w)).unwrap_or_default();
+    let value_str = value.unwrap_or_default();
     // Prefix the seed (e.g. "A1", "WC1", or "8") when available.
     let name_str = match seed {
         Some(s) if !s.is_empty() => format!("{s} {abbrev}"),
         _ => abbrev.to_string(),
     };
-    let pad = (width as usize).saturating_sub(name_str.len() + wins_str.len());
+    let pad = (width as usize).saturating_sub(name_str.len() + value_str.len());
     Line::from(vec![
         Span::styled(name_str, style),
         Span::raw(" ".repeat(pad)),
-        Span::styled(wins_str, style.add_modifier(Modifier::BOLD)),
+        Span::styled(value_str, style.add_modifier(Modifier::BOLD)),
     ])
 }
 

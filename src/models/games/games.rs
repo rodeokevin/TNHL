@@ -65,6 +65,7 @@ pub enum GameState {
 pub struct SeriesStatus {
     pub round: usize,
     pub series_abbrev: String,
+    pub series_letter: String,
     pub needed_to_win: usize,
     pub top_seed_team_abbrev: TeamAbbrev,
     pub top_seed_wins: usize,
