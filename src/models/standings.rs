@@ -212,7 +212,10 @@ pub fn latest_end(seasons: &[SeasonBounds]) -> Option<chrono::NaiveDate> {
 
 /// The season that ended most recently before `date` (the previous season for
 /// an offseason-gap date), if any.
-pub fn season_ending_before(date: chrono::NaiveDate, seasons: &[SeasonBounds]) -> Option<&SeasonBounds> {
+pub fn season_ending_before(
+    date: chrono::NaiveDate,
+    seasons: &[SeasonBounds],
+) -> Option<&SeasonBounds> {
     seasons
         .iter()
         .filter(|s| s.end().is_some_and(|end| end < date))
@@ -221,7 +224,10 @@ pub fn season_ending_before(date: chrono::NaiveDate, seasons: &[SeasonBounds]) -
 
 /// The season that starts soonest after `date` (the upcoming season for an
 /// offseason-gap date), if any.
-pub fn season_starting_after(date: chrono::NaiveDate, seasons: &[SeasonBounds]) -> Option<&SeasonBounds> {
+pub fn season_starting_after(
+    date: chrono::NaiveDate,
+    seasons: &[SeasonBounds],
+) -> Option<&SeasonBounds> {
     seasons
         .iter()
         .filter(|s| s.start().is_some_and(|start| start > date))
@@ -449,9 +455,18 @@ mod tests {
     #[test]
     fn resolve_year_in_range() {
         // seasons() end years: 2025, 2026, 2027.
-        assert_eq!(resolve_year(2025, &seasons()), Some(YearResolution::InRange));
-        assert_eq!(resolve_year(2026, &seasons()), Some(YearResolution::InRange));
-        assert_eq!(resolve_year(2027, &seasons()), Some(YearResolution::InRange));
+        assert_eq!(
+            resolve_year(2025, &seasons()),
+            Some(YearResolution::InRange)
+        );
+        assert_eq!(
+            resolve_year(2026, &seasons()),
+            Some(YearResolution::InRange)
+        );
+        assert_eq!(
+            resolve_year(2027, &seasons()),
+            Some(YearResolution::InRange)
+        );
     }
 
     #[test]

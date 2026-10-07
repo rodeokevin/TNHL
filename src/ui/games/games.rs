@@ -40,6 +40,23 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
     // Split content chunk into tab + content
     let tab_content_chunks = tabs_and_content(area);
 
+    let game_dates = app.state.games.games_data.as_ref().and_then(|d| {
+        let prev = d.prev_date.as_deref();
+        let next = d.next_date.as_deref();
+        if prev.is_none() && next.is_none() {
+            return None;
+        }
+        Some(
+            Line::from(format!(
+                " prev: {}  next: {} ",
+                prev.unwrap_or("-"),
+                next.unwrap_or("-")
+            ))
+            .style(Style::new().fg(Color::DarkGray))
+            .right_aligned(),
+        )
+    });
+
     let favorite = app.settings.favorite_team;
     let matchups: Vec<Line> = app
         .state
@@ -51,7 +68,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                 .iter()
                 .map(|game| {
                     // Favorite team playing in this matchup overrides the
-                    // game-state color with gold; otherwise use the state color.
+                    // game-state color with gold
                     let is_favorite = favorite.is_some_and(|fav| {
                         fav == game.away_team.abbrev || fav == game.home_team.abbrev
                     });
@@ -112,33 +129,26 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
         visible_matchups.insert(0, Line::from("<"));
     }
 
-    if let Some(hint) = &app.state.games.out_of_range {
-        let tabs = Tabs::new(vec![Line::from(hint.clone()).style(Style::new().fg(Color::DarkGray))])
-            .block(
-                Block::bordered()
-                    .border_style(border_style())
-                    .title(app.state.date_state.format_date_border_title()),
-            )
-            .highlight_style(Style::new().fg(Color::DarkGray));
+    let date_title = app.state.date_state.format_date_border_title();
+    let make_block = || {
+        let mut block = Block::bordered()
+            .border_style(border_style())
+            .title(date_title.clone());
+        if let Some(dates) = game_dates.clone() {
+            block = block.title_top(dates);
+        }
+        block
+    };
 
-        frame.render_widget(tabs, tab_content_chunks[0]);
-    } else if app.state.games.games_data.is_none() {
+    if app.state.games.games_data.is_none() {
         let tabs = Tabs::new(vec!["Loading games..."])
-            .block(
-                Block::bordered()
-                    .border_style(border_style())
-                    .title(app.state.date_state.format_date_border_title()),
-            )
+            .block(make_block())
             .highlight_style(Style::default());
 
         frame.render_widget(tabs, tab_content_chunks[0]);
     } else if num_matchups == 0 {
         let tabs = Tabs::new(vec!["No games today :("])
-            .block(
-                Block::bordered()
-                    .border_style(border_style())
-                    .title(app.state.date_state.format_date_border_title()),
-            )
+            .block(make_block())
             .highlight_style(Style::default());
 
         frame.render_widget(tabs, tab_content_chunks[0]);
@@ -148,11 +158,7 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
 
         let tabs = Tabs::new(visible_matchups)
             .select(local_selected + offset)
-            .block(
-                Block::bordered()
-                    .border_style(border_style())
-                    .title(app.state.date_state.format_date_border_title()),
-            )
+            .block(make_block())
             .highlight_style(selected_color);
 
         frame.render_widget(tabs, tab_content_chunks[0]);
@@ -288,7 +294,12 @@ pub fn render_games(frame: &mut Frame, app: &mut App, area: Rect) {
                     ],
                 );
                 render_series_info(series, frame, series_chunks[0]);
-                render_series_status(series, total_goals_status.as_deref(), frame, series_chunks[1]);
+                render_series_status(
+                    series,
+                    total_goals_status.as_deref(),
+                    frame,
+                    series_chunks[1],
+                );
             }
 
             // The lower region is the main content
@@ -912,7 +923,10 @@ mod tests {
         );
         let series = SeriesResponse::from_json(&json).unwrap();
         // Viewing game 1 (not the last game) -> leads.
-        assert_eq!(total_goals_status_line(&series, 1), "MTL leads 1 - 0 (aggregate)");
+        assert_eq!(
+            total_goals_status_line(&series, 1),
+            "MTL leads 1 - 0 (aggregate)"
+        );
     }
 
     #[test]
@@ -929,7 +943,10 @@ mod tests {
             ],
         );
         let series = SeriesResponse::from_json(&json).unwrap();
-        assert_eq!(total_goals_status_line(&series, 2), "MTL wins 3 - 2 (aggregate)");
+        assert_eq!(
+            total_goals_status_line(&series, 2),
+            "MTL wins 3 - 2 (aggregate)"
+        );
     }
 
     #[test]
@@ -947,7 +964,10 @@ mod tests {
             ],
         );
         let series = SeriesResponse::from_json(&json).unwrap();
-        assert_eq!(total_goals_status_line(&series, 1), "MTL leads 1 - 0 (aggregate)");
+        assert_eq!(
+            total_goals_status_line(&series, 1),
+            "MTL leads 1 - 0 (aggregate)"
+        );
     }
 
     #[test]
@@ -964,7 +984,10 @@ mod tests {
         );
         let series = SeriesResponse::from_json(&json).unwrap();
         // Aggregate through game 2: CHI 3, MTL 1 -> CHI leads (game 2 not final).
-        assert_eq!(total_goals_status_line(&series, 2), "CHI leads 3 - 1 (aggregate)");
+        assert_eq!(
+            total_goals_status_line(&series, 2),
+            "CHI leads 3 - 1 (aggregate)"
+        );
     }
 
     #[test]
@@ -979,6 +1002,9 @@ mod tests {
             ],
         );
         let series = SeriesResponse::from_json(&json).unwrap();
-        assert_eq!(total_goals_status_line(&series, 2), "Series tied 3 - 3 (aggregate)");
+        assert_eq!(
+            total_goals_status_line(&series, 2),
+            "Series tied 3 - 3 (aggregate)"
+        );
     }
 }

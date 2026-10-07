@@ -4,7 +4,9 @@ use crate::{
             boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
             play_by_play::PlaysCommand, total_goals::TotalGoalsCommand,
         },
-        playoffs::{bracket::BracketCommand, bracket_series::BracketSeriesCommand, series::SeriesCommand},
+        playoffs::{
+            bracket::BracketCommand, bracket_series::BracketSeriesCommand, series::SeriesCommand,
+        },
         standings::StandingsCommand,
         teams_stats::TeamStatsCommand,
     },

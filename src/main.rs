@@ -131,7 +131,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = Terminal::new(backend)?;
 
-
     // create app and run it
     let (games_cmd_tx, games_cmd_rx) = tokio::sync::mpsc::channel(8);
     let (standings_cmd_tx, standings_cmd_rx) = tokio::sync::mpsc::channel(8);

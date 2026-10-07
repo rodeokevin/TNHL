@@ -69,8 +69,6 @@ pub struct GamesState {
     pub visible_rows: usize,
 
     pub games_data: Option<GamesResponse>,
-    /// Set when the requested date is outside the available season range
-    pub out_of_range: Option<String>,
     pub boxscore_data: HashMap<u32, BoxscoreResponse>,
     pub game_story_data: HashMap<u32, GameStoryResponse>,
     pub plays_data: HashMap<u32, PlaysResponse>,
@@ -106,7 +104,6 @@ impl Default for GamesState {
             visible_rows: 0,
 
             games_data: None,
-            out_of_range: None,
             boxscore_data: HashMap::new(),
             game_story_data: HashMap::new(),
             plays_data: HashMap::new(),

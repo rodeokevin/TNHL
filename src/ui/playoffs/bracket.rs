@@ -50,7 +50,13 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
 
     frame.render_widget(outer_block, area);
 
-    if let Some(playoff_bracket) = &app.state.playoffs.bracket_data {
+    if let Some(playoff_bracket) = app
+        .state
+        .playoffs
+        .bracket_data
+        .as_ref()
+        .filter(|b| !b.series.is_empty())
+    {
         let h_off = app.state.playoffs.horizontal_scroll_offset as u16;
         let v_off = app.state.playoffs.vertical_scroll_offset as u16;
         let year = app.state.date_state.year;
@@ -81,6 +87,13 @@ pub fn render_playoffs(frame: &mut Frame, app: &mut App, area: Rect) {
             v_off,
         );
         render_scroll_indicators(frame, inner, &app.state.playoffs);
+    } else if app.state.playoffs.bracket_data.is_some() { // Response returned {}
+        frame.render_widget(
+            Line::from("No data available.")
+                .centered()
+                .style(Style::new().fg(Color::DarkGray)),
+            inner,
+        );
     } else {
         frame.render_widget(Line::from("Loading bracket...").centered(), inner);
     };
@@ -467,7 +480,10 @@ fn render_series_card(
                     }
                 };
                 let top = series.top_seed_team.as_ref().map(|t| goals_for(t.abbrev));
-                let bottom = series.bottom_seed_team.as_ref().map(|t| goals_for(t.abbrev));
+                let bottom = series
+                    .bottom_seed_team
+                    .as_ref()
+                    .map(|t| goals_for(t.abbrev));
                 (top.map(|g| g.to_string()), bottom.map(|g| g.to_string()))
             }
             _ if series.top_seed_team.is_some() && series.bottom_seed_team.is_some() => (

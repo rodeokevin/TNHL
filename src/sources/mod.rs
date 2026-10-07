@@ -59,9 +59,6 @@ pub enum AppEvent {
         game_ids: Vec<u32>,
         parsed_games: GamesResponse,
     },
-    GamesOutOfRange {
-        message: String,
-    },
     BoxscoreUpdate {
         game_id: u32,
         parsed_boxscore: BoxscoreResponse,

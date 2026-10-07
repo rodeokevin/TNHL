@@ -64,11 +64,9 @@ impl BracketSeriesSource {
                             }
                         }
                     }
-                    Err(err) => log::warn!(
-                        "Failed to fetch bracket series {}: {}",
-                        target.letter,
-                        err
-                    ),
+                    Err(err) => {
+                        log::warn!("Failed to fetch bracket series {}: {}", target.letter, err)
+                    }
                 }
             }
         });

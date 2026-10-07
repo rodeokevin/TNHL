@@ -6,7 +6,9 @@ use crate::sources::playoffs::series::SeriesCommand;
 use crate::sources::{
     AppEvent, FetchInterval,
     games::{
-        boxscore::BoxscoreCommand, game_story::GameStoryCommand, games::GamesCommand,
+        boxscore::BoxscoreCommand,
+        game_story::GameStoryCommand,
+        games::GamesCommand,
         play_by_play::PlaysCommand,
         total_goals::{TotalGoalsCommand, TotalGoalsTarget},
     },
@@ -148,9 +150,6 @@ impl AppState {
             }
             AppEvent::SeasonBoundsResolved { seasons } => {
                 log::debug!("Season bounds resolved ({} seasons)", seasons.len());
-                self.games_tx
-                    .try_send(GamesCommand::SetSeasonBounds(seasons.clone()))
-                    .ok();
                 self.standings_tx
                     .try_send(StandingsCommand::SetSeasonBounds(seasons.clone()))
                     .ok();
@@ -194,7 +193,6 @@ impl AppState {
                     })
                     .collect();
                 self.games.games_data = Some(parsed_games);
-                self.games.out_of_range = None;
                 self.boxscore_tx
                     .try_send(BoxscoreCommand::SetGameIds(game_ids.clone()))
                     .ok();
@@ -207,13 +205,6 @@ impl AppState {
                 self.total_goals_tx
                     .try_send(TotalGoalsCommand::SetTargets(total_goals_targets))
                     .ok();
-            }
-            AppEvent::GamesOutOfRange { message } => {
-                log::debug!("Games date out of range: {}", message);
-                // Clear stale data so we don't show games for a different date
-                // than the one requested.
-                self.games.games_data = None;
-                self.games.out_of_range = Some(message);
             }
             AppEvent::BoxscoreUpdate {
                 game_id,
@@ -258,24 +249,24 @@ impl AppState {
             }
             AppEvent::BracketUpdate(parsed_bracket) => {
                 log::debug!("Updating playoff bracket data");
-                
+
                 const LAST_TOTAL_GOALS_YEAR: i32 = 1936;
-                let bracket_targets: Vec<BracketSeriesTarget> =
-                    if self.date_state.year <= LAST_TOTAL_GOALS_YEAR {
-                        let season =
-                            format!("{}{}", self.date_state.year - 1, self.date_state.year);
-                        parsed_bracket
-                            .series
-                            .iter()
-                            .filter(|s| !s.series_letter.is_empty())
-                            .map(|s| BracketSeriesTarget {
-                                season: season.clone(),
-                                letter: s.series_letter.clone(),
-                            })
-                            .collect()
-                    } else {
-                        Vec::new()
-                    };
+                let bracket_targets: Vec<BracketSeriesTarget> = if self.date_state.year
+                    <= LAST_TOTAL_GOALS_YEAR
+                {
+                    let season = format!("{}{}", self.date_state.year - 1, self.date_state.year);
+                    parsed_bracket
+                        .series
+                        .iter()
+                        .filter(|s| !s.series_letter.is_empty())
+                        .map(|s| BracketSeriesTarget {
+                            season: season.clone(),
+                            letter: s.series_letter.clone(),
+                        })
+                        .collect()
+                } else {
+                    Vec::new()
+                };
                 self.playoffs.bracket_data = Some(parsed_bracket);
                 self.bracket_series_tx
                     .try_send(BracketSeriesCommand::SetTargets(bracket_targets))
@@ -561,7 +552,6 @@ impl AppState {
             // Clear current data and reset all state in games since new data is
             // incoming.
             self.games.games_data = None;
-            self.games.out_of_range = None;
             self.games.boxscore_data.clear();
             self.games.game_story_data.clear();
             self.games.plays_data.clear();

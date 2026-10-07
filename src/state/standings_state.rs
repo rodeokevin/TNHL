@@ -116,7 +116,10 @@ impl StandingsState {
 
     pub fn current_table_len(&self) -> usize {
         match self.selected_standings {
-            StandingsFocus::League => self.standings_data.as_ref().map_or(0, |d| d.standings.len()),
+            StandingsFocus::League => self
+                .standings_data
+                .as_ref()
+                .map_or(0, |d| d.standings.len()),
             StandingsFocus::Conference => self.count_in_conference(),
             StandingsFocus::Division => self.count_in_division(),
             // Conference + 3 label rows.
@@ -187,7 +190,7 @@ impl StandingsState {
             StandingsFocus::League => false,
         }
     }
-    
+
     pub fn cycle_display(&mut self, next: bool) -> bool {
         if !self.has_cyclable_subtype() {
             return false;

@@ -41,8 +41,7 @@ impl StandingsSource {
     /// classification, or `None` if bounds aren't available yet
     fn resolved(&self) -> Option<DateResolution> {
         let seasons = self.seasons.as_deref()?;
-        let requested =
-            chrono::NaiveDate::parse_from_str(&self.current_date, "%Y-%m-%d").ok()?;
+        let requested = chrono::NaiveDate::parse_from_str(&self.current_date, "%Y-%m-%d").ok()?;
         resolve_date(requested, seasons)
     }
 
@@ -102,7 +101,10 @@ impl StandingsSource {
                     "No standings for this date. Earliest available: {}.",
                     earliest.format("%B %d, %Y")
                 );
-                log::debug!("Requested standings date is before earliest season: {}", msg);
+                log::debug!(
+                    "Requested standings date is before earliest season: {}",
+                    msg
+                );
                 let _ = tx
                     .send(AppEvent::StandingsOutOfRange { message: msg })
                     .await;

@@ -94,10 +94,6 @@ pub fn render_standings(frame: &mut Frame, app: &mut App, area: Rect) {
     frame.render_widget(tabs, tab_content_chunks[0]);
 
     if let Some(data) = &app.state.standings.standings_data {
-        if data.standings.is_empty() {
-            render_message(frame, tab_content_chunks[1], "No standings for this season.");
-            return;
-        }
         let renderer = StandingsRenderer {
             favorite: app.settings.favorite_team,
         };
@@ -244,7 +240,10 @@ impl StandingsRenderer {
 
         // Each division within this conference: top 3 teams by division rank.
         for div in teams.divisions_in_conference(&conference.abbrev) {
-            rows.push(Row::new(vec!["".to_string(), div.name.clone()]).style(division_conference_rows_style));
+            rows.push(
+                Row::new(vec!["".to_string(), div.name.clone()])
+                    .style(division_conference_rows_style),
+            );
             let abbrev = div.abbrev.clone();
             rows.extend(self.map_rows(
                 teams,
@@ -255,11 +254,16 @@ impl StandingsRenderer {
         }
 
         // Wildcard teams for this conference (ranked by wildcard sequence).
-        rows.push(Row::new(vec!["".to_string(), "Wildcard".to_string()]).style(division_conference_rows_style));
+        rows.push(
+            Row::new(vec!["".to_string(), "Wildcard".to_string()])
+                .style(division_conference_rows_style),
+        );
         let conf_abbrev = conference.abbrev.clone();
         rows.extend(self.map_rows(
             teams,
-            move |t| t.conference_abbrev.as_deref() == Some(&conf_abbrev) && t.wildcard_sequence != 0,
+            move |t| {
+                t.conference_abbrev.as_deref() == Some(&conf_abbrev) && t.wildcard_sequence != 0
+            },
             |t| t.wildcard_sequence,
             None,
         ));

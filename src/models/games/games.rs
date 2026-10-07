@@ -7,7 +7,11 @@ use std::fmt;
 use crate::models::TeamAbbrev;
 
 #[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct GamesResponse {
+    pub prev_date: Option<String>,
+    pub current_date: Option<String>,
+    pub next_date: Option<String>,
     pub games: Vec<GameData>,
 }
 

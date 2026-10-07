@@ -89,6 +89,12 @@ pub fn render_team_stats(frame: &mut Frame, app: &mut App, area: Rect) {
     };
 
     if let Some(data) = team_data {
+        // Missed playoffs
+        if !show_regular_season && data.skaters.is_empty() && data.goalies.is_empty() {
+            frame.render_widget(Line::from("⛳").centered(), inner);
+            return;
+        }
+
         let show_skaters = matches!(&app.state.team_stats.player_type, PlayerType::Skaters);
         let (rows, widths, header): (Vec<Row<'static>>, &[Constraint], &[&str]) = if show_skaters {
             let rows = map_skater_rows(&data.skaters);
