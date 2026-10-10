@@ -249,7 +249,7 @@ impl AppState {
             }
             AppEvent::BracketUpdate(parsed_bracket) => {
                 log::debug!("Updating playoff bracket data");
-
+                // Two-game total-goals series last used in 1936
                 const LAST_TOTAL_GOALS_YEAR: i32 = 1936;
                 let bracket_targets: Vec<BracketSeriesTarget> = if self.date_state.year
                     <= LAST_TOTAL_GOALS_YEAR
@@ -448,7 +448,7 @@ impl AppState {
                 }
             }
             Action::ExitSeries => {
-                self.playoffs.reset_scoring_scroll();
+                self.playoffs.exit_series();
                 self.playoffs.series_data = None;
                 self.playoffs.focus = PlayoffsFocus::Bracket;
             }
@@ -631,7 +631,7 @@ impl AppState {
         if let Err(e) = &res {
             log::error!("Failed to send TeamStatsCommand::SetTeam: {:?}", e);
         } else {
-            self.playoffs.reset_scoring_scroll();
+            self.playoffs.enter_series();
         }
     }
 

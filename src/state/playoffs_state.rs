@@ -24,6 +24,7 @@ pub struct PlayoffsState {
     pub vertical_scroll_offset: usize,
     /// Max vertical scroll updated at render
     pub vertical_max_scroll: usize,
+    pub saved_bracket_scroll: Option<(usize, usize)>,
 }
 
 impl Default for PlayoffsState {
@@ -42,6 +43,7 @@ impl Default for PlayoffsState {
             horizontal_max_scroll: 0,
             vertical_scroll_offset: 0,
             vertical_max_scroll: 0,
+            saved_bracket_scroll: None,
         }
     }
 }
@@ -59,7 +61,22 @@ impl PlayoffsState {
         self.selected_series = None;
         self.series_data = None;
         self.bracket_series_data.clear();
+        self.saved_bracket_scroll = None;
         self.focus = PlayoffsFocus::default();
+    }
+
+    pub fn enter_series(&mut self) {
+        self.saved_bracket_scroll =
+            Some((self.horizontal_scroll_offset, self.vertical_scroll_offset));
+        self.reset_scoring_scroll();
+    }
+
+    pub fn exit_series(&mut self) {
+        self.reset_scoring_scroll();
+        if let Some((h, v)) = self.saved_bracket_scroll.take() {
+            self.horizontal_scroll_offset = h;
+            self.vertical_scroll_offset = v;
+        }
     }
     /// Scroll the bracket by a fixed step.
     pub fn scroll_up(&mut self) {

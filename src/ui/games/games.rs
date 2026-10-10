@@ -774,7 +774,7 @@ fn total_goals_status_line(series: &SeriesResponse, viewed_game_number: usize) -
     let is_final = viewed_game_number as u8 == series.length && viewed_game_ended;
 
     if top_goals == bottom_goals {
-        return format!("Series tied {0} - {0} (aggregate)", top_goals);
+        return format!("Series tied {0}G - {0}G", top_goals);
     }
 
     let (leader, leader_goals, trailer_goals) = if top_goals > bottom_goals {
@@ -784,10 +784,7 @@ fn total_goals_status_line(series: &SeriesResponse, viewed_game_number: usize) -
     };
 
     let verb = if is_final { "wins" } else { "leads" };
-    format!(
-        "{} {} {} - {} (aggregate)",
-        leader, verb, leader_goals, trailer_goals
-    )
+    format!("{} {} {}G - {}G", leader, verb, leader_goals, trailer_goals)
 }
 
 // Helper to create the areas for left-center-right
@@ -923,10 +920,7 @@ mod tests {
         );
         let series = SeriesResponse::from_json(&json).unwrap();
         // Viewing game 1 (not the last game) -> leads.
-        assert_eq!(
-            total_goals_status_line(&series, 1),
-            "MTL leads 1 - 0 (aggregate)"
-        );
+        assert_eq!(total_goals_status_line(&series, 1), "MTL leads 1G - 0G");
     }
 
     #[test]
@@ -943,10 +937,7 @@ mod tests {
             ],
         );
         let series = SeriesResponse::from_json(&json).unwrap();
-        assert_eq!(
-            total_goals_status_line(&series, 2),
-            "MTL wins 3 - 2 (aggregate)"
-        );
+        assert_eq!(total_goals_status_line(&series, 2), "MTL wins 3G - 2G");
     }
 
     #[test]
@@ -964,10 +955,7 @@ mod tests {
             ],
         );
         let series = SeriesResponse::from_json(&json).unwrap();
-        assert_eq!(
-            total_goals_status_line(&series, 1),
-            "MTL leads 1 - 0 (aggregate)"
-        );
+        assert_eq!(total_goals_status_line(&series, 1), "MTL leads 1G - 0G");
     }
 
     #[test]
@@ -984,10 +972,7 @@ mod tests {
         );
         let series = SeriesResponse::from_json(&json).unwrap();
         // Aggregate through game 2: CHI 3, MTL 1 -> CHI leads (game 2 not final).
-        assert_eq!(
-            total_goals_status_line(&series, 2),
-            "CHI leads 3 - 1 (aggregate)"
-        );
+        assert_eq!(total_goals_status_line(&series, 2), "CHI leads 3G - 1G");
     }
 
     #[test]
@@ -1002,9 +987,6 @@ mod tests {
             ],
         );
         let series = SeriesResponse::from_json(&json).unwrap();
-        assert_eq!(
-            total_goals_status_line(&series, 2),
-            "Series tied 3 - 3 (aggregate)"
-        );
+        assert_eq!(total_goals_status_line(&series, 2), "Series tied 3G - 3G");
     }
 }
