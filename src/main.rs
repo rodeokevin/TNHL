@@ -26,6 +26,7 @@ use crate::{
         season::SeasonSource,
         standings::{StandingsCommand, StandingsSource},
         teams_stats::{TeamStatsCommand, TeamStatsSource},
+        today::{TodaySource, fetch_today},
     },
 };
 
@@ -49,52 +50,15 @@ use tokio_util::sync::CancellationToken;
 use futures::StreamExt;
 
 /// Resolve the current game day from the NHL endpoint and fallback to system date
-async fn resolve_today_from_api(app: &mut App) {
-    use crate::models::games::score_now::ScoreNowResponse;
-    use chrono::NaiveDate;
+async fn resolve_today_from_api(app: &mut App, client: &reqwest::Client) {
+    // Short so a slow network doesn't hold up startup
+    const STARTUP_TIMEOUT: Duration = Duration::from_secs(2);
 
-    let client = match reqwest::Client::builder()
-        .timeout(Duration::from_secs(2))
-        .build()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            log::warn!("Failed to build HTTP client for score/now: {}", e);
-            return;
-        }
-    };
-    let url = "https://api-web.nhle.com/v1/score/now";
-
-    let resolved = match client.get(url).send().await {
-        Ok(resp) => match resp.text().await {
-            Ok(body) => match ScoreNowResponse::from_json(&body) {
-                Ok(parsed) => match NaiveDate::parse_from_str(&parsed.current_date, "%Y-%m-%d") {
-                    Ok(date) => Some(date),
-                    Err(e) => {
-                        log::warn!("Could not parse score/now currentDate: {}", e);
-                        None
-                    }
-                },
-                Err(e) => {
-                    log::warn!("Failed to parse score/now response: {}", e);
-                    None
-                }
-            },
-            Err(e) => {
-                log::warn!("Failed to read score/now body: {}", e);
-                None
-            }
-        },
-        Err(e) => {
-            log::warn!("Failed to fetch score/now: {}", e);
-            None
-        }
-    };
-
-    match resolved {
+    match fetch_today(client, STARTUP_TIMEOUT).await {
         Some(date) => {
             log::debug!("Resolved current game day from API: {}", date);
             app.state.date_state.date = date;
+            app.state.date_state.today = date;
         }
         None => log::warn!(
             "Falling back to local date {} for current game day",
@@ -158,12 +122,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
         bracket_series_tx.clone(),
     );
     let cancel = CancellationToken::new();
+    // Only the starting tab's sources poll; the rest wait until visited
+    app.state.sync_active_sources();
 
-    resolve_today_from_api(&mut app).await;
+    // A single shared HTTP client is reused by every source
+    let client = reqwest::Client::new();
+    resolve_today_from_api(&mut app, &client).await;
 
     let _ = run_app(
         &mut terminal,
         &mut app,
+        client,
         cancel.clone(),
         games_cmd_rx,
         standings_cmd_rx,
@@ -193,6 +162,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 async fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     app: &mut App,
+    client: reqwest::Client,
     cancel: CancellationToken,
     games_rx: Receiver<GamesCommand>,
     standings_rx: Receiver<StandingsCommand>,
@@ -209,9 +179,6 @@ where
     io::Error: From<B::Error>,
 {
     let (tx, mut rx) = tokio::sync::mpsc::channel::<AppEvent>(32);
-
-    // A single shared HTTP client is reused by every source
-    let client = reqwest::Client::new();
 
     // Spawn standings source
     let standings_source = Box::new(StandingsSource::new(
@@ -323,11 +290,19 @@ where
     });
 
     // Spawn the season resolver
-    let season_source = SeasonSource::new(client, app.state.date_state.date);
+    let season_source = SeasonSource::new(client.clone(), app.state.date_state.date);
     let season_tx = tx.clone();
     let season_cancel = cancel.clone();
     tokio::spawn(async move {
         Box::new(season_source).run(season_tx, season_cancel).await;
+    });
+
+    // Spawn the game day poller
+    let today_source = TodaySource::new(client, app.state.date_state.today);
+    let today_tx = tx.clone();
+    let today_cancel = cancel.clone();
+    tokio::spawn(async move {
+        Box::new(today_source).run(today_tx, today_cancel).await;
     });
 
     // Spawn terminal event reader

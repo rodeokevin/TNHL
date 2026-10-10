@@ -2,25 +2,28 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
-use super::{AppEvent, Source};
+use super::{AppEvent, Source, TabGate, send_request};
 use crate::models::TeamAbbrev;
 use crate::models::standings::{SeasonBounds, YearResolution, resolve_year};
 use crate::models::team_stats::TeamStatsResponse;
-use crate::sources::FetchInterval;
+
+/// Team stats change at most once per game, so a fixed interval is plenty
+const FETCH_INTERVAL: Duration = Duration::from_secs(60);
 
 pub enum TeamStatsCommand {
     SetTeam(TeamAbbrev),
     SetYear(i32),
-    SetInterval(Duration),
     SetSeasonBounds(Vec<SeasonBounds>),
+    /// Whether this source's tab is shown
+    SetActive(bool),
 }
 
 pub struct TeamStatsSource {
     client: reqwest::Client,
     rx: Receiver<TeamStatsCommand>,
+    gate: TabGate,
     current_team: TeamAbbrev,
     current_year: i32,
-    fetch_interval: Duration,
     seasons: Option<Vec<SeasonBounds>>,
 }
 impl TeamStatsSource {
@@ -33,9 +36,9 @@ impl TeamStatsSource {
         Self {
             client,
             rx,
+            gate: TabGate::default(),
             current_team,
             current_year,
-            fetch_interval: FetchInterval::InfoShortInterval.as_duration(),
             seasons: None,
         }
     }
@@ -86,7 +89,7 @@ impl TeamStatsSource {
             self.current_year,
         );
 
-        match self.client.get(&regular_season_url).send().await {
+        match send_request(self.client.get(&regular_season_url)).await {
             Ok(resp) => {
                 // A 404 on the regular-season endpoint means the team didn't
                 // play that season
@@ -135,7 +138,7 @@ impl TeamStatsSource {
             self.current_year,
         );
 
-        match self.client.get(&playoffs_url).send().await {
+        match send_request(self.client.get(&playoffs_url)).await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
                     // Parse the JSON
@@ -167,7 +170,7 @@ impl TeamStatsSource {
 #[async_trait::async_trait]
 impl Source for TeamStatsSource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
-        let mut interval = tokio::time::interval(self.fetch_interval);
+        let mut interval = tokio::time::interval(FETCH_INTERVAL);
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
@@ -175,35 +178,41 @@ impl Source for TeamStatsSource {
                 _ = cancel.cancelled() => break,
                 Some(cmd) = self.rx.recv() => {
                     match cmd {
+                        TeamStatsCommand::SetActive(active) => {
+                            if let Some(due) = self.gate.set_active(active, FETCH_INTERVAL) {
+                                interval.reset_at(due);
+                            }
+                        }
                         TeamStatsCommand::SetTeam(team) => {
                             self.current_team = team;
-                            self.fetch(&tx).await;
-                            interval.reset();
+                            if self.gate.target_changed() {
+                                self.fetch(&tx).await;
+                                self.gate.fetched();
+                                interval.reset();
+                            }
                         }
                         TeamStatsCommand::SetYear(year) => {
                             self.current_year = year;
-                            self.fetch(&tx).await;
-                            interval.reset();
-                        }
-                        TeamStatsCommand::SetInterval(new_interval) => {
-                            if new_interval != self.fetch_interval {
-                                log::debug!("Setting team stats interval to {:?}", new_interval);
-                                self.fetch_interval = new_interval;
-
-                                interval = tokio::time::interval(self.fetch_interval);
-                                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                            if self.gate.target_changed() {
+                                self.fetch(&tx).await;
+                                self.gate.fetched();
+                                interval.reset();
                             }
                         }
                         // Bounds are resolved exactly once by SeasonSource
                         TeamStatsCommand::SetSeasonBounds(seasons) => {
                             self.seasons = Some(seasons);
-                            self.fetch(&tx).await;
-                            interval.reset();
+                            if self.gate.target_changed() {
+                                self.fetch(&tx).await;
+                                self.gate.fetched();
+                                interval.reset();
+                            }
                         }
                     }
                 },
-                _ = interval.tick() => {
+                _ = interval.tick(), if self.gate.is_active() => {
                     self.fetch(&tx).await;
+                    self.gate.fetched();
                 }
             }
         }

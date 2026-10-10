@@ -3,17 +3,22 @@ use tokio::sync::mpsc::Sender;
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
-use crate::sources::SeriesResponse;
+use crate::sources::{SeriesResponse, TabGate, send_request};
 use crate::{AppEvent, Source};
+
+const FETCH_INTERVAL: Duration = Duration::from_secs(60);
 
 pub enum SeriesCommand {
     SetYear(i32),
     SetSeries(Option<char>),
+    /// Whether this source's tab is shown
+    SetActive(bool),
 }
 
 pub struct SeriesSource {
     client: reqwest::Client,
     rx: Receiver<SeriesCommand>,
+    gate: TabGate,
     current_year: i32,
     series_letter: Option<char>,
 }
@@ -27,6 +32,7 @@ impl SeriesSource {
         Self {
             client,
             rx,
+            gate: TabGate::default(),
             current_year,
             series_letter,
         }
@@ -40,7 +46,7 @@ impl SeriesSource {
                 self.current_year.to_string(),
                 letter,
             );
-            match self.client.get(&url).send().await {
+            match send_request(self.client.get(&url)).await {
                 Ok(resp) => {
                     if let Ok(body) = resp.text().await {
                         // Parse the JSON
@@ -65,7 +71,7 @@ impl SeriesSource {
 #[async_trait::async_trait]
 impl Source for SeriesSource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
-        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        let mut interval = tokio::time::interval(FETCH_INTERVAL);
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
@@ -73,6 +79,11 @@ impl Source for SeriesSource {
                 _ = cancel.cancelled() => break,
                 Some(cmd) = self.rx.recv() => {
                     match cmd {
+                        SeriesCommand::SetActive(active) => {
+                            if let Some(due) = self.gate.set_active(active, FETCH_INTERVAL) {
+                                interval.reset_at(due);
+                            }
+                        }
                         SeriesCommand::SetYear(year) => {
                             self.current_year = year;
                             // No series should be selected when the year changes
@@ -82,16 +93,20 @@ impl Source for SeriesSource {
                             if let Some(letter) = letter {
                                 log::debug!("Fetching new series data for {} series: {}", self.current_year, letter);
                                 self.series_letter = Some(letter);
-                                self.fetch(&tx).await;
-                                interval.reset();
+                                if self.gate.target_changed() {
+                                    self.fetch(&tx).await;
+                                    self.gate.fetched();
+                                    interval.reset();
+                                }
                             } else {
                                 log::debug!("Series letter not set because it was None");
                             }
                         }
                     }
                 },
-                _ = interval.tick() => {
+                _ = interval.tick(), if self.gate.is_active() => {
                     self.fetch(&tx).await;
+                    self.gate.fetched();
                 }
             }
         }

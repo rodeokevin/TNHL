@@ -8,6 +8,8 @@ pub struct DateState {
     pub text: String,
     /// Current date for games and standings (this is configured by App.configure() on startup)
     pub date: NaiveDate,
+    /// Today's game day (from the NHL API when available)
+    pub today: NaiveDate,
     pub year: i32,
     /// The bounds-resolved current-season end year (set from SeasonResolved).
     /// Used by the year picker's "t"/"today" shortcut so it picks the correct
@@ -94,6 +96,7 @@ impl Default for DateState {
             is_valid: true,
             text: String::new(),
             date: Utc::now().date_naive(),
+            today: Utc::now().date_naive(),
             year: 0,
             current_season_year: None,
             date_selection_offset: 0,

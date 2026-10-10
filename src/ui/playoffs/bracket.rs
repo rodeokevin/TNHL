@@ -1312,7 +1312,7 @@ fn draw_single(
     };
     let cw = cw as i32;
     let gap = ROUND_HOR_GAP as i32;
-    
+
     let src_x = sc as i32 * (cw + gap) + if dir == 1 { cw } else { 0 };
     let dst_x = dc as i32 * (cw + gap) + if dir == 1 { 0 } else { cw };
     let mid_x = if dir == 1 {

@@ -55,7 +55,7 @@ Example:
 
 ```toml
 timezone = "US/Eastern"
-favorite_team = "TOR"
+favorite_team = "MTL"
 log_level = "info"
 ```
 

@@ -21,9 +21,9 @@ use crate::state::playoffs_state::PlayoffsFocus;
 use crate::state::team_stats::team_picker::InputError;
 use crate::state::team_stats::team_stats_state::PlayerType;
 use crate::state::{
-    date_state::DateState, games_state::BoxscorePosition, games_state::GamesState, help::HelpState,
-    playoffs_state::PlayoffsState, standings_state::StandingsState,
-    team_stats::team_stats_state::TeamStatsState,
+    date_state::DateState, games_state::BoxscorePosition, games_state::GamesFocus,
+    games_state::GamesState, help::HelpState, playoffs_state::PlayoffsState,
+    standings_state::StandingsState, team_stats::team_stats_state::TeamStatsState,
 };
 use chrono::ParseError;
 use chrono_tz::Tz;
@@ -62,6 +62,19 @@ impl MenuFocus {
     }
 }
 
+/// Which sources should be polling right now
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ActiveSources {
+    /// Scoreboard, game story and total goals
+    games: bool,
+    boxscore: bool,
+    plays: bool,
+    standings: bool,
+    team_stats: bool,
+    /// Bracket, series and bracket series
+    playoffs: bool,
+}
+
 pub struct AppState {
     pub date_state: DateState,
     pub timezone: Tz,
@@ -90,6 +103,8 @@ pub struct AppState {
     pub focus: PaneFocus,
     pub previous_focus: PaneFocus,
     pub should_quit: bool,
+    /// Which sources were last told to poll, so changes are only sent once
+    sent_active: Option<ActiveSources>,
 }
 
 impl AppState {
@@ -133,6 +148,7 @@ impl AppState {
             focus: PaneFocus::default(),
             previous_focus: PaneFocus::default(),
             should_quit: false,
+            sent_active: None,
         }
     }
 }
@@ -147,6 +163,17 @@ impl AppState {
                 self.date_state.current_season_year = Some(year);
                 // Fetch team stats / playoffs for the resolved season.
                 self.handle_year_change();
+            }
+            AppEvent::TodayChanged { date } => {
+                log::debug!("Today's game day is now {}", date);
+                // Only `today` moves; the selected date stays where the user put it
+                self.date_state.today = date;
+                let live = self
+                    .games
+                    .games_data
+                    .as_ref()
+                    .is_some_and(|games| self.should_poll_fast_games(games));
+                self.set_fetch_interval(live);
             }
             AppEvent::SeasonBoundsResolved { seasons } => {
                 log::debug!("Season bounds resolved ({} seasons)", seasons.len());
@@ -170,10 +197,7 @@ impl AppState {
                 self.standings.season = None;
                 self.standings.out_of_range = Some(message);
             }
-            AppEvent::GamesUpdate {
-                game_ids,
-                parsed_games,
-            } => {
+            AppEvent::GamesUpdate { parsed_games } => {
                 self.set_fetch_interval(self.should_poll_fast_games(&parsed_games));
                 log::debug!("Updating games data");
                 let total_goals_targets: Vec<TotalGoalsTarget> = parsed_games
@@ -193,15 +217,7 @@ impl AppState {
                     })
                     .collect();
                 self.games.games_data = Some(parsed_games);
-                self.boxscore_tx
-                    .try_send(BoxscoreCommand::SetGameIds(game_ids.clone()))
-                    .ok();
-                self.plays_tx
-                    .try_send(PlaysCommand::SetGameIds(game_ids.clone()))
-                    .ok();
-                self.game_story_tx
-                    .try_send(GameStoryCommand::SetGameIds(game_ids))
-                    .ok();
+                self.sync_selected_game();
                 self.total_goals_tx
                     .try_send(TotalGoalsCommand::SetTargets(total_goals_targets))
                     .ok();
@@ -302,6 +318,9 @@ impl AppState {
                     self.games.sweeping_status_offset.wrapping_add(1);
             }
         }
+        // The Games view can also change while rendering (pregame -> live), so
+        // check after every event, ticks included
+        self.sync_active_sources();
     }
 
     /// Handle actions mapped from key events
@@ -331,6 +350,7 @@ impl AppState {
                 self.games.shift_game_index(false);
                 if self.games.selected_game_index != prev {
                     self.games.reset_game_state();
+                    self.sync_selected_game();
                 }
             }
             Action::NextGame => {
@@ -338,6 +358,7 @@ impl AppState {
                 self.games.shift_game_index(true);
                 if self.games.selected_game_index != prev {
                     self.games.reset_game_state();
+                    self.sync_selected_game();
                 }
             }
             Action::PrevGamesDisplay => {
@@ -557,6 +578,7 @@ impl AppState {
             self.games.plays_data.clear();
             self.games.total_goals_data.clear();
             self.games.reset_state();
+            self.sync_selected_game();
         }
         if let Err(e) = &standings_res {
             log::error!("Failed to send StandingsCommand::SetDate: {:?}", e);
@@ -635,6 +657,80 @@ impl AppState {
         }
     }
 
+    /// Which sources should poll: those feeding the current tab, and for
+    /// boxscore and play-by-play, only while their view is open
+    fn active_sources(&self) -> ActiveSources {
+        let tab = self.selected_menu;
+        let games = tab == MenuFocus::Games;
+        let focus = self.games.focus;
+        ActiveSources {
+            games,
+            boxscore: games && focus == GamesFocus::Boxscore,
+            // The plays pane isn't drawn on pregame
+            plays: games && self.games.plays_visible && focus != GamesFocus::Pregame,
+            standings: tab == MenuFocus::Standings,
+            team_stats: tab == MenuFocus::TeamStats,
+            playoffs: tab == MenuFocus::Playoffs,
+        }
+    }
+
+    /// Tell sources whether to poll when that changes. A source whose data
+    /// went stale while hidden refetches when it's shown again.
+    pub fn sync_active_sources(&mut self) {
+        let active = self.active_sources();
+        if self.sent_active == Some(active) {
+            return;
+        }
+        let sent = [
+            self.games_tx
+                .try_send(GamesCommand::SetActive(active.games))
+                .is_ok(),
+            self.game_story_tx
+                .try_send(GameStoryCommand::SetActive(active.games))
+                .is_ok(),
+            self.boxscore_tx
+                .try_send(BoxscoreCommand::SetActive(active.boxscore))
+                .is_ok(),
+            self.plays_tx
+                .try_send(PlaysCommand::SetActive(active.plays))
+                .is_ok(),
+            self.total_goals_tx
+                .try_send(TotalGoalsCommand::SetActive(active.games))
+                .is_ok(),
+            self.standings_tx
+                .try_send(StandingsCommand::SetActive(active.standings))
+                .is_ok(),
+            self.team_stats_tx
+                .try_send(TeamStatsCommand::SetActive(active.team_stats))
+                .is_ok(),
+            self.bracket_tx
+                .try_send(BracketCommand::SetActive(active.playoffs))
+                .is_ok(),
+            self.series_tx
+                .try_send(SeriesCommand::SetActive(active.playoffs))
+                .is_ok(),
+            self.bracket_series_tx
+                .try_send(BracketSeriesCommand::SetActive(active.playoffs))
+                .is_ok(),
+        ];
+        // If a channel was full, try again after the next event
+        if sent.iter().all(|&ok| ok) {
+            self.sent_active = Some(active);
+        }
+    }
+
+    /// Point the per-game sources at the selected game
+    fn sync_selected_game(&self) {
+        let game = self.games.selected_game().map(|g| (g.id, g.game_state));
+        self.game_story_tx
+            .try_send(GameStoryCommand::SetGame(game))
+            .ok();
+        self.boxscore_tx
+            .try_send(BoxscoreCommand::SetGame(game))
+            .ok();
+        self.plays_tx.try_send(PlaysCommand::SetGame(game)).ok();
+    }
+
     fn reset_app_state(&mut self) {
         self.games.reset_state();
         self.standings.reset_state();
@@ -642,43 +738,20 @@ impl AppState {
         self.playoffs.reset_state();
     }
 
+    /// Scoreboard interval: fast only for today, and faster while games are on.
+    /// The other sources use fixed intervals or pick their own from the
+    /// selected game's state.
     fn set_fetch_interval(&self, live: bool) {
-        let (info_interval, games_interval) = if live {
-            (
-                FetchInterval::InfoShortInterval,
-                FetchInterval::GamesShortInterval,
-            )
+        let interval = if self.date_state.date != self.date_state.today {
+            // Only today's scoreboard changes quickly; other dates' rarely do
+            FetchInterval::InfoLongInterval
+        } else if live {
+            FetchInterval::GamesShortInterval
         } else {
-            (
-                FetchInterval::InfoLongInterval,
-                FetchInterval::GamesLongInterval,
-            )
+            FetchInterval::GamesLongInterval
         };
         self.games_tx
-            .try_send(GamesCommand::SetInterval(games_interval.as_duration()))
-            .ok();
-        self.boxscore_tx
-            .try_send(BoxscoreCommand::SetInterval(info_interval.as_duration()))
-            .ok();
-        self.plays_tx
-            .try_send(PlaysCommand::SetInterval(games_interval.as_duration()))
-            .ok();
-        self.game_story_tx
-            .try_send(GameStoryCommand::SetInterval(info_interval.as_duration()))
-            .ok();
-        self.standings_tx
-            .try_send(StandingsCommand::SetInterval(info_interval.as_duration()))
-            .ok();
-        self.team_stats_tx
-            .try_send(TeamStatsCommand::SetInterval(info_interval.as_duration()))
-            .ok();
-        self.total_goals_tx
-            .try_send(TotalGoalsCommand::SetInterval(info_interval.as_duration()))
-            .ok();
-        self.bracket_series_tx
-            .try_send(BracketSeriesCommand::SetInterval(
-                info_interval.as_duration(),
-            ))
+            .try_send(GamesCommand::SetInterval(interval.as_duration()))
             .ok();
     }
 
@@ -722,6 +795,7 @@ pub fn table_page_down(visible_rows: usize, len: usize, table_state: &mut TableS
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sources::FetchInterval;
 
     fn state_at(offset: usize, selected: usize) -> TableState {
         let mut t = TableState::default();
@@ -762,5 +836,71 @@ mod tests {
         let mut ts = state_at(45, 47);
         table_page_down(10, 50, &mut ts);
         assert_eq!(ts.selected(), Some(49)); // len - 1
+    }
+
+    /// State with throwaway channels, except the scoreboard's
+    fn test_state(games_tx: Sender<GamesCommand>) -> AppState {
+        use tokio::sync::mpsc::channel;
+        AppState::new(
+            games_tx,
+            channel(8).0,
+            channel(8).0,
+            channel(8).0,
+            channel(8).0,
+            channel(8).0,
+            channel(8).0,
+            channel(8).0,
+            channel(8).0,
+            channel(8).0,
+        )
+    }
+
+    #[test]
+    fn boxscore_and_plays_poll_only_while_their_view_is_open() {
+        let mut state = test_state(tokio::sync::mpsc::channel(8).0);
+        let active = state.active_sources();
+        assert!(active.games && !active.boxscore && !active.plays);
+
+        state.games.focus = GamesFocus::Boxscore;
+        assert!(state.active_sources().boxscore);
+
+        state.games.focus = GamesFocus::Scoring;
+        state.games.plays_visible = true;
+        let active = state.active_sources();
+        assert!(active.plays && !active.boxscore);
+
+        // The plays pane isn't drawn on pregame
+        state.games.focus = GamesFocus::Pregame;
+        assert!(!state.active_sources().plays);
+
+        // Nothing on the Games tab polls from another tab
+        state.games.focus = GamesFocus::Boxscore;
+        state.selected_menu = MenuFocus::Standings;
+        let active = state.active_sources();
+        assert!(!active.games && !active.boxscore && !active.plays && active.standings);
+    }
+
+    #[test]
+    fn today_changed_moves_only_today_and_slows_old_scoreboard() {
+        use tokio::sync::mpsc::channel;
+        let (games_tx, mut games_rx) = channel(8);
+        let mut state = test_state(games_tx);
+        let old_today = chrono::NaiveDate::from_ymd_opt(2026, 10, 10).unwrap();
+        let new_today = old_today.succ_opt().unwrap();
+        state.date_state.date = old_today;
+        state.date_state.today = old_today;
+
+        state.handle_event(AppEvent::TodayChanged { date: new_today });
+
+        assert_eq!(state.date_state.today, new_today);
+        // The selected date is left alone
+        assert_eq!(state.date_state.date, old_today);
+        // The old day is no longer today, so its scoreboard polls slowly
+        match games_rx.try_recv() {
+            Ok(GamesCommand::SetInterval(interval)) => {
+                assert_eq!(interval, FetchInterval::InfoLongInterval.as_duration())
+            }
+            _ => panic!("expected a scoreboard interval update"),
+        }
     }
 }

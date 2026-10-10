@@ -64,6 +64,13 @@ pub enum GameState {
     Unknown,
 }
 
+impl GameState {
+    /// Whether the game is being played (not counting pregame)
+    pub fn is_live(self) -> bool {
+        matches!(self, GameState::LIVE | GameState::CRIT)
+    }
+}
+
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SeriesStatus {

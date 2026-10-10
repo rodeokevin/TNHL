@@ -1,19 +1,22 @@
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::mpsc::Sender;
-use tokio::time::Duration;
+use tokio::time::{Duration, Instant};
 use tokio_util::sync::CancellationToken;
 
-use crate::sources::{FetchInterval, GamesResponse};
+use crate::sources::{FetchInterval, GamesResponse, TabGate, send_request};
 use crate::{AppEvent, Source};
 
 pub enum GamesCommand {
     SetDate(String),
     SetInterval(Duration),
+    /// Whether this source's tab is shown
+    SetActive(bool),
 }
 
 pub struct GamesSource {
     client: reqwest::Client,
     rx: Receiver<GamesCommand>,
+    gate: TabGate,
     current_date: String,
     fetch_interval: Duration,
 }
@@ -22,6 +25,7 @@ impl GamesSource {
         Self {
             client,
             rx,
+            gate: TabGate::default(),
             current_date,
             fetch_interval: FetchInterval::GamesShortInterval.as_duration(),
         }
@@ -30,18 +34,12 @@ impl GamesSource {
     async fn fetch(&self, tx: &Sender<AppEvent>) {
         let url = format!("https://api-web.nhle.com/v1/score/{}", self.current_date);
 
-        match self.client.get(&url).send().await {
+        match send_request(self.client.get(&url)).await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
                     match GamesResponse::from_json(&body) {
                         Ok(parsed_games) => {
-                            let game_ids = parsed_games.games.iter().map(|g| g.id).collect();
-                            let _ = tx
-                                .send(AppEvent::GamesUpdate {
-                                    game_ids,
-                                    parsed_games,
-                                })
-                                .await;
+                            let _ = tx.send(AppEvent::GamesUpdate { parsed_games }).await;
                         }
                         Err(e) => log::error!("Failed to parse games: {}", e),
                     }
@@ -64,25 +62,34 @@ impl Source for GamesSource {
 
                 Some(cmd) = self.rx.recv() => {
                     match cmd {
+                        GamesCommand::SetActive(active) => {
+                            if let Some(due) = self.gate.set_active(active, self.fetch_interval) {
+                                interval.reset_at(due);
+                            }
+                        }
                         GamesCommand::SetDate(date) => {
                             self.current_date = date;
-                            self.fetch(&tx).await;
-                            interval.reset();
+                            if self.gate.target_changed() {
+                                self.fetch(&tx).await;
+                                self.gate.fetched();
+                                interval.reset();
+                            }
                         },
                         GamesCommand::SetInterval(new_interval) => {
                             if new_interval != self.fetch_interval {
                                 log::debug!("Setting games interval to {:?}", new_interval);
                                 self.fetch_interval = new_interval;
 
-                                interval = tokio::time::interval(self.fetch_interval);
+                                interval = tokio::time::interval_at(Instant::now() + self.fetch_interval, self.fetch_interval);
                                 interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
                             }
                         }
                     }
                 },
 
-                _ = interval.tick() => {
+                _ = interval.tick(), if self.gate.is_active() => {
                     self.fetch(&tx).await;
+                    self.gate.fetched();
                 }
             }
         }

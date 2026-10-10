@@ -85,6 +85,7 @@ impl App {
             .with_timezone(&self.settings.timezone)
             .date_naive();
         self.state.date_state.date = today;
+        self.state.date_state.today = today;
     }
 
     /// Set the timezone in the state to the settings' timezone

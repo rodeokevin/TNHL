@@ -3,7 +3,7 @@ use tokio::sync::mpsc::Sender;
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
-use super::{AppEvent, Source};
+use super::{AppEvent, Source, send_request};
 use crate::models::standings::{SeasonBounds, StandingsSeasonResponse, season_end_year_for_date};
 
 /// How long to wait between retries if the season bounds can't be fetched.
@@ -23,7 +23,7 @@ impl SeasonSource {
     /// Try to fetch and parse the season bounds
     async fn try_fetch_bounds(&self) -> Option<Vec<SeasonBounds>> {
         let url = "https://api-web.nhle.com/v1/standings-season";
-        match self.client.get(url).send().await {
+        match send_request(self.client.get(url)).await {
             Ok(resp) => match resp.text().await {
                 Ok(body) => match StandingsSeasonResponse::from_json(&body) {
                     Ok(parsed) if !parsed.seasons.is_empty() => Some(parsed.seasons),

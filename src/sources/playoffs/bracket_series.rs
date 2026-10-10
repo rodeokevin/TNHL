@@ -3,7 +3,7 @@ use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::models::playoffs::series::SeriesResponse;
-use crate::sources::FetchInterval;
+use crate::sources::{TabGate, send_request};
 use crate::{AppEvent, Source};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,16 +12,19 @@ pub struct BracketSeriesTarget {
     pub letter: String,
 }
 
+const FETCH_INTERVAL: Duration = Duration::from_secs(60);
+
 pub enum BracketSeriesCommand {
     SetTargets(Vec<BracketSeriesTarget>),
-    SetInterval(Duration),
+    /// Whether this source's tab is shown
+    SetActive(bool),
 }
 
 pub struct BracketSeriesSource {
     client: reqwest::Client,
     rx: Receiver<BracketSeriesCommand>,
+    gate: TabGate,
     targets: Vec<BracketSeriesTarget>,
-    fetch_interval: Duration,
 }
 
 impl BracketSeriesSource {
@@ -29,8 +32,8 @@ impl BracketSeriesSource {
         Self {
             client,
             rx,
+            gate: TabGate::default(),
             targets: Vec::new(),
-            fetch_interval: FetchInterval::InfoShortInterval.as_duration(),
         }
     }
 
@@ -44,7 +47,7 @@ impl BracketSeriesSource {
                     target.season, letter
                 );
 
-                match client.get(&url).send().await {
+                match send_request(client.get(&url)).await {
                     Ok(resp) => {
                         if let Ok(body) = resp.text().await {
                             match SeriesResponse::from_json(&body) {
@@ -78,7 +81,7 @@ impl BracketSeriesSource {
 #[async_trait::async_trait]
 impl Source for BracketSeriesSource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
-        let mut interval = tokio::time::interval(self.fetch_interval);
+        let mut interval = tokio::time::interval(FETCH_INTERVAL);
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
@@ -87,6 +90,11 @@ impl Source for BracketSeriesSource {
 
                 Some(cmd) = self.rx.recv() => {
                     match cmd {
+                        BracketSeriesCommand::SetActive(active) => {
+                            if let Some(due) = self.gate.set_active(active, FETCH_INTERVAL) {
+                                interval.reset_at(due);
+                            }
+                        }
                         BracketSeriesCommand::SetTargets(mut targets) => {
                             targets.sort_by(|a, b| {
                                 (a.season.as_str(), a.letter.as_str())
@@ -100,23 +108,18 @@ impl Source for BracketSeriesSource {
                             if targets != current {
                                 log::debug!("Fetching bracket series because targets changed");
                                 self.targets = targets;
-                                self.fetch(&tx).await;
-                                interval.reset();
-                            }
-                        }
-                        BracketSeriesCommand::SetInterval(new_interval) => {
-                            if new_interval != self.fetch_interval {
-                                log::debug!("Setting bracket series interval to {:?}", new_interval);
-                                self.fetch_interval = new_interval;
-
-                                interval = tokio::time::interval(self.fetch_interval);
-                                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                                if self.gate.target_changed() {
+                                    self.fetch(&tx).await;
+                                    self.gate.fetched();
+                                    interval.reset();
+                                }
                             }
                         }
                     }
                 },
-                _ = interval.tick() => {
+                _ = interval.tick(), if self.gate.is_active() => {
                     self.fetch(&tx).await;
+                    self.gate.fetched();
                 }
             }
         }

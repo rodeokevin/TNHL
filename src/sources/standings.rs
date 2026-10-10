@@ -3,23 +3,27 @@ use tokio::sync::mpsc::Sender;
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 
-use super::{AppEvent, Source};
+use super::{AppEvent, Source, TabGate, send_request};
 use crate::models::standings::{
     DateResolution, SeasonBounds, resolve_date, season_ending_before, season_starting_after,
 };
-use crate::sources::{FetchInterval, StandingsResponse};
+use crate::sources::StandingsResponse;
+
+/// Standings change at most once per game, so a fixed interval is plenty
+const FETCH_INTERVAL: Duration = Duration::from_secs(60);
 
 pub enum StandingsCommand {
     SetDate(String),
-    SetInterval(Duration),
     SetSeasonBounds(Vec<SeasonBounds>),
+    /// Whether this source's tab is shown
+    SetActive(bool),
 }
 
 pub struct StandingsSource {
     client: reqwest::Client,
     rx: Receiver<StandingsCommand>,
+    gate: TabGate,
     current_date: String,
-    fetch_interval: Duration,
     seasons: Option<Vec<SeasonBounds>>,
 }
 impl StandingsSource {
@@ -31,8 +35,8 @@ impl StandingsSource {
         Self {
             client,
             rx,
+            gate: TabGate::default(),
             current_date,
-            fetch_interval: FetchInterval::InfoShortInterval.as_duration(),
             seasons: None,
         }
     }
@@ -117,7 +121,7 @@ impl StandingsSource {
         let season = self.matched_season(&date);
         let url = format!("https://api-web.nhle.com/v1/standings/{}", date);
 
-        match self.client.get(&url).send().await {
+        match send_request(self.client.get(&url)).await {
             Ok(resp) => {
                 if let Ok(body) = resp.text().await {
                     // Parse the JSON
@@ -157,7 +161,7 @@ impl StandingsSource {
 #[async_trait::async_trait]
 impl Source for StandingsSource {
     async fn run(mut self: Box<Self>, tx: Sender<AppEvent>, cancel: CancellationToken) {
-        let mut interval = tokio::time::interval(self.fetch_interval);
+        let mut interval = tokio::time::interval(FETCH_INTERVAL);
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         loop {
@@ -165,30 +169,33 @@ impl Source for StandingsSource {
                 _ = cancel.cancelled() => break,
                 Some(cmd) = self.rx.recv() => {
                     match cmd {
+                        StandingsCommand::SetActive(active) => {
+                            if let Some(due) = self.gate.set_active(active, FETCH_INTERVAL) {
+                                interval.reset_at(due);
+                            }
+                        }
                         StandingsCommand::SetDate(date) => {
                             self.current_date = date;
-                            self.fetch(&tx).await;
-                            interval.reset();
-                        }
-                        StandingsCommand::SetInterval(new_interval) => {
-                            if new_interval != self.fetch_interval {
-                                log::debug!("Setting standings interval to {:?}", new_interval);
-                                self.fetch_interval = new_interval;
-
-                                interval = tokio::time::interval(self.fetch_interval);
-                                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                            if self.gate.target_changed() {
+                                self.fetch(&tx).await;
+                                self.gate.fetched();
+                                interval.reset();
                             }
                         }
                         StandingsCommand::SetSeasonBounds(seasons) => {
                             // Bounds are resolved exactly once by SeasonSource
                             self.seasons = Some(seasons);
-                            self.fetch(&tx).await;
-                            interval.reset();
+                            if self.gate.target_changed() {
+                                self.fetch(&tx).await;
+                                self.gate.fetched();
+                                interval.reset();
+                            }
                         }
                     }
                 },
-                _ = interval.tick() => {
+                _ = interval.tick(), if self.gate.is_active() => {
                     self.fetch(&tx).await;
+                    self.gate.fetched();
                 }
             }
         }
