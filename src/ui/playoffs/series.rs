@@ -160,7 +160,7 @@ pub fn aggregate_series_goals(series: &SeriesResponse) -> (u32, u32) {
 
 fn build_big_text(text: String, alignment: Alignment) -> BigText<'static> {
     BigText::builder()
-        .pixel_size(PixelSize::Sextant)
+        .pixel_size(PixelSize::Quadrant)
         .style(Style::new().fg(HOME_BAR_COLOR))
         .lines(vec![Line::from(text)])
         .alignment(alignment)

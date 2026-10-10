@@ -797,11 +797,8 @@ fn render_cup_text(frame: &mut Frame, area: Rect, cw: u16, h_off: u16, v_off: u1
     );
 }
 
-// `PixelSize::Sextant` packs the 8x8 font into cells 2 pixels wide and 3
-// pixels tall, so a glyph needs ceil(8/2)=4 cells of width and ceil(8/3)=3
-// cells of height.
-const SEXTANT_GLYPH_WIDTH: u16 = 4;
-const SEXTANT_LINE_HEIGHT: u16 = 3;
+const QUADRANT_GLYPH_WIDTH: u16 = 4;
+const QUADRANT_LINE_HEIGHT: u16 = 4;
 
 #[allow(clippy::too_many_arguments)]
 fn draw_big_text_virtual(
@@ -814,10 +811,8 @@ fn draw_big_text_virtual(
     h_off: u16,
     v_off: u16,
 ) {
-    // Size the scratch buffer to the actual rendered glyph dimensions and anchor
-    // it centered on center_vx.
-    let vw = text.chars().count() as u16 * SEXTANT_GLYPH_WIDTH;
-    let vh = SEXTANT_LINE_HEIGHT;
+    let vw = text.chars().count() as u16 * QUADRANT_GLYPH_WIDTH;
+    let vh = QUADRANT_LINE_HEIGHT;
     if vw == 0 {
         return;
     }
@@ -827,7 +822,7 @@ fn draw_big_text_virtual(
     let scratch_area = Rect::new(0, 0, vw, vh);
     let mut scratch = Buffer::empty(scratch_area);
     let big_text = BigText::builder()
-        .pixel_size(PixelSize::Sextant)
+        .pixel_size(PixelSize::Quadrant)
         .style(style)
         .lines(vec![Line::from(text)])
         .alignment(Alignment::Left)

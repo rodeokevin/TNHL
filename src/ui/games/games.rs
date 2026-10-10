@@ -594,7 +594,7 @@ fn render_big_score(game: &GameData, frame: &mut Frame, area: Rect) {
 
 fn build_big_text(text: String, alignment: Alignment) -> BigText<'static> {
     BigText::builder()
-        .pixel_size(PixelSize::Sextant)
+        .pixel_size(PixelSize::Quadrant)
         .style(Style::new().fg(BIG_SCORE_COLOR))
         .lines(vec![Line::from(text)])
         .alignment(alignment)
