@@ -87,6 +87,7 @@ impl StandingsResponse {
                 name: team.division_name.as_deref().unwrap_or(code).to_string(),
             });
         }
+        sort_by_display_order(&mut seen);
         seen
     }
 
@@ -107,8 +108,21 @@ impl StandingsResponse {
                 name: name(team).unwrap_or(code).to_string(),
             });
         }
+        sort_by_display_order(&mut seen);
         seen
     }
+}
+
+/// Preferred display order
+const DISPLAY_ORDER: [&str; 6] = ["E", "W", "A", "M", "C", "P"];
+
+fn sort_by_display_order(groupings: &mut [Grouping]) {
+    groupings.sort_by_key(|g| {
+        DISPLAY_ORDER
+            .iter()
+            .position(|a| *a == g.abbrev)
+            .unwrap_or(DISPLAY_ORDER.len())
+    });
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
